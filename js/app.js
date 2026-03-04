@@ -113,9 +113,22 @@ async function tryAutoConnect(){
 const DEFAULT_LOGO_URL='https://deciofranchini-oss.github.io/Fintrack/logo.png';
 let APP_LOGO_URL=DEFAULT_LOGO_URL;
 function setAppLogo(url){
-  APP_LOGO_URL = url || DEFAULT_LOGO_URL;
+  // Defensive: avoid accidentally assigning a Promise/thenable to img.src
+  // (would become "[object Promise]" and break the logo URL).
+  try {
+    if (url && (typeof url === 'object' || typeof url === 'function') && typeof url.then === 'function') {
+      console.warn('[logo] Ignoring Promise passed to setAppLogo(); falling back to default logo.');
+      url = '';
+    }
+  } catch {}
+
+  if (url && typeof url !== 'string') url = '';
+  const clean = (typeof url === 'string') ? url.trim() : '';
+  APP_LOGO_URL = clean || DEFAULT_LOGO_URL;
+
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.src='https://deciofranchini-oss.github.io/Fintrack/logo.png';
+    const el=document.getElementById(id);
+    if(el) el.src = APP_LOGO_URL;
   });
 }
 
@@ -138,11 +151,6 @@ async function bootApp(){
   // Auto-register scheduled transactions (browser session)
   if (typeof runScheduledAutoRegister === 'function') { await runScheduledAutoRegister(); }
 
-  // Apply logo override from settings (if any)
-  if (typeof getAppSetting === 'function') {
-    const savedLogo = getAppSetting('app_logo_url');
-    if (savedLogo) setAppLogo(savedLogo);
-  }
   populateSelects();
   // Start auto-check timer if configured
   const _cfg = getAutoCheckConfig();

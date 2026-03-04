@@ -8,8 +8,8 @@ async function loadAppSettings() {
     _appSettingsCache = {};
     (data || []).forEach(row => { _appSettingsCache[row.key] = row.value; });
     // Apply logo override (if any)
-    const logo = _appSettingsCache['app_logo_url'];
-    if (logo && typeof setAppLogo === 'function') setAppLogo(logo);
+    const logo = _appSettingsCache['app_logo_url'] || '';
+    if (typeof setAppLogo === 'function') setAppLogo(logo);
 
     // Apply menu visibility (if configured)
     try { applyMenuVisibility(_getMenuVisibilityFromCache()); } catch {}
@@ -491,7 +491,7 @@ async function resetAppLogo() {
   const urlEl = document.getElementById('appLogoUrl');
   const previewEl = document.getElementById('appLogoPreview');
   if(urlEl) urlEl.value = '';
-  if(previewEl) previewEl.src = APP_APP_LOGO_URL || DEFAULT_APP_LOGO_URL;
+  if(previewEl) previewEl.src = (typeof APP_LOGO_URL !== 'undefined' ? APP_LOGO_URL : (typeof DEFAULT_LOGO_URL !== 'undefined' ? DEFAULT_LOGO_URL : ''));
   toast('Logotipo restaurado','success');
 }
 
