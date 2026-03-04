@@ -219,9 +219,16 @@
       <button class="nav-item" onclick="navigate('categories')" id=\"categoriesNav\"><span class="ni-icon">🏷</span>Categorias</button>
       <button class="nav-item" onclick="navigate('payees')" id=\"payeesNav\"><span class="ni-icon">👥</span>Beneficiários</button>
     </div>
-</div>
+    <div class="nav-section">
+      <div class="nav-label">Externo</div>
+      <a class="nav-item" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><span class="ni-icon">🎓</span>Gerenciamento Escola</a>
+    </div>
+  </div>
   <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:3px">
-<button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
+    <button class="nav-item" id="importNav" onclick="navigate('import')" style="font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">📥</span>Importar</button>
+    <button class="nav-item" id="auditNav" onclick="navigate('audit')" style="display:none;font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">🧾</span>Auditoria</button>
+    <button class="nav-item" id="settingsNav" onclick="navigate('settings')" style="display:none;font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">⚙️</span>Configurações</button>
+    <button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
   </div>
 </nav>
 
@@ -243,26 +250,7 @@
         <div class="topbar-user-avatar" id="topbarUserAvatar">?</div>
         <span class="topbar-user-name" id="topbarUserName"></span>
       </div>
-      
-      <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
-        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;text-decoration:none;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">🎓</span>
-        </a>
-        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">📥</span>
-        </button>
-        <button class="topbar-icon-btn" id="auditNav" onclick="navigate('audit')" title="Auditoria"
-           style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">🧾</span>
-        </button>
-        <button class="topbar-icon-btn" id="settingsNav" onclick="navigate('settings')" title="Configurações"
-           style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">⚙️</span>
-        </button>
-      </div>
-<button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()" title="Nova Transação" aria-label="Nova Transação">+</button>
+      <button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()">+ Nova Transação</button>
     </div>
   </header>
 
