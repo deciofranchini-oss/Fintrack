@@ -1641,3 +1641,31 @@ canvas { cursor: default; }
   }
 
 }
+/* =====================================================
+   MOBILE: valores maiores e sempre alinhados à direita
+   (lista normal + agrupado por conta)
+   ===================================================== */
+
+@media (max-width:640px){
+
+  /* valor da transação */
+  #page-transactions td:nth-child(6){
+    font-size:1.65rem;
+    font-weight:900;
+    text-align:right;
+    justify-self:end;
+    white-space:nowrap;
+  }
+
+  /* reforço para qualquer classe usada para valores */
+  #page-transactions .amount,
+  #page-transactions .tx-amount,
+  #page-transactions .value{
+    font-size:1.65rem;
+    font-weight:900;
+    text-align:right;
+    justify-self:end;
+    white-space:nowrap;
+  }
+
+}
