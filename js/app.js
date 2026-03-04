@@ -115,7 +115,7 @@ let APP_LOGO_URL=DEFAULT_LOGO_URL;
 function setAppLogo(url){
   APP_LOGO_URL = url || DEFAULT_LOGO_URL;
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.src=APP_LOGO_URL;
+    const el=document.getElementById(id); if(el) el.src='https://deciofranchini-oss.github.io/Fintrack/logo.png';
   });
 }
 
