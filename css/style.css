@@ -74,8 +74,22 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;}
 .stat-accent{position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);border-radius:var(--r) var(--r) 0 0;}
 .stat-label{font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
-.stat-value{font-family:var(--font-serif);font-size:1.95rem;font-weight:500;line-height:1;letter-spacing:-.02em;}
+.stat-value{font-family:var(--font-serif);font-size:1.6rem;font-weight:500;line-height:1;letter-spacing:-.02em;}
 .stat-sub{font-size:.75rem;color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:4px;}
+
+
+/* DASHBOARD STAT CARDS (compact 2-per-row + larger numbers) */
+#page-dashboard .grid-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+#page-dashboard .stat-card{padding:14px;}
+#page-dashboard .stat-label{margin-bottom:6px;}
+#page-dashboard .stat-value{font-size:2.25rem;font-variant-numeric:tabular-nums;}
+#page-dashboard .stat-sub{margin-top:5px;}
+
+/* Keep dashboard cards readable on very small screens */
+@media (max-width:420px){
+  #page-dashboard .grid-4{grid-template-columns:1fr;}
+  #page-dashboard .stat-value{font-size:2.05rem;}
+}
 
 /* ACCOUNT CARDS */
 .account-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}
@@ -236,7 +250,7 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
   .content{padding:16px;padding-bottom:calc(var(--bottom-h) + 80px + env(safe-area-inset-bottom));}
   .grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}
   .account-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
-  .stat-value{font-size:1.55rem;}
+  .stat-value{font-size:1.35rem;}
   .form-grid{grid-template-columns:1fr;}
   .form-group.full{grid-column:1;}
   .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
@@ -245,7 +259,7 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 }
 @media(max-width:390px){
   .content{padding:12px;padding-bottom:calc(var(--bottom-h) + 76px);}
-  .stat-value{font-size:1.4rem;}
+  .stat-value{font-size:1.2rem;}
   table th:nth-child(5),table td:nth-child(5){display:none;}
 }
 @media(min-width:769px){
@@ -1827,4 +1841,18 @@ canvas { cursor: default; }
 
 }
 
+/* =====================================================
+   MOBILE / INPUT / SCROLL IMPROVEMENTS
+   ===================================================== */
 
+/* impedir zoom automático do iOS em inputs */
+input,
+select,
+textarea{
+  font-size:16px;
+}
+
+/* melhorar comportamento de scroll no mobile */
+html, body{
+  overscroll-behavior: none;
+}
