@@ -576,10 +576,9 @@
     </div>
 
     <!-- BUDGETS -->
-
 <div class="page" id="page-budgets">
 
-  <div class="page-header">
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
     <div class="page-header-left">
       <input type="month" id="budgetMonth" onchange="loadBudgets()">
     </div>
@@ -588,6 +587,9 @@
       <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button>
     </div>
   </div>
+
+  <!-- Espaço de uma linha -->
+  <div style="height:16px;"></div>
 
   <div class="grid-2" id="budgetGrid"></div>
 
