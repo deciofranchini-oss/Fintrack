@@ -1827,4 +1827,18 @@ canvas { cursor: default; }
 
 }
 
+/* =====================================================
+   MOBILE / INPUT / SCROLL IMPROVEMENTS
+   ===================================================== */
 
+/* impedir zoom automático do iOS em inputs */
+input,
+select,
+textarea{
+  font-size:16px;
+}
+
+/* melhorar comportamento de scroll no mobile */
+html, body{
+  overscroll-behavior: none;
+}
