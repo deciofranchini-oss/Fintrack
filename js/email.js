@@ -5,6 +5,9 @@
 const EMAILJS_CONFIG = {
   serviceId:  '',
   templateId: '',
+  // Optional: dedicated template for scheduled transaction notifications.
+  // If empty, the app falls back to templateId.
+  scheduledTemplateId: '',
   publicKey:  '',
 };
 

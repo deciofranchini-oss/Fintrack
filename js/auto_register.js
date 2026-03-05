@@ -419,44 +419,83 @@ function nextScheduledDate(dateStr, sc) {
 }
 
 /* ── Email Notifications ── */
+async function _resolveNameById(table, id) {
+  if(!sb || !id) return '';
+  try {
+    const q = sb.from(table).select('name').eq('id', id).limit(1);
+    // Respect family scoping if helper exists
+    const { data, error } = (typeof famQ === 'function')
+      ? await famQ(q).maybeSingle()
+      : await q.maybeSingle();
+    if(error) throw error;
+    return (data && data.name) ? data.name : '';
+  } catch {
+    return '';
+  }
+}
+
+async function buildScheduledEmailParams(sc, date, amount) {
+  const tpl = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  // Resolve names (best-effort, keep email small)
+  const [acc, toAcc, cat, pay] = await Promise.all([
+    _resolveNameById('accounts', sc.account_id),
+    _resolveNameById('accounts', sc.transfer_to_account_id),
+    _resolveNameById('categories', sc.category_id),
+    _resolveNameById('payees', sc.payee_id),
+  ]);
+
+  const absAmt = fmt(Math.abs(amount ?? sc.amount ?? 0));
+  const kind = sc.type || (sc.amount >= 0 ? 'income' : 'expense');
+  const subject = `⏱️ Programado: ${sc.description} · ${absAmt} · ${fmtDate(date)}`;
+
+  return {
+    templateId: tpl,
+    templateParams: {
+      // Routing
+      to_email: '', // filled by caller
+      from_name: 'J.F. Family FinTrack',
+      subject,
+      // Minimal transaction payload (preferred for scheduled template)
+      tx_description: sc.description || '',
+      tx_date: fmtDate(date),
+      tx_amount: absAmt,
+      tx_type: kind,
+      tx_account: acc || '',
+      tx_to_account: toAcc || '',
+      tx_category: cat || '',
+      tx_payee: pay || '',
+      tx_currency: sc.currency || '',
+      tx_status: (sc.auto_confirm === false ? 'pending' : 'confirmed'),
+      // Backward compatible field used by the existing generic template
+      message: `Transação programada: "${sc.description}" · ${absAmt} · ${fmtDate(date)}${acc ? ` · ${acc}` : ''}`,
+    }
+  };
+}
+
 async function sendScheduledNotification(sc, date, amount, emailTo) {
-  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !EMAILJS_CONFIG.templateId) return;
+  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !(EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId)) return;
   try {
     emailjs.init(EMAILJS_CONFIG.publicKey);
-    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
-      to_email:    emailTo,
-      subject:     `✅ Transação registrada: ${sc.description}`,
-      message:     `A transação "${sc.description}" de ${fmt(Math.abs(amount))} foi registrada automaticamente em ${fmtDate(date)}.`,
-      from_name:   'J.F. Family FinTrack',
-      report_period: fmtDate(date),
-      report_income: amount > 0 ? fmt(amount) : '—',
-      report_expense: amount < 0 ? fmt(Math.abs(amount)) : '—',
-      report_balance: fmt(amount),
-      report_count: '1',
-      report_view: 'Automático',
-    });
+    const built = await buildScheduledEmailParams(sc, date, amount);
+    built.templateParams.to_email = emailTo;
+    // Keep the email short: the scheduled template should render only tx_* fields.
+    await emailjs.send(EMAILJS_CONFIG.serviceId, built.templateId, built.templateParams);
   } catch(e) { console.warn('[AutoReg] Email error:', e.message); }
 }
 
 async function sendUpcomingNotification(sc, date, emailTo, daysBefore) {
-  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !EMAILJS_CONFIG.templateId) return;
+  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !(EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId)) return;
   // Check if already sent (use localStorage to avoid duplicates)
   const sentKey = `notified_${sc.id}_${date}`;
   if(localStorage.getItem(sentKey)) return;
   try {
     emailjs.init(EMAILJS_CONFIG.publicKey);
-    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
-      to_email:    emailTo,
-      subject:     `🔔 Transação programada em ${daysBefore > 0 ? daysBefore + ' dia(s)' : 'hoje'}: ${sc.description}`,
-      message:     `Lembrete: a transação "${sc.description}" de ${fmt(Math.abs(sc.amount))} está programada para ${fmtDate(date)}.`,
-      from_name:   'J.F. Family FinTrack — Lembrete',
-      report_period: fmtDate(date),
-      report_income: sc.amount > 0 ? fmt(sc.amount) : '—',
-      report_expense: sc.amount < 0 ? fmt(Math.abs(sc.amount)) : '—',
-      report_balance: fmt(sc.amount),
-      report_count: '1',
-      report_view: 'Lembrete',
-    });
+    const built = await buildScheduledEmailParams(sc, date, sc.amount);
+    built.templateParams.to_email = emailTo;
+    built.templateParams.from_name = 'J.F. Family FinTrack — Lembrete';
+    built.templateParams.subject = `🔔 Programado ${daysBefore > 0 ? `em ${daysBefore} dia(s)` : 'hoje'}: ${sc.description} · ${built.templateParams.tx_amount} · ${built.templateParams.tx_date}`;
+    built.templateParams.message = `Lembrete: "${sc.description}" · ${built.templateParams.tx_amount} · ${built.templateParams.tx_date}`;
+    await emailjs.send(EMAILJS_CONFIG.serviceId, built.templateId, built.templateParams);
     localStorage.setItem(sentKey, '1');
   } catch(e) { console.warn('[AutoReg] Upcoming email error:', e.message); }
 }
