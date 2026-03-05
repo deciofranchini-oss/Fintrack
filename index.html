@@ -147,38 +147,6 @@
   </div>
 </div>
 
-<div class="pin-screen" id="pinScreen" style="display:none">
-  <div class="pin-card">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:2.2rem;margin-bottom:6px">🔐</div>
-      <div class="pin-title">JF Family FinTrack</div>
-      <div class="pin-subtitle">Digite o Masterpin para acessar</div>
-    </div>
-    <div class="pin-dots" id="pinDots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-      <div class="pin-dot" id="pd4"></div>
-      <div class="pin-dot" id="pd5"></div>
-    </div>
-    <div class="pin-keypad" id="pinKeypad">
-      <button class="pin-key" onclick="pinKey(1)">1</button>
-      <button class="pin-key" onclick="pinKey(2)">2</button>
-      <button class="pin-key" onclick="pinKey(3)">3</button>
-      <button class="pin-key" onclick="pinKey(4)">4</button>
-      <button class="pin-key" onclick="pinKey(5)">5</button>
-      <button class="pin-key" onclick="pinKey(6)">6</button>
-      <button class="pin-key" onclick="pinKey(7)">7</button>
-      <button class="pin-key" onclick="pinKey(8)">8</button>
-      <button class="pin-key" onclick="pinKey(9)">9</button>
-      <button class="pin-key zero" onclick="pinKey(0)">0</button>
-      <button class="pin-key del" onclick="pinDel()">⌫</button>
-    </div>
-    <div class="pin-error-msg" id="pinErrorMsg"></div>
-  </div>
-</div>
-
 <!-- SUPABASE SETUP -->
 <div class="setup-screen" id="setupScreen" style="display:none">
   <div class="setup-box">
@@ -577,7 +545,6 @@
 
     <!-- BUDGETS -->
     <div class="page" id="page-budgets">
-      <div class="section-header mb-6"><span class="section-title">Orçamentos</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="month" id="budgetMonth" onchange="loadBudgets()"><button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button></div>
       </div>
       <div class="grid-2" id="budgetGrid"></div>
@@ -586,7 +553,6 @@
     <!-- CATEGORIES -->
     <div class="page" id="page-categories">
       <div class="section-header mb-6">
-        <span class="section-title">Categorias</span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">+ Despesa</button>
           <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','receita')">+ Receita</button>
@@ -908,14 +874,13 @@
 
     <!-- SETTINGS PAGE -->
     <div class="page" id="page-settings">
-      <div class="section-header mb-6"><span class="section-title">Configurações</span></div>
 
 <div class="settings-section">
         <div class="settings-card">
           <div class="settings-row" style="justify-content:center;padding:20px;flex-direction:column;gap:0">
             <img id="settingsLogoImg" src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="JF Family FinTrack" style="height:150px;object-fit:contain;mix-blend-mode:normal">
             <div style="text-align:center">
-              <div style="font-weight:700;font-size:1.15rem;font-family:var(--font-serif);color:var(--text)">Family FinTrack</div>
+              <div style="font-weight:700;font-size:1.15rem;font-family:var(--font-serif);color:var(--text)">Family FinTrack v1.0</div>
               <div style="font-size:.75rem;color:var(--muted);margin-top:3px">O Gerenciador Financeiro da Família</div>
             </div>
           </div>
@@ -1788,59 +1753,7 @@
   </div>
 </div>
 
-<!-- CHANGE PIN MODAL -->
-<div class="modal-overlay" id="changePinModal" style="display:none">
-  <div class="modal" style="max-width:380px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title">Alterar Masterpin</span>
-      <button class="modal-close" onclick="closeModal('changePinModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <!-- Step 1: confirm current -->
-      <div class="pin-step active" id="pinStep1">
-        <p style="color:var(--muted);font-size:.875rem;margin-bottom:12px">Digite o PIN atual para confirmar sua identidade:</p>
-        <div class="pin-input-row">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp1_0" oninput="pinModalInput(1,0)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp1_1" oninput="pinModalInput(1,1)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp1_2" oninput="pinModalInput(1,2)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp1_3" oninput="pinModalInput(1,3)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp1_4" oninput="pinModalInput(1,4)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp1_5" oninput="pinModalInput(1,5)">
-        </div>
-        <p id="pinStep1Error" style="color:var(--red);font-size:.8rem;text-align:center;min-height:18px"></p>
-      </div>
-      <!-- Step 2: new pin -->
-      <div class="pin-step" id="pinStep2">
-        <p style="color:var(--muted);font-size:.875rem;margin-bottom:12px">Digite o novo Masterpin (6 dígitos):</p>
-        <div class="pin-input-row">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp2_0" oninput="pinModalInput(2,0)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp2_1" oninput="pinModalInput(2,1)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp2_2" oninput="pinModalInput(2,2)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp2_3" oninput="pinModalInput(2,3)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp2_4" oninput="pinModalInput(2,4)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp2_5" oninput="pinModalInput(2,5)">
-        </div>
-      </div>
-      <!-- Step 3: confirm new pin -->
-      <div class="pin-step" id="pinStep3">
-        <p style="color:var(--muted);font-size:.875rem;margin-bottom:12px">Confirme o novo Masterpin:</p>
-        <div class="pin-input-row">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp3_0" oninput="pinModalInput(3,0)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp3_1" oninput="pinModalInput(3,1)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp3_2" oninput="pinModalInput(3,2)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp3_3" oninput="pinModalInput(3,3)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp3_4" oninput="pinModalInput(3,4)">
-          <input class="pin-input-box" type="password" inputmode="numeric" maxlength="1" id="cp3_5" oninput="pinModalInput(3,5)">
-        </div>
-        <p id="pinStep3Error" style="color:var(--red);font-size:.8rem;text-align:center;min-height:18px"></p>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('changePinModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="advancePinStep()" id="pinStepBtn">Próximo</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" id="bottomNav">
