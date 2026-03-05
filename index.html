@@ -545,12 +545,14 @@
     </div>
 
     <!-- BUDGETS -->
-    <div class="page" id="page-budgets">
+<div class="page" id="page-budgets">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;">
+    <input type="month" id="budgetMonth" onchange="loadBudgets()">
+    <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button>
+  </div>
 
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="month" id="budgetMonth" onchange="loadBudgets()"><button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button></div>
-
-      <div class="grid-2" id="budgetGrid"></div>
-    </div>
+  <div class="grid-2" id="budgetGrid"></div>
+</div>
 
     <!-- CATEGORIES -->
     <div class="page" id="page-categories">
