@@ -272,6 +272,18 @@ async function runAutoRegister(manual=false) {
       return;
     }
 
+
+    // Preload destination account names for transfer/card_payment scheduled items (for email content)
+    try {
+      const toIds = [...new Set((schedList||[]).map(s => s.transfer_to_account_id).filter(Boolean))];
+      if(toIds.length) {
+        const { data: toAccs } = await sb.from('accounts').select('id,name').in('id', toIds);
+        const map = {};
+        (toAccs||[]).forEach(a => { map[a.id] = a.name; });
+        (schedList||[]).forEach(s => { if(s.transfer_to_account_id) s.transfer_to_account_name = map[s.transfer_to_account_id] || '-'; });
+      }
+    } catch(e) { /* ignore */ }
+
     let totalRegistered = 0;
     let totalNotified = 0;
 
@@ -419,88 +431,88 @@ function nextScheduledDate(dateStr, sc) {
 }
 
 /* ── Email Notifications ── */
-async function _resolveNameById(table, id) {
-  if(!sb || !id) return '';
+function _ejMonthYear(dateStr) {
   try {
-    const q = sb.from(table).select('name').eq('id', id).limit(1);
-    // Respect family scoping if helper exists
-    const { data, error } = (typeof famQ === 'function')
-      ? await famQ(q).maybeSingle()
-      : await q.maybeSingle();
-    if(error) throw error;
-    return (data && data.name) ? data.name : '';
-  } catch {
-    return '';
-  }
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  } catch { return dateStr; }
 }
 
-async function buildScheduledEmailParams(sc, date, amount) {
-  const tpl = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
-  // Resolve names (best-effort, keep email small)
-  const [acc, toAcc, cat, pay] = await Promise.all([
-    _resolveNameById('accounts', sc.account_id),
-    _resolveNameById('accounts', sc.transfer_to_account_id),
-    _resolveNameById('categories', sc.category_id),
-    _resolveNameById('payees', sc.payee_id),
-  ]);
+function _ejEsc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
-  const absAmt = fmt(Math.abs(amount ?? sc.amount ?? 0));
-  const kind = sc.type || (sc.amount >= 0 ? 'income' : 'expense');
-  const subject = `⏱️ Programado: ${sc.description} · ${absAmt} · ${fmtDate(date)}`;
+function buildScheduledEmailReportContent(sc, dateStr, amount, mode, daysBefore) {
+  const desc = _ejEsc(sc.description || '');
+  const type = _ejEsc(sc.type || '');
+  const status = mode === 'upcoming' ? 'scheduled' : 'processed';
+  const acc = _ejEsc(sc.accounts?.name || '-');
+  const toAcc = _ejEsc(sc.transfer_to_account_name || '-');
+  const cat = _ejEsc(sc.categories?.name || '-');
+  const payee = _ejEsc(sc.payees?.name || '-');
+  const cur = _ejEsc(sc.accounts?.currency || sc.currency || 'BRL');
+  const amt = _ejEsc(fmt(Math.abs(amount)));
+  const when = _ejEsc(fmtDate(dateStr));
+  const hint = mode === 'upcoming'
+    ? `Será processada ${daysBefore > 0 ? `em ${daysBefore} dia(s)` : 'hoje'}.`
+    : 'Foi processada automaticamente.';
 
-  return {
-    templateId: tpl,
-    templateParams: {
-      // Routing
-      to_email: '', // filled by caller
-      from_name: 'J.F. Family FinTrack',
-      subject,
-      // Minimal transaction payload (preferred for scheduled template)
-      tx_description: sc.description || '',
-      tx_date: fmtDate(date),
-      tx_amount: absAmt,
-      tx_type: kind,
-      tx_account: acc || '',
-      tx_to_account: toAcc || '',
-      tx_category: cat || '',
-      tx_payee: pay || '',
-      tx_currency: sc.currency || '',
-      tx_status: (sc.auto_confirm === false ? 'pending' : 'confirmed'),
-      // Backward compatible field used by the existing generic template
-      message: `Transação programada: "${sc.description}" · ${absAmt} · ${fmtDate(date)}${acc ? ` · ${acc}` : ''}`,
-    }
-  };
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:14px">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e6e8f0;border-radius:12px;padding:16px">
+      <div style="font-size:14px;color:#6b7280;margin-bottom:6px">${_ejEsc(hint)}</div>
+      <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:2px">${desc}</div>
+      <div style="font-size:22px;font-weight:800;color:#0f766e;margin-bottom:10px">${amt} <span style="font-size:12px;color:#6b7280;font-weight:700">${cur}</span></div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;color:#374151">
+        <tr><td style="padding:6px 0;color:#6b7280;width:38%">Data</td><td style="padding:6px 0;font-weight:600">${when}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Tipo</td><td style="padding:6px 0;font-weight:600">${type}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Conta</td><td style="padding:6px 0;font-weight:600">${acc}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Conta destino</td><td style="padding:6px 0;font-weight:600">${toAcc}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Categoria</td><td style="padding:6px 0;font-weight:600">${cat}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Beneficiário</td><td style="padding:6px 0;font-weight:600">${payee}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Status</td><td style="padding:6px 0;font-weight:600">${_ejEsc(status)}</td></tr>
+      </table>
+    </div>
+  </div>`;
 }
 
 async function sendScheduledNotification(sc, date, amount, emailTo) {
-  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !(EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId)) return;
+  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !tplId) return;
   try {
     emailjs.init(EMAILJS_CONFIG.publicKey);
-    const built = await buildScheduledEmailParams(sc, date, amount);
-    built.templateParams.to_email = emailTo;
-    // Keep the email short: the scheduled template should render only tx_* fields.
-    await emailjs.send(EMAILJS_CONFIG.serviceId, built.templateId, built.templateParams);
+    const month_year = _ejMonthYear(date);
+    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+      to_email: emailTo,
+      Subject: sc.description || 'Transação programada',
+      month_year,
+      report_content: buildScheduledEmailReportContent(sc, date, amount, 'processed', 0),
+    });
   } catch(e) { console.warn('[AutoReg] Email error:', e.message); }
 }
 
 async function sendUpcomingNotification(sc, date, emailTo, daysBefore) {
-  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !(EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId)) return;
+  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  if(!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey || !tplId) return;
   // Check if already sent (use localStorage to avoid duplicates)
   const sentKey = `notified_${sc.id}_${date}`;
   if(localStorage.getItem(sentKey)) return;
   try {
     emailjs.init(EMAILJS_CONFIG.publicKey);
-    const built = await buildScheduledEmailParams(sc, date, sc.amount);
-    built.templateParams.to_email = emailTo;
-    built.templateParams.from_name = 'J.F. Family FinTrack — Lembrete';
-    built.templateParams.subject = `🔔 Programado ${daysBefore > 0 ? `em ${daysBefore} dia(s)` : 'hoje'}: ${sc.description} · ${built.templateParams.tx_amount} · ${built.templateParams.tx_date}`;
-    built.templateParams.message = `Lembrete: "${sc.description}" · ${built.templateParams.tx_amount} · ${built.templateParams.tx_date}`;
-    await emailjs.send(EMAILJS_CONFIG.serviceId, built.templateId, built.templateParams);
+    const month_year = _ejMonthYear(date);
+    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+      to_email: emailTo,
+      Subject: sc.description || 'Transação programada',
+      month_year,
+      report_content: buildScheduledEmailReportContent(sc, date, sc.amount, 'upcoming', daysBefore || 0),
+    });
     localStorage.setItem(sentKey, '1');
   } catch(e) { console.warn('[AutoReg] Upcoming email error:', e.message); }
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   SQL MIGRATION — Fields for auto_regis
    SQL MIGRATION — Fields for auto_register
    (run in Supabase SQL Editor)
 ══════════════════════════════════════════════════════════════════ */

@@ -18,7 +18,6 @@ async function loadAppSettings() {
     // Hydrate EmailJS config
     EMAILJS_CONFIG.serviceId  = _appSettingsCache['ej_service']  || localStorage.getItem('ej_service')  || '';
     EMAILJS_CONFIG.templateId = _appSettingsCache['ej_template'] || localStorage.getItem('ej_template') || '';
-    // Dedicated template for scheduled notifications (optional)
     EMAILJS_CONFIG.scheduledTemplateId = _appSettingsCache['ej_sched_template'] || localStorage.getItem('ej_sched_template') || '';
     EMAILJS_CONFIG.publicKey  = _appSettingsCache['ej_key']      || localStorage.getItem('ej_key')      || '';
     // Hydrate masterPin
@@ -34,7 +33,6 @@ async function loadAppSettings() {
     // Fallback: load from localStorage
     EMAILJS_CONFIG.serviceId  = localStorage.getItem('ej_service')  || '';
     EMAILJS_CONFIG.templateId = localStorage.getItem('ej_template') || '';
-    EMAILJS_CONFIG.scheduledTemplateId = localStorage.getItem('ej_sched_template') || '';
     EMAILJS_CONFIG.publicKey  = localStorage.getItem('ej_key')      || '';
   }
 }
@@ -73,7 +71,8 @@ function showEmailConfig() {
   // Populate fields with saved values
   document.getElementById('ejServiceId').value  = EMAILJS_CONFIG.serviceId;
   document.getElementById('ejTemplateId').value = EMAILJS_CONFIG.templateId;
-  document.getElementById('ejScheduledTemplateId').value = EMAILJS_CONFIG.scheduledTemplateId || '';
+  const stpl = document.getElementById('ejSchedTemplateId');
+  if(stpl) stpl.value = EMAILJS_CONFIG.scheduledTemplateId || '';
   document.getElementById('ejPublicKey').value  = EMAILJS_CONFIG.publicKey;
   ejCheckStatus();
   openModal('emailjsModal');
@@ -82,7 +81,8 @@ function showEmailConfig() {
 function ejCheckStatus() {
   const svc = document.getElementById('ejServiceId').value.trim();
   const tpl = document.getElementById('ejTemplateId').value.trim();
-  const stpl = document.getElementById('ejScheduledTemplateId')?.value?.trim() || '';
+  const schedTplEl = document.getElementById('ejSchedTemplateId');
+  const stpl = schedTplEl ? schedTplEl.value.trim() : '';
   const key = document.getElementById('ejPublicKey').value.trim();
   const ok  = svc && tpl && key;
   const dot = document.getElementById('ejStatusDot');
@@ -90,7 +90,7 @@ function ejCheckStatus() {
   const sub = document.getElementById('ejSettingsSub');
   if(ok) {
     dot.className = 'ej-status-dot ej-status-ok';
-    txt.textContent = stpl ? '✓ Configurado — relatórios + programados' : '✓ Configurado — relatórios (programados usam o mesmo template)';
+    txt.textContent = '✓ Configurado — pronto para enviar';
     txt.style.color = 'var(--green)';
     if(sub) sub.textContent = `Configurado · ${svc}`;
   } else {
@@ -106,7 +106,8 @@ function ejCheckStatus() {
 async function saveEmailJSConfig() {
   const svc = document.getElementById('ejServiceId').value.trim();
   const tpl = document.getElementById('ejTemplateId').value.trim();
-  const stpl = document.getElementById('ejScheduledTemplateId').value.trim();
+  const schedTplEl = document.getElementById('ejSchedTemplateId');
+  const stpl = schedTplEl ? schedTplEl.value.trim() : '';
   const key = document.getElementById('ejPublicKey').value.trim();
   if(!svc || !tpl || !key) {
     toast('Preencha todos os campos', 'error'); return;
@@ -119,6 +120,7 @@ async function saveEmailJSConfig() {
   await saveAppSetting('ej_template', tpl);
   await saveAppSetting('ej_sched_template', stpl);
   await saveAppSetting('ej_key',      key);
+  try { localStorage.setItem('ej_sched_template', stpl); } catch {}
   ejCheckStatus();
   closeModal('emailjsModal');
   toast('✓ EmailJS configurado e salvo no banco!', 'success');
@@ -140,6 +142,8 @@ function copyEjField(id) {
 async function testEmailJSConnection() {
   const svc = document.getElementById('ejServiceId').value.trim();
   const tpl = document.getElementById('ejTemplateId').value.trim();
+  const schedTplEl = document.getElementById('ejSchedTemplateId');
+  const stpl = schedTplEl ? schedTplEl.value.trim() : '';
   const key = document.getElementById('ejPublicKey').value.trim();
   if(!svc || !tpl || !key) { toast('Preencha todos os campos primeiro','error'); return; }
   const btn = document.getElementById('ejTestBtn');

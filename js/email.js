@@ -4,11 +4,9 @@
 ═══════════════════════════════════════════════════════════════ */
 const EMAILJS_CONFIG = {
   serviceId:  'service_8e4rkde',
-  templateId: 'template_yfmczq7',
-  // Optional: dedicated template for scheduled transaction notifications.
-  // If empty, the app falls back to templateId.
-  scheduledTemplateId: '',
-  publicKey:  '',
+  templateId: 'template_fla7gdi',
+  scheduledTemplateId: 'template_yfmczq7',
+  publicKey:  'wwnXjEFDaVY7K-qIjwX0H',
 };
 
 /* ═══════════════════════════════════════════════════════════════
