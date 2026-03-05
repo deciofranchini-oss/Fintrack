@@ -180,7 +180,7 @@
 <div class="setup-screen" id="setupScreen" style="display:none">
   <div class="setup-box">
     <div style="text-align:center;margin-bottom:16px">
-      <img src="https://deciofranchini-oss.github.io/Fintrack/logo.png" style="height:130px;object-fit:contain;mix-blend-mode:normal" alt="JF Family FinTrack">
+      <img id="setupLogoImg" src="https://deciofranchini-oss.github.io/Fintrack/logo.png" alt="JF Family FinTrack" style="width:100%;max-width:180px;height:auto;display:block;margin:0 auto;object-fit:contain;mix-blend-mode:normal">
     </div>
     <p style="text-align:center">Configure sua conexão com o Supabase para começar.</p>
     <div class="form-group"><label>Supabase URL</label><input type="url" id="supabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
@@ -219,9 +219,16 @@
       <button class="nav-item" onclick="navigate('categories')" id=\"categoriesNav\"><span class="ni-icon">🏷</span>Categorias</button>
       <button class="nav-item" onclick="navigate('payees')" id=\"payeesNav\"><span class="ni-icon">👥</span>Beneficiários</button>
     </div>
-</div>
+    <div class="nav-section">
+      <div class="nav-label">Externo</div>
+      <a class="nav-item" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><span class="ni-icon">🎓</span>Gerenciamento Escola</a>
+    </div>
+  </div>
   <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:3px">
-<button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
+    <button class="nav-item" id="importNav" onclick="navigate('import')" style="font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">📥</span>Importar</button>
+    <button class="nav-item" id="auditNav" onclick="navigate('audit')" style="display:none;font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">🧾</span>Auditoria</button>
+    <button class="nav-item" id="settingsNav" onclick="navigate('settings')" style="display:none;font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">⚙️</span>Configurações</button>
+    <button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
   </div>
 </nav>
 
@@ -243,26 +250,7 @@
         <div class="topbar-user-avatar" id="topbarUserAvatar">?</div>
         <span class="topbar-user-name" id="topbarUserName"></span>
       </div>
-      
-      <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
-        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;text-decoration:none;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">🎓</span>
-        </a>
-        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">📥</span>
-        </button>
-        <button class="topbar-icon-btn" id="auditNav" onclick="navigate('audit')" title="Auditoria"
-           style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">🧾</span>
-        </button>
-        <button class="topbar-icon-btn" id="settingsNav" onclick="navigate('settings')" title="Configurações"
-           style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">⚙️</span>
-        </button>
-      </div>
-<button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()">+ Nova Transação</button>
+      <button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()">+ Nova Transação</button>
     </div>
   </header>
 
@@ -1284,7 +1272,7 @@
   <div id="loginScreen" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0d3d2b 0%,#1e5c42 60%,#0d3d2b 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
     <div style="width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
       <div style="text-align:center;margin-bottom:28px">
-        <img id="loginLogoImg" src="https://deciofranchini-oss.github.io/Fintrack/logo.png" alt="Logo" style="width:120px;height:auto;object-fit:contain;margin-bottom:12px">
+        <img id="loginLogoImg" src="https://deciofranchini-oss.github.io/Fintrack/logo.png" alt="Logo" style="width:100%;max-width:180px;height:auto;display:block;margin:0 auto 12px;object-fit:contain;mix-blend-mode:normal">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af">Personal Finance Management</div>
       </div>
       <div id="loginFormArea">
