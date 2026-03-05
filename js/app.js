@@ -165,7 +165,13 @@ async function bootApp(){
 
   // Carregar dados base
   try {
-    await Promise.all([loadAccounts(),loadCategories(),loadPayees(),loadAppSettings(),loadScheduled().catch(()=>{})]);
+    await Promise.all([
+      loadAccounts(),
+      loadCategories(),
+      loadPayees(),
+      (typeof loadAppSettings === 'function' ? loadAppSettings() : Promise.resolve()),
+      loadScheduled().catch(()=>{})
+    ]);
   } catch(e) {
     toast('Erro ao carregar dados: '+e.message,'error');
     return;
@@ -253,3 +259,9 @@ if('serviceWorker' in navigator){
   });
 }
 
+
+
+// Auto-boot on first load (after DOM is ready)
+document.addEventListener('DOMContentLoaded', ()=>{
+  try { tryAutoConnect(); } catch(e) { console.error('Auto-connect failed:', e); }
+});
