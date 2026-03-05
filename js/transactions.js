@@ -630,6 +630,7 @@ async function saveTransaction(){
   if(state.currentPage==='dashboard')loadDashboard();
 }
 async function duplicateTransaction(id) {
+  if(!confirm('Duplicar transação?')) return;
   // Find original transaction
   const orig = state.transactions?.find(t=>t.id===id);
   if (!orig) {
@@ -796,6 +797,7 @@ async function toggleTxDetailStatus() {
   if (!_txDetailId) return;
   const cur = (window._txDetailStatus || 'confirmed');
   const next = (cur === 'pending') ? 'confirmed' : 'pending';
+  if(cur === 'confirmed' && next === 'pending' && !confirm('Marcar transação como pendente?')) return;
   try {
     const { error } = await sb.from('transactions')
       .update({ status: next, updated_at: new Date().toISOString() })
@@ -906,6 +908,13 @@ function applyTxCompactPreference(){
 
 // Toggle status helper used by detail view + swipe
 async function setTransactionStatus(txId, status){
+  // Extra confirmation when switching from Confirmada -> Pendente
+  try {
+    const cur = (state.transactions?.find(t=>t.id===txId)?.status) || (window._txDetailId===txId ? (window._txDetailStatus||'confirmed') : 'confirmed');
+    if(cur === 'confirmed' && status === 'pending') {
+      if(!confirm('Marcar transação como pendente?')) return;
+    }
+  } catch(e) {}
   if(!sb) throw new Error('Sem conexão');
   const { error } = await sb.from('transactions').update({ status, updated_at: new Date().toISOString() }).eq('id', txId);
   if(error) throw error;
