@@ -576,12 +576,23 @@
     </div>
 
     <!-- BUDGETS -->
-    <div class="page" id="page-budgets">
-      <div class="section-header mb-6"><span class="section-title">Orçamentos</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="month" id="budgetMonth" onchange="loadBudgets()"><button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button></div>
-      </div>
-      <div class="grid-2" id="budgetGrid"></div>
+
+<div class="page" id="page-budgets">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <input type="month" id="budgetMonth" onchange="loadBudgets()">
     </div>
+
+    <div class="page-header-right">
+      <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button>
+    </div>
+  </div>
+
+  <div class="grid-2" id="budgetGrid"></div>
+
+</div>
+
 
     <!-- CATEGORIES -->
     <div class="page" id="page-categories">
