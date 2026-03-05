@@ -73,7 +73,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 /* STAT CARDS */
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;}
 .stat-accent{position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);border-radius:var(--r) var(--r) 0 0;}
-.stat-label{font-size:.4rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+.stat-label{font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
 .stat-value{font-family:var(--font-serif);font-size:1.6rem;font-weight:500;line-height:1;letter-spacing:-.02em;}
 .stat-sub{font-size:.75rem;color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:4px;}
 
@@ -82,13 +82,13 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 #page-dashboard .grid-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 #page-dashboard .stat-card{padding:14px;}
 #page-dashboard .stat-label{margin-bottom:6px;}
-#page-dashboard .stat-value{font-size:2.25rem;font-variant-numeric:tabular-nums;}
+#page-dashboard .stat-value{font-size:1.75rem;font-variant-numeric:tabular-nums;}
 #page-dashboard .stat-sub{margin-top:5px;}
 
 /* Keep dashboard cards readable on very small screens */
 @media (max-width:420px){
   #page-dashboard .grid-4{grid-template-columns:1fr;}
-  #page-dashboard .stat-value{font-size:1.25rem;}
+  #page-dashboard .stat-value{font-size:1.55rem;}
 }
 
 /* ACCOUNT CARDS */
