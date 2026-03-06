@@ -96,71 +96,13 @@ async function tryAutoConnect(){
   if(url&&key){
     document.getElementById('supabaseUrl').value=url;
     document.getElementById('supabaseKey').value=key;
-
-    // ── Password recovery detection ──────────────────────────────────────────
-    // HOW SUPABASE v2 PKCE RESET WORKS:
-    //   1. resetPasswordForEmail() sends email with link: app.com?code=XXXX
-    //   2. User clicks → app loads with ?code=XXXX in the URL query string
-    //   3. createClient() detects ?code and exchanges it for a session
-    //   4. onAuthStateChange fires PASSWORD_RECOVERY
-    //
-    // THE BUG: listener was registered after createClient, missing the event.
-    // tryRestoreSession() then found the new session → bootApp() → dashboard.
-    //
-    // THE FIX: detect ?code BEFORE createClient, set flag, create client,
-    // then wait exclusively for PASSWORD_RECOVERY before doing anything else.
-
-    const urlParams       = new URLSearchParams(window.location.search);
-    const hasCodeParam    = urlParams.has('code');
-    const hasLegacyHash   = window.location.hash.includes('type=recovery');
-    const mightBeRecovery = hasCodeParam || hasLegacyHash;
-
-    // Strip ?code from URL now so a page-refresh doesn't re-trigger
-    if (hasCodeParam) {
-      history.replaceState(null, '', window.location.pathname + window.location.hash);
-    }
-
-    // Create client — this triggers the ?code exchange internally
-    sb = supabase.createClient(url, key);
-
-    if (mightBeRecovery) {
-      // Supabase JS v2 event order when ?code= is a recovery link:
-      //   INITIAL_SESSION  ← fires first (ignore this one)
-      //   PASSWORD_RECOVERY ← fires second (this is the one we want)
-      //
-      // If it's NOT a recovery link (e.g. magic link or OAuth):
-      //   INITIAL_SESSION → SIGNED_IN  (both without PASSWORD_RECOVERY)
-      //
-      // Strategy: collect events for up to 6 s; resolve true only if
-      // PASSWORD_RECOVERY fires. Ignore INITIAL_SESSION entirely.
-      // Resolve false on SIGNED_IN (magic link) or timeout.
-      const isRecovery = await new Promise(resolve => {
-        const timer = setTimeout(() => { sub.unsubscribe(); resolve(false); }, 6000);
-        const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event) => {
-          if (event === 'PASSWORD_RECOVERY') {
-            clearTimeout(timer); sub.unsubscribe(); resolve(true);
-          } else if (event === 'SIGNED_IN') {
-            // Magic link or OAuth — not a password reset
-            clearTimeout(timer); sub.unsubscribe(); resolve(false);
-          }
-          // INITIAL_SESSION: intentionally ignored — PASSWORD_RECOVERY follows it
-        });
-      });
-
-      if (isRecovery) {
-        if (typeof _showRecoveryPwdForm === 'function') _showRecoveryPwdForm();
-        return; // doRecoveryPwd() calls bootApp() after saving
-      }
-      // Not a recovery — fall through to normal boot
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // Normal boot
+    // Create client early so we can boot right after PIN unlock
+    sb=supabase.createClient(url,key);
+    // Restore Supabase Auth session (RLS-friendly)
     const restored = await tryRestoreSession().catch(()=>false);
+    // Lock screen removed
     try{const ps=document.getElementById('pinScreen'); if(ps) ps.style.display='none';}catch(e){}
     _pinUnlocked=true;
-    // Register magic-link gate to catch passwordless SIGNED_IN events
-    if(typeof _registerMagicLinkGate === 'function') _registerMagicLinkGate();
     if(restored){
       hideLoginScreen?.();
       updateUserUI?.();
@@ -289,8 +231,8 @@ function navigate(page){
   else if(page==='transactions'){populateTxMonthFilter();loadTransactions();}
   else if(page==='accounts')renderAccounts();
   else if(page==='reports'){populateReportFilters();loadCurrentReport();}
-  else if(page==='budgets')initBudgetsPage();
-  else if(page==='categories')initCategoriesPage();
+  else if(page==='budgets')loadBudgets();
+  else if(page==='categories')renderCategories();
   else if(page==='payees')renderPayees();
   else if(page==='scheduled')loadScheduled();
   else if(page==='import')initImportPage();
