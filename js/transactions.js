@@ -496,7 +496,129 @@ function setTxType(type){
   _filterTxAccountOrigin(isCardPayment);
   // Rebuild category picker filtered by transaction type
   buildCatPicker();
+  // Hide FX panel when switching away from transfer
+  if(!isTransfer) _hideFxPanel();
 }
+
+// ── FX / Exchange-rate helpers ─────────────────────────────────────────────
+
+const FX_API_KEY = '51d34b31-30da-4ff4-ab16-43fa2bbe60e7';
+const FX_API_BASE = 'https://api.exchangerateapi.net/v1/historical';
+
+function _getTransferCurrencies() {
+  const srcId  = document.getElementById('txAccountId').value;
+  const dstId  = document.getElementById('txTransferTo').value;
+  const srcAcc = state.accounts.find(a => a.id === srcId);
+  const dstAcc = state.accounts.find(a => a.id === dstId);
+  return {
+    src: srcAcc?.currency || 'BRL',
+    dst: dstAcc?.currency || 'BRL',
+    srcName: srcAcc?.name || '',
+    dstName: dstAcc?.name || '',
+  };
+}
+
+function _hideFxPanel() {
+  const panel = document.getElementById('txFxPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+function onTransferAccountChange() {
+  const { src, dst } = _getTransferCurrencies();
+  const panel = document.getElementById('txFxPanel');
+  if (!panel) return;
+
+  if (!src || !dst || src === dst) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  // Show the panel and update labels
+  panel.style.display = '';
+  const title = document.getElementById('txFxTitle');
+  const label = document.getElementById('txFxLabel');
+  if (title) title.textContent = `Câmbio: ${src} → ${dst}`;
+  if (label) label.textContent = `(1 ${src} = ? ${dst})`;
+
+  // Reset suggestion and preview
+  const sugg = document.getElementById('txFxSuggestion');
+  if (sugg) sugg.style.display = 'none';
+  const preview = document.getElementById('txFxPreview');
+  if (preview) preview.textContent = '';
+
+  // Auto-fetch the suggestion
+  fetchSuggestedFxRate();
+}
+
+// Also re-check when source account changes
+function _onTxSourceAccountChange(accountId) {
+  checkAccountIofConfig(accountId);
+  const type = document.getElementById('txTypeField').value;
+  if (type === 'transfer') onTransferAccountChange();
+}
+
+async function fetchSuggestedFxRate() {
+  const { src, dst } = _getTransferCurrencies();
+  if (!src || !dst || src === dst) return;
+
+  const btn  = document.getElementById('txFxFetchBtn');
+  const icon = document.getElementById('txFxFetchIcon');
+  const sugg = document.getElementById('txFxSuggestion');
+  if (btn)  { btn.disabled = true; }
+  if (icon) { icon.textContent = '⏳'; }
+  if (sugg) { sugg.style.display = 'none'; }
+
+  try {
+    // Use the transaction date for historical rate; fall back to today
+    const txDate = document.getElementById('txDate').value ||
+      new Date().toISOString().slice(0, 10);
+
+    const url = `${FX_API_BASE}?date=${txDate}&base=${src}&currencies=${dst}&apikey=${FX_API_KEY}`;
+    const res  = await fetch(url, { headers: { 'apikey': FX_API_KEY } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+
+    // Response: { rates: { "EUR": 0.9123, ... } }
+    const rate = json?.rates?.[dst] ?? json?.data?.[dst];
+    if (!rate) throw new Error('Taxa não encontrada na resposta');
+
+    const rateStr = Number(rate).toFixed(6);
+
+    // Fill the rate field with the suggestion
+    const rateInput = document.getElementById('txFxRate');
+    if (rateInput) rateInput.value = rateStr;
+
+    if (sugg) {
+      sugg.textContent = `📡 Cotação do dia ${txDate}: 1 ${src} = ${rateStr} ${dst}`;
+      sugg.style.display = '';
+    }
+
+    updateFxPreview();
+
+  } catch(e) {
+    if (sugg) {
+      sugg.textContent = `⚠️ Não foi possível buscar a cotação: ${e.message}. Informe a taxa manualmente.`;
+      sugg.style.display = '';
+      sugg.style.background = '#fef9c3';
+      sugg.style.color = '#92400e';
+    }
+  } finally {
+    if (btn)  { btn.disabled = false; }
+    if (icon) { icon.textContent = '🔄'; }
+  }
+}
+
+function updateFxPreview() {
+  const { src, dst } = _getTransferCurrencies();
+  const rateVal  = parseFloat(document.getElementById('txFxRate')?.value?.replace(',', '.'));
+  const amtVal   = getAmtField('txAmount');
+  const preview  = document.getElementById('txFxPreview');
+  if (!preview) return;
+  if (!rateVal || isNaN(rateVal) || !amtVal) { preview.textContent = ''; return; }
+  const converted = (Math.abs(amtVal) * rateVal);
+  preview.textContent = `= ${fmt(converted, dst)}`;
+}
+
 async function saveTransaction(){
   const id=document.getElementById('txId').value,type=document.getElementById('txTypeField').value;
   let amount=getAmtField('txAmount');
@@ -505,6 +627,16 @@ async function saveTransaction(){
   if(type==='expense')amount=-Math.abs(amount);
   else if(type==='income')amount=Math.abs(amount);
   else if(isTransfer)amount=-Math.abs(amount); // debit origin account
+
+  // ── FX: compute credited amount for destination when currencies differ ──
+  let pairedAmount = Math.abs(amount); // default: 1:1 same amount
+  if (isTransfer && !isCardPayment) {
+    const { src, dst } = _getTransferCurrencies();
+    if (src && dst && src !== dst) {
+      const fxRate = parseFloat(document.getElementById('txFxRate')?.value?.replace(',', '.'));
+      if (fxRate > 0) pairedAmount = Math.abs(amount) * fxRate;
+    }
+  }
   const tags=document.getElementById('txTags').value.split(',').map(s=>s.trim()).filter(Boolean);
 
   // Determine attachment fields for the DB record
@@ -546,13 +678,12 @@ async function saveTransaction(){
         await sb.from('transactions').update({
           date: data.date,
           description: data.description,
-          amount: Math.abs(data.amount),
+          amount: pairedAmount,
           account_id: data.transfer_to_account_id,
           memo: data.memo,
           tags: data.tags,
           is_transfer: true,
           is_card_payment: data.is_card_payment,
-        status: data.status,
           status: data.status,
           transfer_to_account_id: data.account_id,
           updated_at: new Date().toISOString(),
@@ -567,7 +698,7 @@ async function saveTransaction(){
       const pairedTx = {
         date: data.date,
         description: data.description,
-        amount: Math.abs(data.amount),
+        amount: pairedAmount,
         account_id: data.transfer_to_account_id,
         payee_id: null,
         category_id: data.category_id || null,
