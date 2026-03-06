@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Supabase Auth Test</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+font-family:Arial, Helvetica, sans-serif;
+margin:40px;
+max-width:800px
+}
+
+input{
+padding:10px;
+margin:5px;
+width:260px
+}
+
+button{
+padding:10px 16px;
+margin:5px;
+cursor:pointer
+}
+
+pre{
+background:#111;
+color:#eee;
+padding:15px;
+border-radius:8px;
+overflow:auto
+}
+</style>
+</head>
+
+<body>
+
+<h2>Supabase Authentication Test</h2>
+
+<div>
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+</div>
+
+<div>
+<button onclick="signup()">Sign Up</button>
+<button onclick="signin()">Sign In</button>
+<button onclick="getSession()">Get Session</button>
+<button onclick="getUser()">Get User</button>
+<button onclick="signout()">Sign Out</button>
+</div>
+
+<div>
+<button onclick="testQuery()">Test Query (transactions)</button>
+</div>
+
+<h3>Output</h3>
+<pre id="output">Ready</pre>
+
+<script>
+
+const SUPABASE_URL = "https://wkiytjwuztnytygpxooe.supabase.co"
+
+const SUPABASE_ANON =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraXl0and1enRueXR5Z3B4b29lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyODc3NzUsImV4cCI6MjA4Nzg2Mzc3NX0.Z3fyYRDobzarCEdqkobTjQQd1J9HAUR2CCdnBbLC0QA"
+
+const supabase = window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_ANON
+)
+
+function show(data){
+document.getElementById("output").textContent =
+JSON.stringify(data,null,2)
+console.log(data)
+}
+
+function creds(){
+return{
+email:document.getElementById("email").value,
+password:document.getElementById("password").value
+}
+}
+
+async function signup(){
+
+const {email,password}=creds()
+
+const res=await supabase.auth.signUp({
+email,
+password
+})
+
+show(res)
+
+}
+
+async function signin(){
+
+const {email,password}=creds()
+
+const res=await supabase.auth.signInWithPassword({
+email,
+password
+})
+
+show(res)
+
+}
+
+async function getSession(){
+
+const res=await supabase.auth.getSession()
+
+show(res)
+
+}
+
+async function getUser(){
+
+const res=await supabase.auth.getUser()
+
+show(res)
+
+}
+
+async function signout(){
+
+const res=await supabase.auth.signOut()
+
+show(res)
+
+}
+
+async function testQuery(){
+
+const {data,error}=await supabase
+.from("transactions")
+.select("*")
+.limit(5)
+
+show({data,error})
+
+}
+
+</script>
+
+</body>
+</html>
