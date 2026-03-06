@@ -502,8 +502,9 @@ function setTxType(type){
 
 // ── FX / Exchange-rate helpers ─────────────────────────────────────────────
 
-const FX_API_KEY = '51d34b31-30da-4ff4-ab16-43fa2bbe60e7';
-const FX_API_BASE = 'https://api.exchangerateapi.net/v1/historical';
+// frankfurter.app: free, no key, CORS-correct, ECB data
+// Endpoint: GET https://api.frankfurter.app/YYYY-MM-DD?base=EUR&to=BRL
+const FX_API_BASE = 'https://api.frankfurter.app';
 
 function _getTransferCurrencies() {
   const srcId  = document.getElementById('txAccountId').value;
@@ -569,28 +570,37 @@ async function fetchSuggestedFxRate() {
   if (sugg) { sugg.style.display = 'none'; }
 
   try {
-    // Use the transaction date for historical rate; fall back to today
-    const txDate = document.getElementById('txDate').value ||
+    // Use the transaction date for historical rate; fall back to today.
+    // Frankfurter uses weekday rates — if date is a weekend it returns the
+    // closest prior business day automatically.
+    let txDate = document.getElementById('txDate').value ||
       new Date().toISOString().slice(0, 10);
 
-    const url = `${FX_API_BASE}?date=${txDate}&base=${src}&currencies=${dst}&apikey=${FX_API_KEY}`;
-    const res  = await fetch(url, { headers: { 'apikey': FX_API_KEY } });
+    // Frankfurter does not serve future dates — cap to today
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (txDate > todayStr) txDate = todayStr;
+
+    // GET /YYYY-MM-DD?base=SRC&to=DST
+    const url = `${FX_API_BASE}/${txDate}?base=${src}&to=${dst}`;
+    const res  = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
 
-    // Response: { rates: { "EUR": 0.9123, ... } }
-    const rate = json?.rates?.[dst] ?? json?.data?.[dst];
+    // Response: { "base": "EUR", "date": "2026-03-06", "rates": { "BRL": 6.1234 } }
+    const rate = json?.rates?.[dst];
     if (!rate) throw new Error('Taxa não encontrada na resposta');
 
-    const rateStr = Number(rate).toFixed(6);
+    const usedDate = json.date || txDate; // frankfurter returns actual business day used
+    const rateStr  = Number(rate).toFixed(6);
 
-    // Fill the rate field with the suggestion
     const rateInput = document.getElementById('txFxRate');
     if (rateInput) rateInput.value = rateStr;
 
     if (sugg) {
-      sugg.textContent = `📡 Cotação do dia ${txDate}: 1 ${src} = ${rateStr} ${dst}`;
-      sugg.style.display = '';
+      sugg.textContent = `📡 Cotação de ${usedDate} (BCE): 1 ${src} = ${rateStr} ${dst}`;
+      sugg.style.display  = '';
+      sugg.style.background = '';
+      sugg.style.color      = '';
     }
 
     updateFxPreview();
