@@ -149,6 +149,8 @@ async function tryAutoConnect(){
     const restored = await tryRestoreSession().catch(()=>false);
     try{const ps=document.getElementById('pinScreen'); if(ps) ps.style.display='none';}catch(e){}
     _pinUnlocked=true;
+    // Register magic-link gate to catch passwordless SIGNED_IN events
+    if(typeof _registerMagicLinkGate === 'function') _registerMagicLinkGate();
     if(restored){
       hideLoginScreen?.();
       updateUserUI?.();

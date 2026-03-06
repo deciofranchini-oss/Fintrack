@@ -226,6 +226,108 @@ function showLoginErr(msg) {
   if (el) { el.textContent = msg; el.style.display = ''; }
 }
 
+// ── Login method tab switcher ─────────────────────────────────────────────
+function switchLoginTab(tab) {
+  const isPassword = tab === 'password';
+  document.getElementById('loginPanelPassword').style.display = isPassword ? '' : 'none';
+  document.getElementById('loginPanelMagic').style.display    = isPassword ? 'none' : '';
+
+  const tabPwd   = document.getElementById('loginTabPassword');
+  const tabMagic = document.getElementById('loginTabMagic');
+  const activeStyle   = 'background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;';
+  const inactiveStyle = 'background:transparent;color:#6b7280;';
+  if (tabPwd)   tabPwd.style.cssText   += isPassword ? activeStyle : inactiveStyle;
+  if (tabMagic) tabMagic.style.cssText += isPassword ? inactiveStyle : activeStyle;
+
+  // Reset magic link state when switching away
+  if (isPassword) {
+    const sent = document.getElementById('magicLinkSent');
+    const btn  = document.getElementById('magicLinkBtn');
+    if (sent) sent.style.display = 'none';
+    if (btn)  { btn.style.display = ''; btn.disabled = false; btn.textContent = '✉️ Enviar Link de Acesso'; }
+  }
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// ── Passwordless / Magic Link login ──────────────────────────────────────
+async function doMagicLink() {
+  const email = (document.getElementById('magicEmail').value || '').trim().toLowerCase();
+  const errEl = document.getElementById('loginError');
+  const btn   = document.getElementById('magicLinkBtn');
+  errEl.style.display = 'none';
+
+  if (!email) {
+    errEl.textContent = 'Informe seu e-mail.';
+    errEl.style.display = '';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+
+  try {
+    // Verify the e-mail exists AND is approved in app_users before sending
+    // the OTP — avoids leaking info about unknown e-mails via timing, and
+    // prevents unapproved users from ever receiving an access link.
+    const { data: appUser } = await sb
+      .from('app_users')
+      .select('approved,active')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!appUser) {
+      // Neutral message — do not confirm whether the e-mail is registered
+      _showMagicLinkSent();
+      return;
+    }
+    if (!appUser.approved) {
+      errEl.textContent = 'Sua conta ainda aguarda aprovação do administrador.';
+      errEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = '✉️ Enviar Link de Acesso';
+      return;
+    }
+    if (!appUser.active) {
+      errEl.textContent = 'Sua conta está inativa. Contate o administrador.';
+      errEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = '✉️ Enviar Link de Acesso';
+      return;
+    }
+
+    // Send the magic link via Supabase OTP
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+    });
+    if (error) throw error;
+
+    _showMagicLinkSent();
+
+  } catch(e) {
+    errEl.textContent = 'Erro: ' + (e.message || e);
+    errEl.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '✉️ Enviar Link de Acesso';
+  }
+}
+
+function _showMagicLinkSent() {
+  const btn  = document.getElementById('magicLinkBtn');
+  const sent = document.getElementById('magicLinkSent');
+  if (btn)  { btn.style.display = 'none'; }
+  if (sent) { sent.style.display = ''; }
+  // Wire resend button to reset state and re-enable
+  const resend = document.getElementById('magicResendBtn');
+  if (resend) {
+    resend.onclick = () => {
+      if (sent) sent.style.display = 'none';
+      if (btn)  { btn.style.display = ''; btn.disabled = false; btn.textContent = '✉️ Enviar Link de Acesso'; }
+    };
+  }
+}
+
 // ── Change password (first login) ──
 async function doChangePwd() {
   const p1 = document.getElementById('newPwd1').value;
@@ -286,11 +388,59 @@ async function doChangeMyPwd() {
 function onLoginSuccess() {
   hideLoginScreen();
   updateUserUI();
-  // Boot app if not already booted
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
   }
   bootApp();
+}
+
+// ── Magic-link post-auth gate ─────────────────────────────────────────────
+// Called by tryAutoConnect after normal boot to catch SIGNED_IN events that
+// arrive via magic link (bypassing doLogin's approval gate).
+function _registerMagicLinkGate() {
+  if (!sb) return;
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event !== 'SIGNED_IN' || !session?.user?.email) return;
+    // Ignore if the app is already loaded (user was already logged in)
+    const loginScreen = document.getElementById('loginScreen');
+    if (!loginScreen || loginScreen.style.display === 'none') return;
+
+    const email = session.user.email;
+    try {
+      const { data: appUser } = await sb
+        .from('app_users')
+        .select('approved,active,must_change_pwd')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (appUser && !appUser.approved) {
+        await sb.auth.signOut();
+        showLoginFormArea();
+        switchLoginTab('magic');
+        showLoginErr('Sua conta ainda aguarda aprovação do administrador.');
+        return;
+      }
+      if (appUser && !appUser.active) {
+        await sb.auth.signOut();
+        showLoginFormArea();
+        switchLoginTab('magic');
+        showLoginErr('Sua conta está inativa. Contate o administrador.');
+        return;
+      }
+      if (appUser?.must_change_pwd) {
+        showLoginFormArea();
+        document.getElementById('loginFormArea').style.display = 'none';
+        document.getElementById('changePwdArea').style.display = '';
+        return;
+      }
+
+      // All good — proceed into the app
+      await _loadCurrentUserContext();
+      onLoginSuccess();
+    } catch(e) {
+      console.error('Magic link gate error:', e);
+    }
+  });
 }
 
 // ── Update UI with current user ──
