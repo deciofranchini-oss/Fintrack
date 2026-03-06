@@ -273,14 +273,19 @@ async function runAutoRegister(manual=false) {
     }
 
 
-    // Preload destination account names for transfer/card_payment scheduled items (for email content)
+    // Preload destination account info for transfers (name, currency needed for FX)
     try {
       const toIds = [...new Set((schedList||[]).map(s => s.transfer_to_account_id).filter(Boolean))];
       if(toIds.length) {
-        const { data: toAccs } = await sb.from('accounts').select('id,name').in('id', toIds);
+        const { data: toAccs } = await sb.from('accounts').select('id,name,currency').in('id', toIds);
         const map = {};
-        (toAccs||[]).forEach(a => { map[a.id] = a.name; });
-        (schedList||[]).forEach(s => { if(s.transfer_to_account_id) s.transfer_to_account_name = map[s.transfer_to_account_id] || '-'; });
+        (toAccs||[]).forEach(a => { map[a.id] = a; });
+        (schedList||[]).forEach(s => {
+          if(s.transfer_to_account_id && map[s.transfer_to_account_id]) {
+            s.transfer_to_account_name     = map[s.transfer_to_account_id].name || '-';
+            s.transfer_to_account_currency = map[s.transfer_to_account_id].currency || null;
+          }
+        });
       }
     } catch(e) { /* ignore */ }
 
@@ -300,14 +305,43 @@ async function runAutoRegister(manual=false) {
 
         if(existing) continue; // already done
 
-        // Create the transaction
-        const isAutoTransfer = sc.type === 'transfer' || sc.type === 'card_payment';
+        // ── Build amounts ──────────────────────────────────────────────────────
+        const isAutoTransfer   = sc.type === 'transfer' || sc.type === 'card_payment';
+        const isAutoCurrencyFx = isAutoTransfer && sc.fx_mode && sc.transfer_to_account_currency &&
+                                 sc.accounts?.currency !== sc.transfer_to_account_currency;
         const txAmt = (sc.type === 'expense' || isAutoTransfer) ? -Math.abs(sc.amount) : Math.abs(sc.amount);
-        const { data: newTx, error: txErr } = await sb.from('transactions').insert({ family_id: famId(),
+
+        // Compute paired (destination) amount with FX when currencies differ
+        let pairedAmt = Math.abs(sc.amount); // default 1:1
+        if (isAutoCurrencyFx) {
+          if (sc.fx_mode === 'fixed' && sc.fx_rate > 0) {
+            // Use stored fixed rate
+            pairedAmt = Math.abs(sc.amount) * parseFloat(sc.fx_rate);
+          } else if (sc.fx_mode === 'api') {
+            // Fetch live rate from Frankfurter API for the registration date
+            try {
+              const srcCur = sc.accounts.currency;
+              const dstCur = sc.transfer_to_account_currency;
+              const apiDate = date <= new Date().toISOString().slice(0,10) ? date : new Date().toISOString().slice(0,10);
+              const fxRes = await fetch(`https://api.frankfurter.app/${apiDate}?base=${srcCur}&to=${dstCur}`);
+              if (fxRes.ok) {
+                const fxJson = await fxRes.json();
+                const rate = fxJson?.rates?.[dstCur];
+                if (rate > 0) pairedAmt = Math.abs(sc.amount) * rate;
+              }
+            } catch(fxErr) {
+              console.warn('[AutoReg] FX API failed, using 1:1:', fxErr.message);
+            }
+          }
+        }
+
+        // ── Insert debit leg (origin account) ──────────────────────────────
+        const { data: newTx, error: txErr } = await sb.from('transactions').insert({
+          family_id:   famId(),
           account_id:  sc.account_id,
           description: sc.description,
           amount:      txAmt,
-          date:        date,
+          date,
           category_id: sc.category_id || null,
           payee_id:    isAutoTransfer ? null : (sc.payee_id || null),
           memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
@@ -318,16 +352,51 @@ async function runAutoRegister(manual=false) {
 
         if(txErr) { console.error('[AutoReg] Tx error:', txErr.message); continue; }
 
-        // Update account balance
-        const newBal = (parseFloat(sc.accounts?.balance)||0) + txAmt;
-        await sb.from('accounts').update({ balance: newBal }).eq('id', sc.account_id);
+        // ── Insert credit leg (destination account) for transfers ───────────
+        if (isAutoTransfer && sc.transfer_to_account_id) {
+          let pairedResult, pairedErr;
+          ({data: pairedResult, error: pairedErr} = await sb.from('transactions').insert({
+            family_id:   famId(),
+            account_id:  sc.transfer_to_account_id,
+            description: sc.description,
+            amount:      pairedAmt,  // positive credit, FX-converted if needed
+            date,
+            category_id: sc.category_id || null,
+            payee_id:    null,
+            memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
+            is_transfer: true,
+            is_card_payment: sc.type === 'card_payment',
+            transfer_to_account_id: sc.account_id,
+            linked_transfer_id: newTx.id,
+          }).select().single());
+
+          if (pairedErr && pairedErr.message?.includes('linked_transfer_id')) {
+            // Fallback: insert without linked_transfer_id if column not migrated yet
+            await sb.from('transactions').insert({
+              family_id:   famId(),
+              account_id:  sc.transfer_to_account_id,
+              description: sc.description,
+              amount:      pairedAmt,
+              date,
+              category_id: sc.category_id || null,
+              payee_id:    null,
+              memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
+              is_transfer: true,
+              is_card_payment: sc.type === 'card_payment',
+              transfer_to_account_id: sc.account_id,
+            });
+          } else if (pairedResult?.id) {
+            // Back-link origin to paired
+            await sb.from('transactions').update({ linked_transfer_id: pairedResult.id }).eq('id', newTx.id);
+          }
+        }
 
         // Mark occurrence as registered
         await sb.from('scheduled_occurrences').upsert({
-          scheduled_id:  sc.id,
+          scheduled_id:   sc.id,
           scheduled_date: date,
-          actual_date:   new Date().toISOString().slice(0,10),
-          amount:        txAmt,
+          actual_date:    new Date().toISOString().slice(0,10),
+          amount:         txAmt,
           transaction_id: newTx.id,
         }, { onConflict: 'scheduled_id,scheduled_date' });
 

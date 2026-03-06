@@ -359,8 +359,22 @@ function openScheduledModal(id='') {
   // Payee
   setPayeeField(sc?.payee_id||null, 'sc');
 
-  // Type
+  // Type — sets FX panel visibility
   setScType(sc?.type||'expense');
+
+  // Restore FX settings for cross-currency transfers
+  setTimeout(() => {
+    onScTransferAccountChange(); // re-evaluate if currencies differ
+    if (sc?.type === 'transfer') {
+      const fxMode = sc?.fx_mode || 'fixed';
+      setScFxMode(fxMode);
+      if (fxMode === 'fixed' && sc?.fx_rate) {
+        const input = document.getElementById('scFxRate');
+        if (input) input.value = Number(sc.fx_rate).toFixed(6);
+        updateScFxPreview();
+      }
+    }
+  }, 50);
 
   // Dates
   document.getElementById('scStartDate').value = sc?.start_date || new Date().toISOString().slice(0,10);
@@ -428,10 +442,118 @@ function setScType(type) {
   if(cpBadge) cpBadge.style.display = isCardPayment ? '' : 'none';
   const trLabel = document.querySelector('#scTransferToGroup label');
   if(trLabel) trLabel.textContent = isCardPayment ? 'Cartão de Crédito (Destino) *' : 'Conta Destino *';
+  // Hide FX panel when switching away from transfer
+  if (!isTransfer) _hideScFxPanel();
   // Filter source account: card_payment origin cannot be a credit card account
   _filterScAccountOrigin(isCardPayment);
   // Rebuild category picker for this type
   buildCatPicker(null, 'sc');
+}
+
+// ── Scheduled FX helpers ──────────────────────────────────────────────────
+
+function _getScTransferCurrencies() {
+  const srcId  = document.getElementById('scAccountId')?.value;
+  const dstId  = document.getElementById('scTransferToAccountId')?.value;
+  const srcAcc = state.accounts.find(a => a.id === srcId);
+  const dstAcc = state.accounts.find(a => a.id === dstId);
+  return {
+    src: srcAcc?.currency || null,
+    dst: dstAcc?.currency || null,
+  };
+}
+
+function _hideScFxPanel() {
+  const panel = document.getElementById('scFxPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+function onScTransferAccountChange() {
+  const { src, dst } = _getScTransferCurrencies();
+  const panel = document.getElementById('scFxPanel');
+  if (!panel) return;
+  const type = document.getElementById('scTypeField').value;
+  if (type !== 'transfer' || !src || !dst || src === dst) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  const title = document.getElementById('scFxTitle');
+  const label = document.getElementById('scFxLabel');
+  if (title) title.textContent = `Câmbio: ${src} → ${dst}`;
+  if (label) label.textContent = `(1 ${src} = ? ${dst})`;
+  updateScFxPreview();
+}
+
+function setScFxMode(mode) {
+  const fixedBtn  = document.getElementById('scFxModeFixed');
+  const apiBtn    = document.getElementById('scFxModeApi');
+  const fixedPan  = document.getElementById('scFxFixedPanel');
+  const apiPan    = document.getElementById('scFxApiPanel');
+  const activeStyle   = 'border-color:#2563eb;background:#2563eb;color:#fff;';
+  const inactiveStyle = 'border-color:#e5e7eb;background:transparent;color:#6b7280;';
+  if (mode === 'fixed') {
+    if (fixedBtn) fixedBtn.style.cssText += activeStyle;
+    if (apiBtn)   apiBtn.style.cssText   += inactiveStyle;
+    if (fixedPan) fixedPan.style.display = '';
+    if (apiPan)   apiPan.style.display   = 'none';
+    document.getElementById('scFxPanel')?.setAttribute('data-fx-mode', 'fixed');
+  } else {
+    if (fixedBtn) fixedBtn.style.cssText += inactiveStyle;
+    if (apiBtn)   apiBtn.style.cssText   += activeStyle;
+    if (fixedPan) fixedPan.style.display = 'none';
+    if (apiPan)   apiPan.style.display   = '';
+    document.getElementById('scFxPanel')?.setAttribute('data-fx-mode', 'api');
+  }
+}
+
+async function fetchScSuggestedFxRate() {
+  const { src, dst } = _getScTransferCurrencies();
+  if (!src || !dst || src === dst) return;
+  const btn  = document.getElementById('scFxFetchBtn');
+  const icon = document.getElementById('scFxFetchIcon');
+  const sugg = document.getElementById('scFxSuggestion');
+  if (btn) btn.disabled = true;
+  if (icon) icon.textContent = '⏳';
+  if (sugg) sugg.style.display = 'none';
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await fetch(`https://api.frankfurter.app/${today}?base=${src}&to=${dst}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const rate = json?.rates?.[dst];
+    if (!rate) throw new Error('Taxa não encontrada');
+    const rateStr = Number(rate).toFixed(6);
+    const input = document.getElementById('scFxRate');
+    if (input) input.value = rateStr;
+    if (sugg) {
+      sugg.textContent = `📡 Cotação de ${json.date||today} (BCE): 1 ${src} = ${rateStr} ${dst}`;
+      sugg.style.display = '';
+      sugg.style.background = '';
+      sugg.style.color = '';
+    }
+    updateScFxPreview();
+  } catch(e) {
+    if (sugg) {
+      sugg.textContent = `⚠️ Não foi possível buscar: ${e.message}`;
+      sugg.style.display = '';
+      sugg.style.background = '#fef9c3';
+      sugg.style.color = '#92400e';
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+    if (icon) icon.textContent = '🔄';
+  }
+}
+
+function updateScFxPreview() {
+  const { src, dst } = _getScTransferCurrencies();
+  const rateVal = parseFloat(document.getElementById('scFxRate')?.value?.replace(',', '.'));
+  const amtVal  = getAmtField('scAmount');
+  const preview = document.getElementById('scFxPreview');
+  if (!preview) return;
+  if (!rateVal || isNaN(rateVal) || !amtVal) { preview.textContent = ''; return; }
+  preview.textContent = `= ${fmt(Math.abs(amtVal) * rateVal, dst)}`;
 }
 
 function _filterScAccountOrigin(excludeCreditCards) {
@@ -505,6 +627,14 @@ async function saveScheduled() {
   const notifyEm = document.getElementById('scNotifyEmail')?.checked || false;
   const isScTransfer = type==='transfer' || type==='card_payment';
   const isScCardPayment = type==='card_payment';
+
+  // FX settings for cross-currency transfers
+  const fxPanel   = document.getElementById('scFxPanel');
+  const fxVisible = fxPanel && fxPanel.style.display !== 'none';
+  const fxMode    = fxVisible ? (fxPanel.getAttribute('data-fx-mode') || 'fixed') : null;
+  const fxRateRaw = parseFloat(document.getElementById('scFxRate')?.value?.replace(',', '.'));
+  const fxRate    = (fxMode === 'fixed' && fxRateRaw > 0) ? fxRateRaw : null;
+
   const data = {
     description: document.getElementById('scDesc').value.trim(),
     type,
@@ -527,6 +657,8 @@ async function saveScheduled() {
     notify_email: notifyEm,
     notify_email_addr: notifyEm ? (document.getElementById('scNotifyEmailAddr')?.value.trim()||null) : null,
     notify_days_before: notifyEm ? parseInt(document.getElementById('scNotifyDaysBefore')?.value||'1') : 1,
+    fx_mode:  fxVisible ? fxMode : null,
+    fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
   };
 
