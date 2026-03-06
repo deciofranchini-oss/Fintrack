@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════════════════════════════════════ */
 
 const RECEIPT_AI_KEY_SETTING = 'gemini_api_key';
-const RECEIPT_AI_MODEL       = 'gemini-2.0-flash';
+const RECEIPT_AI_MODEL       = 'gemini-2.5-flash-lite';
 const PDFJS_CDN_JS  = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_CDN_WK  = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
