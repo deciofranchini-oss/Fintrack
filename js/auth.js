@@ -186,10 +186,32 @@ async function doLogin() {
     if (rememberMe) _saveRememberedCredentials(email, password);
     else _clearRememberedCredentials();
 
+    // Gate: check app_users approval status before entering the app
+    const { data: appUser } = await sb
+      .from('app_users').select('approved,active,must_change_pwd').eq('email', email).maybeSingle();
+
+    if (appUser && !appUser.approved) {
+      await sb.auth.signOut();
+      showLoginErr('Sua conta ainda aguarda aprovação do administrador.');
+      return;
+    }
+    if (appUser && !appUser.active) {
+      await sb.auth.signOut();
+      showLoginErr('Sua conta está inativa. Contate o administrador.');
+      return;
+    }
+
+    // Show must_change_pwd screen if flagged
+    if (appUser?.must_change_pwd) {
+      document.getElementById('loginFormArea').style.display = 'none';
+      document.getElementById('changePwdArea').style.display = '';
+      return;
+    }
+
     await _loadCurrentUserContext();
 
     if (!currentUser?.family_id) {
-      toast('Seu usuário ainda não está vinculado a uma família. Peça ao admin para associar.', 'warning');
+      toast('Usuário sem família vinculada. Peça ao admin para associar.', 'warning');
     }
 
     onLoginSuccess();
@@ -216,6 +238,16 @@ async function doChangePwd() {
     // Supabase Auth password update
     const { error } = await sb.auth.updateUser({ password: p1 });
     if (error) throw error;
+    // Sync password_hash + clear must_change_pwd in app_users
+    const { data: uRes } = await sb.auth.getUser();
+    if (uRes?.user?.email) {
+      const newHash = await sha256(p1);
+      await sb.from('app_users')
+        .update({ password_hash: newHash, must_change_pwd: false })
+        .eq('email', uRes.user.email)
+        .catch(() => {});
+    }
+    await _loadCurrentUserContext();
     onLoginSuccess();
   } catch(e) { errEl.textContent = 'Erro: ' + (e?.message || e); errEl.style.display=''; }
 }
@@ -239,7 +271,12 @@ async function doChangeMyPwd() {
   try {
     const { error } = await sb.auth.updateUser({ password: p1 });
     if (error) throw error;
-    await sb.from('app_users').update({ must_change_pwd: false }).eq('email', currentUser?.email).catch(()=>{});
+    // Keep app_users.password_hash in sync
+    const newHash = await sha256(p1);
+    await sb.from('app_users')
+      .update({ password_hash: newHash, must_change_pwd: false })
+      .eq('email', currentUser?.email)
+      .catch(() => {});
     toast('✓ Senha alterada com sucesso!', 'success');
     closeModal('changeMyPwdModal');
   } catch(e) { errEl.textContent = 'Erro: ' + (e?.message || e); errEl.style.display = ''; }
@@ -460,6 +497,10 @@ async function doForgotPwd() {
 }
 
 // ── Register (self-register) ──
+// Strategy: write ONLY to app_users with approved=false, active=false.
+// No Supabase Auth account is created at this stage.
+// When admin approves, doApproveUser() creates the Supabase Auth account
+// via signUp (with emailRedirectTo disabled) and sends the welcome email.
 async function doRegister() {
   const name  = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim().toLowerCase();
@@ -468,31 +509,58 @@ async function doRegister() {
   const errEl = document.getElementById('regError');
   errEl.style.display = 'none';
 
-  if (!name)  { errEl.textContent='Informe seu nome.';         errEl.style.display=''; return; }
-  if (!email) { errEl.textContent='Informe seu e-mail.';       errEl.style.display=''; return; }
-  if (pwd.length < 8) { errEl.textContent='Senha mínima: 8 caracteres.'; errEl.style.display=''; return; }
-  if (pwd !== pwd2)   { errEl.textContent='Senhas não conferem.';         errEl.style.display=''; return; }
+  if (!name)            { errEl.textContent = 'Informe seu nome.';          errEl.style.display = ''; return; }
+  if (!email)           { errEl.textContent = 'Informe seu e-mail.';        errEl.style.display = ''; return; }
+  if (pwd.length < 8)   { errEl.textContent = 'Senha mínima: 8 caracteres.'; errEl.style.display = ''; return; }
+  if (pwd !== pwd2)     { errEl.textContent = 'As senhas não conferem.';    errEl.style.display = ''; return; }
 
   const btn = document.getElementById('regBtn');
   btn.disabled = true; btn.textContent = 'Enviando...';
-  try {
-    // Supabase Auth sign-up.
-    // The DB trigger public.handle_new_user should create user_profiles + family_members.
-    const { error } = await sb.auth.signUp({
-      email,
-      password: pwd,
-      options: { data: { display_name: name } }
-    });
-    if (error) throw error;
 
-    // Show pending/confirmation screen
+  try {
+    // Check if e-mail already exists (app_users OR Supabase Auth duplicate prevention)
+    const { data: existing } = await sb
+      .from('app_users').select('id,approved,active').eq('email', email).maybeSingle();
+
+    if (existing) {
+      if (existing.approved) {
+        errEl.textContent = 'Este e-mail já possui uma conta ativa. Faça login.';
+      } else {
+        errEl.textContent = 'Já existe uma solicitação pendente para este e-mail.';
+      }
+      errEl.style.display = '';
+      return;
+    }
+
+    // Hash the password — stored in app_users for later Supabase Auth creation at approval time
+    const pwdHash = await sha256(pwd);
+
+    // Insert pending record — NOT approved, NOT active, no Supabase Auth account yet
+    const { error: insErr } = await sb.from('app_users').insert({
+      name,
+      email,
+      password_hash: pwdHash,
+      role:          'viewer',
+      approved:      false,
+      active:        false,
+      can_view:      true,
+      can_create:    false,
+      can_edit:      false,
+      can_delete:    false,
+      can_export:    false,
+      can_import:    false,
+      can_admin:     false,
+      must_change_pwd: false,
+    });
+    if (insErr) throw insErr;
+
+    // Notify admins via _checkPendingApprovals badge update
+    // (they will see the badge next time they visit settings)
+
+    // Show pending screen
     document.getElementById('registerFormArea').style.display = 'none';
     document.getElementById('pendingApprovalArea').style.display = '';
-    const pending = document.getElementById('pendingApprovalArea');
-    if (pending) {
-      const p = pending.querySelector('p');
-      if (p) p.textContent = 'Conta criada! Verifique seu e-mail para confirmar e depois faça login.';
-    }
+
   } catch(e) {
     errEl.textContent = 'Erro: ' + (e?.message || e);
     errEl.style.display = '';
@@ -821,44 +889,121 @@ async function doApproveUser() {
   const famSel   = document.getElementById('approvalFamilyId').value;
   const newFamNm = document.getElementById('approvalNewFamilyName').value.trim();
   const errEl    = document.getElementById('approvalError');
+  const approveBtn = document.querySelector('#approvalModal .btn-primary');
   errEl.style.display = 'none';
-  let familyId   = famSel || null;
-  let familyName = _families.find(f => f.id === famSel)?.name || null;
-  if (newFamNm) {
-    const { data: nf, error: nfErr } = await sb.from('families').insert({ name: newFamNm }).select('id,name').single();
-    if (nfErr) { errEl.textContent = 'Erro ao criar família: ' + nfErr.message; errEl.style.display = ''; return; }
-    familyId = nf.id; familyName = nf.name;
-    await loadFamiliesList();
+  if (approveBtn) { approveBtn.disabled = true; approveBtn.textContent = '⏳ Aprovando...'; }
+
+  try {
+    let familyId   = famSel || null;
+    let familyName = _families.find(f => f.id === famSel)?.name || null;
+
+    // Create new family if requested
+    if (newFamNm) {
+      const { data: nf, error: nfErr } = await sb.from('families')
+        .insert({ name: newFamNm }).select('id,name').single();
+      if (nfErr) throw new Error('Erro ao criar família: ' + nfErr.message);
+      familyId = nf.id; familyName = nf.name;
+      await loadFamiliesList();
+    }
+
+    // Fetch the pending user row (need email + stored password_hash)
+    const { data: userRow, error: fetchErr } = await sb
+      .from('app_users').select('name,email,password_hash').eq('id', userId).single();
+    if (fetchErr) throw fetchErr;
+
+    // Generate a random temp password to create the Supabase Auth account.
+    // The real password the user chose is hashed — we can't reverse it.
+    // So we create with a temp password and immediately send a reset link,
+    // so they use the Supabase reset flow to set their own password.
+    const tempPwd = _randomPassword();
+    const tempHash = await sha256(tempPwd);
+
+    // Create Supabase Auth account
+    // Note: signUp from anon key will send a confirmation email unless
+    // "Confirm email" is disabled in Supabase Dashboard → Auth → Settings.
+    // For apps with manual approval, disable email confirmation in Supabase.
+    const { data: authData, error: authErr } = await sb.auth.signUp({
+      email:    userRow.email,
+      password: tempPwd,
+      options:  { data: { display_name: userRow.name || userName } }
+    });
+
+    // signUp returns error if user already exists — handle gracefully
+    if (authErr && !authErr.message.includes('already registered')) {
+      throw authErr;
+    }
+
+    // Mark as approved in app_users, update password_hash to temp, family
+    const { error: updErr } = await sb.from('app_users').update({
+      active:        true,
+      approved:      true,
+      family_id:     familyId,
+      password_hash: tempHash,
+      must_change_pwd: true,   // force reset on first login
+    }).eq('id', userId);
+    if (updErr) throw updErr;
+
+    // Sync user_profiles if the DB trigger created it
+    await sb.from('user_profiles').update({ active: true })
+      .eq('email', userRow.email).catch(() => {});
+
+    // Add to family_members
+    if (familyId) {
+      await sb.from('family_members').upsert(
+        { user_id: userId, family_id: familyId, role: 'editor' },
+        { onConflict: 'user_id,family_id' }
+      ).catch(() => {});
+    }
+
+    // Send approval e-mail with a password reset link so user sets their real password
+    await _sendApprovalEmail(userRow.email, userRow.name || userName, familyName);
+
+    toast(`✓ ${userName} aprovado!${familyName ? ' Família: ' + familyName : ''}`, 'success');
+    closeModal('approvalModal');
+    await loadUsersList();
+    _checkPendingApprovals();
+
+  } catch(e) {
+    errEl.textContent = 'Erro: ' + e.message;
+    errEl.style.display = '';
+  } finally {
+    if (approveBtn) { approveBtn.disabled = false; approveBtn.textContent = '✅ Aprovar e Notificar'; }
   }
-  const { data: userRow, error: uErr } = await sb.from('app_users')
-    .update({ active: true, approved: true, family_id: familyId })
-    .eq('id', userId).select('name,email').single();
-  if (uErr) { errEl.textContent = 'Erro: ' + uErr.message; errEl.style.display = ''; return; }
-  await sb.from('user_profiles').update({ active: true }).eq('email', userRow.email).catch(()=>{});
-  if (familyId) {
-    await sb.from('family_members').upsert(
-      { user_id: userId, family_id: familyId, role: 'editor' },
-      { onConflict: 'user_id,family_id' }
-    ).catch(()=>{});
-  }
-  await _sendApprovalEmail(userRow.email, userRow.name || userName, familyName);
-  toast(`✓ ${userName} aprovado!${familyName ? ' Família: ' + familyName : ''}`, 'success');
-  closeModal('approvalModal');
-  await loadUsersList();
-  _checkPendingApprovals();
+}
+
+// Generates a cryptographically random 16-char password
+function _randomPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => chars[b % chars.length]).join('');
 }
 
 async function _sendApprovalEmail(email, name, familyName) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
   try {
+    // Send a Supabase password-reset link so the user sets their own password
+    // (the account was created with a random temp password they don't know)
+    const redirectTo = window.location.origin + window.location.pathname;
+    await sb.auth.resetPasswordForEmail(email, { redirectTo });
+  } catch(e) { console.warn('Reset email error:', e.message); }
+
+  // Also send a branded welcome email via EmailJS
+  try {
     emailjs.init(EMAILJS_CONFIG.publicKey);
     const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
-    const famLine = familyName ? `\n\nVocê foi vinculado à família: ${familyName}` : '\n\nSeu acesso foi liberado como administrador global.';
+    const famLine = familyName
+      ? `\n\nVocê foi vinculado à família: ${familyName}.`
+      : '\n\nSeu acesso foi liberado como administrador global.';
     await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
-      to_email:       email,
-      Subject:        'FinTrack — Acesso liberado!',
-      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      report_content: `Olá, ${name}!\n\nSua solicitação de acesso ao JF Family FinTrack foi aprovada.${famLine}\n\nAcesse o aplicativo e faça login com o e-mail e senha que você cadastrou.\n\nBem-vindo(a)!\n\nEquipe JF Family FinTrack`,
+      to_email:   email,
+      Subject:    'FinTrack — Acesso liberado! 🎉',
+      month_year: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content:
+        `Olá, ${name}!\n\n` +
+        `Sua solicitação de acesso ao JF Family FinTrack foi aprovada.${famLine}\n\n` +
+        `Você receberá em instantes um segundo e-mail do Supabase com um link para definir sua senha.\n` +
+        `Clique nesse link, defina sua senha e faça login normalmente.\n\n` +
+        `Bem-vindo(a)!\n\nEquipe JF Family FinTrack`,
     });
   } catch(e) { console.warn('Approval email error:', e.message); }
 }
@@ -980,18 +1125,32 @@ async function _handleRecoveryToken() {
 }
 
 function _showRecoveryPwdForm() {
+  // Make sure the main app is hidden and login screen is on top
+  const mainApp = document.getElementById('mainApp');
+  const sidebar  = document.getElementById('sidebar');
+  if (mainApp) mainApp.style.display = 'none';
+  if (sidebar)  sidebar.style.display = 'none';
+
   const ls = document.getElementById('loginScreen');
   if (ls) ls.style.display = 'flex';
-  ['loginFormArea','registerFormArea','pendingApprovalArea','forgotPwdArea','changePwdArea']
+
+  // Hide every other panel inside the login card
+  ['loginFormArea','registerFormArea','pendingApprovalArea',
+   'forgotPwdArea','changePwdArea','recoveryPwdArea']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  // Show only the recovery form
   const area = document.getElementById('recoveryPwdArea');
   if (area) {
     area.style.display = '';
-    document.getElementById('recoveryPwdError').style.display = 'none';
-    document.getElementById('recoveryPwd1').value = '';
-    document.getElementById('recoveryPwd2').value = '';
+    const err = document.getElementById('recoveryPwdError');
+    if (err) err.style.display = 'none';
+    const f1 = document.getElementById('recoveryPwd1');
+    const f2 = document.getElementById('recoveryPwd2');
+    if (f1) f1.value = '';
+    if (f2) f2.value = '';
   }
-  setTimeout(() => document.getElementById('recoveryPwd1')?.focus(), 150);
+  setTimeout(() => document.getElementById('recoveryPwd1')?.focus(), 200);
 }
 
 async function doRecoveryPwd() {
@@ -1026,11 +1185,12 @@ async function doRecoveryPwd() {
     const { error } = await sb.auth.updateUser({ password: p1 });
     if (error) throw error;
 
-    // Clear must_change_pwd flag in app_users
+    // Sync the new password_hash + clear must_change_pwd in app_users
     const userEmail = sessionData.session.user?.email;
     if (userEmail) {
+      const newHash = await sha256(p1);
       await sb.from('app_users')
-        .update({ must_change_pwd: false })
+        .update({ password_hash: newHash, must_change_pwd: false })
         .eq('email', userEmail)
         .catch(() => {});
     }

@@ -96,65 +96,57 @@ async function tryAutoConnect(){
   if(url&&key){
     document.getElementById('supabaseUrl').value=url;
     document.getElementById('supabaseKey').value=key;
-    // Create client early so we can boot right after PIN unlock
-    sb=supabase.createClient(url,key);
 
-    // ── Password recovery detection ─────────────────────────────────────────
-    // Supabase v2 PKCE: redirect arrives as ?code=XXX in query string.
-    // The SDK exchanges it automatically on createClient, then fires
-    // onAuthStateChange('PASSWORD_RECOVERY'). We must intercept BEFORE
-    // tryRestoreSession() runs, otherwise the normal boot overwrites the UI.
-    const _hasRecoveryCode = new URLSearchParams(window.location.search).has('code')
-      && !document.referrer.includes(window.location.host); // not an internal nav
-    // Also support legacy implicit flow: #access_token=...&type=recovery
-    const _hasHashRecovery = window.location.hash.includes('type=recovery')
-      && window.location.hash.includes('access_token');
+    // ── Password recovery detection ──────────────────────────────────────────
+    // HOW SUPABASE v2 PKCE RESET WORKS:
+    //   1. resetPasswordForEmail() sends email with link: app.com?code=XXXX
+    //   2. User clicks → app loads with ?code=XXXX in the URL query string
+    //   3. createClient() detects ?code and exchanges it for a session
+    //   4. onAuthStateChange fires PASSWORD_RECOVERY
+    //
+    // THE BUG: listener was registered after createClient, missing the event.
+    // tryRestoreSession() then found the new session → bootApp() → dashboard.
+    //
+    // THE FIX: detect ?code BEFORE createClient, set flag, create client,
+    // then wait exclusively for PASSWORD_RECOVERY before doing anything else.
 
-    if (_hasRecoveryCode || _hasHashRecovery) {
-      // Clean up code from URL immediately so it isn't reused on refresh
-      if (_hasRecoveryCode) {
-        const cleanUrl = window.location.pathname + window.location.hash;
-        history.replaceState(null, '', cleanUrl);
-      }
+    const urlParams       = new URLSearchParams(window.location.search);
+    const hasCodeParam    = urlParams.has('code');
+    const hasLegacyHash   = window.location.hash.includes('type=recovery');
+    const mightBeRecovery = hasCodeParam || hasLegacyHash;
 
-      // Wait for Supabase to fire PASSWORD_RECOVERY (up to 8 s)
-      const recoveryHandled = await new Promise(resolve => {
-        const timer = setTimeout(() => {
-          unsub();
-          resolve(false);
-        }, 8000);
+    // Strip ?code from URL now so a page-refresh doesn't re-trigger
+    if (hasCodeParam) {
+      history.replaceState(null, '', window.location.pathname + window.location.hash);
+    }
 
-        const { data: { subscription: unsub } } = sb.auth.onAuthStateChange((event) => {
+    // Create client — this triggers the ?code exchange internally
+    sb = supabase.createClient(url, key);
+
+    if (mightBeRecovery) {
+      // Wait up to 6 s for PASSWORD_RECOVERY.
+      // Any other event (SIGNED_IN, INITIAL_SESSION) means not a recovery.
+      const isRecovery = await new Promise(resolve => {
+        const timer = setTimeout(() => { sub.unsubscribe(); resolve(false); }, 6000);
+        const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event) => {
           if (event === 'PASSWORD_RECOVERY') {
-            clearTimeout(timer);
-            unsub.unsubscribe();
-            resolve(true);
-          } else if (event === 'SIGNED_IN' && _hasHashRecovery) {
-            // Legacy implicit flow: SIGNED_IN fires instead of PASSWORD_RECOVERY
-            clearTimeout(timer);
-            unsub.unsubscribe();
-            resolve(true);
+            clearTimeout(timer); sub.unsubscribe(); resolve(true);
+          } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            clearTimeout(timer); sub.unsubscribe(); resolve(false);
           }
         });
-
-        // Also try legacy hash approach in parallel
-        if (_hasHashRecovery && typeof _handleRecoveryToken === 'function') {
-          _handleRecoveryToken().then(ok => { if (ok) { clearTimeout(timer); resolve(true); } });
-        }
       });
 
-      if (recoveryHandled) {
-        // Show the new-password form — stop the normal boot
+      if (isRecovery) {
         if (typeof _showRecoveryPwdForm === 'function') _showRecoveryPwdForm();
-        return;
+        return; // doRecoveryPwd() calls bootApp() after saving
       }
-      // Timed out — fall through to normal boot
+      // Not a recovery — fall through to normal boot
     }
-    // ────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Restore Supabase Auth session (RLS-friendly)
+    // Normal boot
     const restored = await tryRestoreSession().catch(()=>false);
-    // Lock screen removed
     try{const ps=document.getElementById('pinScreen'); if(ps) ps.style.display='none';}catch(e){}
     _pinUnlocked=true;
     if(restored){
