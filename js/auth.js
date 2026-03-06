@@ -325,8 +325,9 @@ async function doLogout() {
   localStorage.removeItem('ft_session_token');
   localStorage.removeItem('ft_user_id');
   currentUser = null;
-  // Reset charts using centralized helper (TD-2 fix)
-  destroyAllCharts();
+  // Reset charts
+  Object.values(state.chartInstances||{}).forEach(c => c?.destroy?.());
+  state.chartInstances = {};
   // Close any open modals/overlays before showing login
   document.querySelectorAll('.modal-overlay, .modal-backdrop, [id$="Modal"]').forEach(el => {
     el.style.display = 'none';

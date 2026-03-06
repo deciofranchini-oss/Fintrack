@@ -166,33 +166,6 @@ function setAppLogo(url){
 // Keep keys stable to avoid breaking filtering and saved preferences.
 let state={accounts:[],groups:[],categories:[],payees:[],transactions:[],budgets:[],txPage:0,txPageSize:50,txTotal:0,txSortField:'date',txSortAsc:false,txFilter:{search:'',month:'',account:'',type:'',status:''},txView:'flat',currentPage:'dashboard',chartInstances:{},privacyMode:false};
 
-// ── TD-2 FIX: Centralized Chart.js instance manager ──────────────────
-// Always use destroyChart(key) before creating a new Chart.js instance.
-// Previously, modules inconsistently destroyed instances (or forgot entirely),
-// causing "Canvas is already in use" console errors and memory leaks.
-//
-// Usage:
-//   destroyChart('dashExpense');                     // destroy if exists
-//   const ctx = document.getElementById('myCanvas');
-//   state.chartInstances['dashExpense'] = new Chart(ctx, { ... });
-function destroyChart(key) {
-  try {
-    const existing = state.chartInstances[key];
-    if (existing && typeof existing.destroy === 'function') {
-      existing.destroy();
-    }
-  } catch (e) {
-    console.warn('[destroyChart] error destroying chart "' + key + '":', e.message);
-  } finally {
-    delete state.chartInstances[key];
-  }
-}
-
-// Destroy ALL active charts (used on logout / page unload)
-function destroyAllCharts() {
-  Object.keys(state.chartInstances || {}).forEach(key => destroyChart(key));
-}
-
 async function bootApp(){
   registerServiceWorkerSafe();
   // Logos (can be overridden by app_settings)
