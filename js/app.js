@@ -124,16 +124,26 @@ async function tryAutoConnect(){
     sb = supabase.createClient(url, key);
 
     if (mightBeRecovery) {
-      // Wait up to 6 s for PASSWORD_RECOVERY.
-      // Any other event (SIGNED_IN, INITIAL_SESSION) means not a recovery.
+      // Supabase JS v2 event order when ?code= is a recovery link:
+      //   INITIAL_SESSION  ← fires first (ignore this one)
+      //   PASSWORD_RECOVERY ← fires second (this is the one we want)
+      //
+      // If it's NOT a recovery link (e.g. magic link or OAuth):
+      //   INITIAL_SESSION → SIGNED_IN  (both without PASSWORD_RECOVERY)
+      //
+      // Strategy: collect events for up to 6 s; resolve true only if
+      // PASSWORD_RECOVERY fires. Ignore INITIAL_SESSION entirely.
+      // Resolve false on SIGNED_IN (magic link) or timeout.
       const isRecovery = await new Promise(resolve => {
         const timer = setTimeout(() => { sub.unsubscribe(); resolve(false); }, 6000);
         const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event) => {
           if (event === 'PASSWORD_RECOVERY') {
             clearTimeout(timer); sub.unsubscribe(); resolve(true);
-          } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          } else if (event === 'SIGNED_IN') {
+            // Magic link or OAuth — not a password reset
             clearTimeout(timer); sub.unsubscribe(); resolve(false);
           }
+          // INITIAL_SESSION: intentionally ignored — PASSWORD_RECOVERY follows it
         });
       });
 

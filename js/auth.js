@@ -401,6 +401,11 @@ function _registerMagicLinkGate() {
   if (!sb) return;
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event !== 'SIGNED_IN' || !session?.user?.email) return;
+
+    // Do NOT interfere if the recovery password form is visible
+    const recoveryArea = document.getElementById('recoveryPwdArea');
+    if (recoveryArea && recoveryArea.style.display !== 'none') return;
+
     // Ignore if the app is already loaded (user was already logged in)
     const loginScreen = document.getElementById('loginScreen');
     if (!loginScreen || loginScreen.style.display === 'none') return;
