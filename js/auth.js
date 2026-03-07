@@ -859,7 +859,7 @@ async function saveFamily() {
   const name = document.getElementById('fName').value.trim();
   const desc = document.getElementById('fDesc').value.trim();
   if (!name) { toast('Informe o nome da família','error'); return; }
-  const data = { name, description: desc||null, updated_at: new Date().toISOString() };
+  const data = { name, description: desc||null }; // updated_at omitido — coluna não existe no schema
   let error;
   if (id) { ({ error } = await sb.from('families').update(data).eq('id', id)); }
   else    { ({ error } = await sb.from('families').insert(data)); }
@@ -1145,70 +1145,170 @@ function _randomPassword() {
 }
 
 
-// Envia e-mail ao admin avisando sobre novo cadastro pendente
+// ── Notifica admin por email quando há novo cadastro pendente ────────────
 async function _notifyAdminNewRegistration(userName, userEmail) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
   const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
   if (!tplId) return;
+
+  // Buscar email do admin: 1) config de automação, 2) role=owner no banco
   let adminEmail = '';
   try {
     const raw = localStorage.getItem('fintrack_auto_check_config');
     if (raw) adminEmail = JSON.parse(raw).emailDefault || '';
   } catch(e) {}
+
   if (!adminEmail) {
     try {
+      // Tenta buscar o owner/admin com email no banco
       const { data } = await sb.from('app_users')
-        .select('email').eq('role', 'admin').limit(1).maybeSingle();
+        .select('email').in('role', ['owner', 'admin'])
+        .eq('active', true).limit(1).maybeSingle();
       adminEmail = data?.email || '';
     } catch(e) {}
   }
-  if (!adminEmail) { console.warn('[register] sem email admin'); return; }
-  const now = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  emailjs.init(EMAILJS_CONFIG.publicKey);
-  const nameHtml = userName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const emailHtml = userEmail.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
-    to_email:   adminEmail,
-    Subject:    'FinTrack: Nova solicitacao de acesso — ' + userName,
-    month_year: now,
-    report_content:
-      '<div style="font-family:sans-serif;max-width:520px">' +
-      '<h2 style="color:#2a6049">Nova solicitacao de acesso</h2>' +
-      '<p>Usuario: <strong>' + nameHtml + '</strong> (' + emailHtml + ')</p>' +
-      '<p>Solicitado em: ' + now + '</p>' +
-      '<p>Acesse Configuracoes para aprovar ou rejeitar.</p>' +
-      '</div>',
+
+  if (!adminEmail) {
+    console.warn('[approval] Sem email de admin configurado. Configure em Configurações → Automação → E-mail de Notificações.');
+    return;
+  }
+
+  const now = new Date().toLocaleString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
   });
-}
 
-async function _sendApprovalEmail(email, name, familyName) {
-  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
-  try {
-    // Send a Supabase password-reset link so the user sets their own password
-    // (the account was created with a random temp password they don't know)
-    const redirectTo = window.location.origin + window.location.pathname;
-    await sb.auth.resetPasswordForEmail(email, { redirectTo });
-  } catch(e) { console.warn('Reset email error:', e.message); }
+  const nameEsc  = (userName  || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const emailEsc = (userEmail || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
-  // Also send a branded welcome email via EmailJS
+  const body =
+    '<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">' +
+    '<div style="max-width:540px;margin:0 auto;background:#ffffff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">' +
+
+    // Header
+    '<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:22px 28px">' +
+    '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">JF Family FinTrack</div>' +
+    '<div style="font-size:20px;font-weight:700;color:#fff">&#128276; Nova solicitação de acesso</div>' +
+    '</div>' +
+
+    // Body
+    '<div style="padding:24px 28px">' +
+    '<p style="color:#374151;margin:0 0 20px;font-size:14px;line-height:1.6">' +
+    'Um novo usuário se cadastrou e está <strong>aguardando sua aprovação</strong> para acessar o sistema.' +
+    '</p>' +
+
+    // User card
+    '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin-bottom:20px">' +
+    '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:#374151;border-collapse:collapse">' +
+    '<tr><td style="padding:7px 0;color:#6b7280;width:100px;font-weight:600">&#128100; Nome</td>' +
+    '<td style="padding:7px 0;font-weight:700;color:#111827">' + nameEsc + '</td></tr>' +
+    '<tr style="border-top:1px solid #e2e8f0"><td style="padding:7px 0;color:#6b7280;font-weight:600">&#128140; E-mail</td>' +
+    '<td style="padding:7px 0;color:#111827">' + emailEsc + '</td></tr>' +
+    '<tr style="border-top:1px solid #e2e8f0"><td style="padding:7px 0;color:#6b7280;font-weight:600">&#128197; Enviado</td>' +
+    '<td style="padding:7px 0;color:#111827">' + now + '</td></tr>' +
+    '</table>' +
+    '</div>' +
+
+    // Warning
+    '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
+    '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:3px">&#9888;&#65039; Acesso bloqueado</div>' +
+    '<div style="font-size:12px;color:#b45309">O usuário <strong>' + nameEsc + '</strong> não tem acesso ao sistema até você aprovar ou rejeitar a solicitação.</div>' +
+    '</div>' +
+
+    // Action hint
+    '<p style="font-size:13px;color:#6b7280;margin:0">Para aprovar: abra o app &#8594; <strong>Configurações</strong> &#8594; <strong>Gerenciar Usuários</strong>.</p>' +
+    '</div>' +
+
+    // Footer
+    '<div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">' +
+    '<div style="font-size:11px;color:#9ca3af">JF Family FinTrack &middot; Notificação automática &middot; Não responda este e-mail</div>' +
+    '</div>' +
+
+    '</div></div>';
+
   try {
     emailjs.init(EMAILJS_CONFIG.publicKey);
-    const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
-    const famLine = familyName
-      ? `\n\nVocê foi vinculado à família: ${familyName}.`
-      : '\n\nSeu acesso foi liberado como administrador global.';
     await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
-      to_email:   email,
-      Subject:    'FinTrack — Acesso liberado! 🎉',
-      month_year: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      report_content:
-        `Olá, ${name}!\n\n` +
-        `Sua solicitação de acesso ao JF Family FinTrack foi aprovada.${famLine}\n\n` +
-        `Você receberá em instantes um segundo e-mail do Supabase com um link para definir sua senha.\n` +
-        `Clique nesse link, defina sua senha e faça login normalmente.\n\n` +
-        `Bem-vindo(a)!\n\nEquipe JF Family FinTrack`,
+      to_email:     adminEmail,
+      Subject:      'FinTrack: Nova solicitacao de acesso — ' + (userName || userEmail),
+      month_year:   now,
+      report_content: body,
     });
-  } catch(e) { console.warn('Approval email error:', e.message); }
+    console.log('[approval] Email enviado para admin:', adminEmail);
+  } catch(e) {
+    console.warn('[approval] Falha ao enviar email para admin:', e.message || e);
+  }
+}
+
+// ── Email de boas-vindas ao usuário aprovado ─────────────────────────────
+async function _sendApprovalEmail(email, name, familyName) {
+  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
+
+  // 1. Enviar link de redefinição de senha (Supabase) para o usuário definir a própria senha
+  try {
+    const redirectTo = window.location.origin + window.location.pathname;
+    await sb.auth.resetPasswordForEmail(email, { redirectTo });
+  } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
+
+  // 2. Email de boas-vindas via EmailJS
+  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  if (!tplId) return;
+
+  const nameEsc  = (name  || 'Usuário').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const famEsc   = (familyName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+  const famBlock = familyName
+    ? '<div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
+      '<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:2px">&#128106; Família vinculada</div>' +
+      '<div style="font-size:13px;color:#15803d">' + famEsc + '</div>' +
+      '</div>'
+    : '<div style="background:#f0f9ff;border-left:4px solid #38bdf8;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
+      '<div style="font-size:13px;color:#0c4a6e">Acesso liberado como <strong>administrador global</strong>.</div>' +
+      '</div>';
+
+  const body =
+    '<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">' +
+    '<div style="max-width:540px;margin:0 auto;background:#ffffff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">' +
+
+    '<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:22px 28px">' +
+    '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">JF Family FinTrack</div>' +
+    '<div style="font-size:22px;font-weight:700;color:#fff">&#127881; Acesso aprovado!</div>' +
+    '</div>' +
+
+    '<div style="padding:24px 28px">' +
+    '<p style="font-size:15px;font-weight:600;color:#111827;margin:0 0 12px">Olá, ' + nameEsc + '!</p>' +
+    '<p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6">' +
+    'Sua solicitação de acesso ao <strong>JF Family FinTrack</strong> foi <strong>aprovada</strong>. ' +
+    'Você já pode acessar o sistema.' +
+    '</p>' +
+
+    famBlock +
+
+    '<div style="background:#fef9e8;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
+    '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">&#128273; Definir sua senha</div>' +
+    '<div style="font-size:13px;color:#78350f;line-height:1.6">' +
+    'Você receberá um segundo e-mail do Supabase com um <strong>link para definir sua senha</strong>. ' +
+    'Clique nesse link, defina uma senha segura e faça login normalmente.' +
+    '</div>' +
+    '</div>' +
+
+    '<p style="font-size:12px;color:#9ca3af;margin:0">Se você não solicitou acesso a este sistema, ignore este e-mail.</p>' +
+    '</div>' +
+
+    '<div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">' +
+    '<div style="font-size:11px;color:#9ca3af">JF Family FinTrack &middot; Bem-vindo(a)!</div>' +
+    '</div>' +
+    '</div></div>';
+
+  try {
+    emailjs.init(EMAILJS_CONFIG.publicKey);
+    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+      to_email:     email,
+      Subject:      'FinTrack — Acesso aprovado! Bem-vindo(a)',
+      month_year:   new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content: body,
+    });
+  } catch(e) { console.warn('[approval] _sendApprovalEmail:', e.message); }
 }
 
 async function rejectUser(userId, userName) {

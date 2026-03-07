@@ -296,7 +296,7 @@ function txRow(t, showAccount=true) {
     ${showAccount
       ? `<td class="tx-col-account"><span class="badge badge-muted">${esc(t.accounts?.name||'—')}</span></td>`
       : `<td class="tx-col-account" style="display:none"><span class="badge badge-muted">${esc(t.accounts?.name||'—')}</span></td>`}
-    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${t.attachment_url ? '<span title="Tem anexo" style="margin-left:5px;font-size:.75rem;opacity:.7">📎</span>' : ''}</td>
     <td class="text-muted">${esc(t.payees?.name||'—')}</td>
     <td>${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}30">${esc(t.categories.name)}</span>`:'—'}</td>
     <td class="${t.amount>=0?'amount-pos':'amount-neg'}" style="white-space:nowrap">${fmt(t.amount)}</td>
@@ -855,27 +855,55 @@ async function openTxDetail(id) {
     const isPdf   = _isAttachPdf(t.attachment_url, t.attachment_name);
     const isImage = _isAttachImage(t.attachment_url, t.attachment_name);
     const safeUrl = t.attachment_url.replace(/'/g, "\'");
-    const delBtn  = `<button onclick="if(confirm('Remover anexo?')){deleteTxAttachment('${t.id}','${safeUrl}').then(()=>{closeModal('txDetailModal');loadTransactions();})}" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:.8rem;padding:2px 6px" title="Remover anexo">🗑️ Remover</button>`;
-    attachHtml = `
-      <div style="padding:12px 20px;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">📎 Anexo</span>
-          ${delBtn}
-        </div>
-        ${isImage
-          ? `<a href="${t.attachment_url}" target="_blank" style="display:block;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border)">
-               <img src="${t.attachment_url}" style="width:100%;max-height:260px;object-fit:contain;display:block;background:#f0f0f0">
-             </a>`
-          : `<a href="${t.attachment_url}" target="_blank"
-               style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);text-decoration:none;color:var(--text2)">
-               <span style="font-size:1.5rem">${isPdf ? '📄' : '📎'}</span>
-               <div>
-                 <div style="font-size:.85rem;font-weight:600;color:var(--text)">${esc(t.attachment_name || 'Abrir anexo')}</div>
-                 <div style="font-size:.72rem;color:var(--muted)">Clique para abrir ↗</div>
-               </div>
-             </a>`
-        }
-      </div>`;
+    const safeName = esc(t.attachment_name || 'Anexo');
+    const delMsg = 'Remover anexo?';
+    const delBtn = `<button onclick="if(confirm('${delMsg}')){deleteTxAttachment('${t.id}','${safeUrl}').then(()=>{closeModal('txDetailModal');loadTransactions();})}" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:.78rem;padding:3px 8px;border:1px solid rgba(192,57,43,.3);border-radius:6px;display:flex;align-items:center;gap:4px" title="Remover anexo"><span>🗑️</span> Remover</button>`;
+
+    let previewContent;
+    if (isImage) {
+      previewContent = (
+        '<a href="' + t.attachment_url + '" target="_blank" rel="noopener"' +
+        ' style="display:block;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border);background:#f8f8f8;position:relative">' +
+        '<img src="' + t.attachment_url + '"' +
+        ' style="width:100%;max-height:320px;object-fit:contain;display:block;background:#f0f0f0">' +
+        '<div style="position:absolute;bottom:0;left:0;right:0;padding:4px 8px;background:rgba(0,0,0,.38);color:#fff;font-size:.7rem;text-align:right">&#128269; Clique para abrir</div>' +
+        '</a>'
+      );
+    } else if (isPdf) {
+      previewContent = (
+        '<div style="border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">' +
+        '<iframe src="' + t.attachment_url + '" width="100%" height="360"' +
+        ' style="display:block;border:none;background:#f8f8f8"></iframe>' +
+        '<a href="' + t.attachment_url + '" target="_blank" rel="noopener"' +
+        ' style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-top:1px solid var(--border);text-decoration:none;color:var(--text2);font-size:.8rem">' +
+        '<span>&#128196;</span><span>Abrir PDF em nova aba &#8599;</span>' +
+        '</a>' +
+        '</div>'
+      );
+    } else {
+      previewContent = (
+        '<a href="' + t.attachment_url + '" target="_blank" rel="noopener"' +
+        ' style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);text-decoration:none;color:var(--text2)">' +
+        '<span style="font-size:1.6rem">&#128206;</span>' +
+        '<div>' +
+        '<div style="font-size:.85rem;font-weight:600;color:var(--text)">' + safeName + '</div>' +
+        '<div style="font-size:.72rem;color:var(--muted)">Clique para baixar &#8599;</div>' +
+        '</div>' +
+        '</a>'
+      );
+    }
+    attachHtml = (
+      '<div style="padding:14px 20px;border-top:1px solid var(--border)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">&#128206; Anexo</span>' +
+      '<span style="font-size:.72rem;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + safeName + '">' + safeName + '</span>' +
+      '</div>' +
+      delBtn +
+      '</div>' +
+      previewContent +
+      '</div>'
+    )
   }
 
   // ── Meta rows ────────────────────────────────────────────────────────────
