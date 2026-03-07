@@ -2265,9 +2265,39 @@
       </div>
       <input type="hidden" id="txId"><input type="hidden" id="txTypeField" value="expense">
       <div class="form-grid">
+        <!-- Anexo -->
+        <div class="form-group full" id="txAttachGroup">
+          <label>Anexo (PDF ou imagem)</label>
+          <div class="tx-attachment-area" id="txAttachArea"
+            onclick="if(event.target!==document.getElementById('txAttachFile'))document.getElementById('txAttachFile').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-active')"
+            ondragleave="this.classList.remove('drag-active')"
+            ondrop="handleAttachDrop(event)">
+            <input type="file" id="txAttachFile" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleAttachSelect(this.files[0])">
+            <span id="txAttachLabel">📎 Clique ou arraste um PDF/imagem aqui</span>
+          </div>
+          <div id="txAttachPreview" style="display:none" class="tx-attachment-preview">
+            <span id="txAttachIcon" style="font-size:1.2rem">📄</span>
+            <span class="att-name" id="txAttachName"></span>
+            <span class="att-remove" onclick="removeAttachment()" title="Remover">✕</span>
+          </div>
+          <input type="hidden" id="txAttachUrl">
+          <input type="hidden" id="txAttachNameHidden">
+          <button type="button" id="receiptAiReadBtn"
+            onclick="readReceiptWithAI()"
+            style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
+            🤖 Ler com IA
+          </button>
+          <input type="file" id="receiptScanInput"
+            accept="image/*,application/pdf" capture="environment"
+            style="display:none"
+            onchange="onReceiptScanInput(this)">
+          <div id="receiptAiResultPanel" style="display:none;margin-top:10px"></div>
+        </div>
         <div class="form-group"><label>Data *</label><input type="date" id="txDate"></div>
         <div class="form-group"><label>Valor *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button><input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="if(document.getElementById('txIsInternational')?.checked)updateIofMirror()"></div></div>
         <div class="form-group full"><label>Descrição *</label><input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"></div>
+
                 <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
 <div class="form-group"><label>Conta *</label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
         <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino *</label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
@@ -2336,42 +2366,6 @@
           <div class="iof-mirror-info" id="txIofMirrorInfo"></div>
         </div>
 
-        <!-- Anexo -->
-        <div class="form-group full" id="txAttachGroup">
-          <label>Anexo (PDF ou imagem)</label>
-          <div class="tx-attachment-area" id="txAttachArea"
-            onclick="if(event.target!==document.getElementById('txAttachFile'))document.getElementById('txAttachFile').click()"
-            ondragover="event.preventDefault();this.classList.add('drag-active')"
-            ondragleave="this.classList.remove('drag-active')"
-            ondrop="handleAttachDrop(event)">
-            <input type="file" id="txAttachFile" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleAttachSelect(this.files[0])">
-            <span id="txAttachLabel">📎 Clique ou arraste um PDF/imagem aqui</span>
-          </div>
-          <div id="txAttachPreview" style="display:none" class="tx-attachment-preview">
-            <span id="txAttachIcon" style="font-size:1.2rem">📄</span>
-            <span class="att-name" id="txAttachName"></span>
-            <span class="att-remove" onclick="removeAttachment()" title="Remover">✕</span>
-          </div>
-          <!-- Hidden fields persist attachment state between form resets -->
-          <input type="hidden" id="txAttachUrl">
-          <input type="hidden" id="txAttachNameHidden">
-
-          <!-- Botão IA (aparece automaticamente após selecionar arquivo) -->
-          <button type="button" id="receiptAiReadBtn"
-            onclick="readReceiptWithAI()"
-            style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
-            🤖 Ler com IA
-          </button>
-
-          <!-- Input oculto para câmera (aceita câmera em mobile) -->
-          <input type="file" id="receiptScanInput"
-            accept="image/*,application/pdf" capture="environment"
-            style="display:none"
-            onchange="onReceiptScanInput(this)">
-
-          <!-- Painel de resultado IA -->
-          <div id="receiptAiResultPanel" style="display:none;margin-top:10px"></div>
-        </div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button><button class="btn btn-primary" onclick="saveTransaction()">Salvar</button></div>
