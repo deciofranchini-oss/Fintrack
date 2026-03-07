@@ -2823,3 +2823,31 @@ html, body{
   background: var(--border);
   margin-left: 6px;
 }
+
+/* ══ User list rows (clickable) ══════════════════════════════════════════ */
+.user-list-row { transition: background .12s; }
+.user-list-row:hover { background: var(--bg2); }
+
+/* ══ Topbar avatar circle (before logout) ═══════════════════════════════ */
+#topbarAvatarCircle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: opacity .15s;
+}
+#topbarAvatarCircle:hover { opacity: .8; }
+
+/* ══ Settings user avatar ════════════════════════════════════════════════ */
+#settingsUserAvatarWrap {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  overflow: hidden;
+  padding: 0 !important;
+}
+#settingsUserAvatarWrap img,
+#settingsUserAvatarWrap div {
+  width: 40px !important;
+  height: 40px !important;
+}
