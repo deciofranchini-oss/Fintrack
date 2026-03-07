@@ -2568,3 +2568,143 @@ html, body{
   font-size: .82rem;
   letter-spacing: .02em;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUDIT PAGE — counters, badges, search
+════════════════════════════════════════════════════════════════════════ */
+.audit-counters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.audit-counter {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  border-top: 3px solid var(--border);
+  transition: box-shadow .15s;
+}
+.audit-counter:hover { box-shadow: var(--shadow); }
+.audit-counter-total  { border-top-color: var(--accent); }
+.audit-counter-ok     { border-top-color: var(--green); }
+.audit-counter-pending{ border-top-color: var(--amber); }
+.audit-counter-error  { border-top-color: var(--red); }
+.audit-counter-value  { font-family: var(--font-serif); font-size: 1.7rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--text); }
+.audit-counter-total  .audit-counter-value { color: var(--accent); }
+.audit-counter-ok     .audit-counter-value { color: var(--green); }
+.audit-counter-pending .audit-counter-value { color: var(--amber); }
+.audit-counter-error  .audit-counter-value { color: var(--red); }
+.audit-counter-label  { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; margin-top: 6px; }
+
+.audit-status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 100px;
+  font-size: .72rem; font-weight: 600; white-space: nowrap;
+}
+.audit-ok      { background: var(--green-lt); color: var(--green); border: 1px solid rgba(42,122,74,.2); }
+.audit-pending { background: var(--amber-lt); color: var(--amber); border: 1px solid rgba(180,83,9,.2); }
+.audit-error   { background: var(--red-lt);   color: var(--red);   border: 1px solid rgba(192,57,43,.2); }
+
+@media (max-width: 640px) {
+  .audit-counters { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   CATEGORIES PAGE — summary bar, col headers, add button
+════════════════════════════════════════════════════════════════════════ */
+.cat-summary-bar {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  gap: 0;
+}
+.cat-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  padding: 4px 0;
+}
+.cat-summary-sep {
+  width: 1px; height: 40px;
+  background: var(--border);
+  margin: 0 20px;
+  flex-shrink: 0;
+}
+.cat-summary-icon { font-size: 1.3rem; }
+.cat-summary-label {
+  font-size: .8rem; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+}
+.cat-summary-count {
+  font-family: var(--font-serif);
+  font-size: 1.4rem; font-weight: 600;
+  margin-left: auto;
+}
+.cat-summary-expense .cat-summary-count { color: var(--red); }
+.cat-summary-income  .cat-summary-count { color: var(--green); }
+
+.cat-col-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.cat-col-expense { background: linear-gradient(135deg, #fff5f5, #fff); border-bottom-color: #fecaca; }
+.cat-col-income  { background: linear-gradient(135deg, #f0fdf4, #fff); border-bottom-color: #bbf7d0; }
+.cat-col-icon    { font-size: 1.2rem; }
+.cat-col-title   { font-weight: 700; font-size: .9rem; color: var(--text); }
+
+.cat-add-root {
+  text-align: center;
+  padding: 12px;
+  font-size: .8rem;
+  color: var(--muted);
+  border-top: 1px dashed var(--border);
+  cursor: pointer;
+  transition: all .15s;
+}
+.cat-add-root:hover { color: var(--accent); background: var(--accent-lt); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   PAYEES — row avatar
+════════════════════════════════════════════════════════════════════════ */
+.payee-row-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SETTINGS — group labels
+════════════════════════════════════════════════════════════════════════ */
+.settings-group-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 8px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-group-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  margin-left: 6px;
+}
