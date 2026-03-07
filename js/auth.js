@@ -2366,14 +2366,15 @@ function _renderUserMenuFamilies() {
   const roleColor = r => ({ owner:'#92400e', admin:'#b45309', user:'var(--accent)', viewer:'var(--muted)' }[r] || 'var(--muted)');
 
   list.innerHTML = families.map(f => {
-    const isActive = f.id === currentUser.family_id;
+    // Comparar como string para evitar falhas por tipo/espaço
+    const isActive = String(f.id).trim() === String(currentUser.family_id || '').trim();
     return `
       <button class="um-family-item${isActive ? ' um-family-item--active' : ''}"
               onclick="_pickFamilyFromMenu('${f.id}')">
-        <div class="um-family-icon">
+        <div class="um-family-icon" style="${isActive ? 'background:var(--accent);border-color:var(--accent)' : ''}">
           ${isActive
-            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" stroke="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`
-            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
+            ? '<span style="font-size:.9rem;line-height:1">🏠</span>'
+            : '<span style="font-size:.9rem;line-height:1;opacity:.45">🏠</span>'
           }
         </div>
         <div class="um-family-body">
@@ -2382,7 +2383,7 @@ function _renderUserMenuFamilies() {
             ${roleIcon(f.role)} ${roleLabel(f.role)}
           </div>
         </div>
-        ${isActive ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+        ${isActive ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
       </button>`;
   }).join('');
 }
