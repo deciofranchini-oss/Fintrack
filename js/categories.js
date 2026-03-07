@@ -41,7 +41,7 @@ function renderCategories() {
 
     const parents     = state.categories.filter(c => c.type === dbType && !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
     const allChildren = state.categories.filter(c => c.type === dbType && c.parent_id);
-    if (countEl) countEl.textContent = state.categories.filter(c => c.type === dbType).length + ' categorias';
+    if (countEl) { const n = state.categories.filter(c => c.type === dbType).length; countEl.textContent = n + (n === 1 ? ' cat.' : ' cats.'); }
 
     if (!parents.length) {
       container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">
