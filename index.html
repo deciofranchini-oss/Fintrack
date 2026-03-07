@@ -242,9 +242,41 @@
       <button id="privacyToggleBtn" onclick="togglePrivacy()" title="Ocultar valores" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--muted);display:flex;align-items:center;transition:color 0.2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
-      <div class="topbar-user" onclick="showUserMenu()" id="topbarUserBtn" style="display:none">
-        <div class="topbar-user-avatar" id="topbarUserAvatar">?</div>
-        <span class="topbar-user-name" id="topbarUserName"></span>
+      <!-- User avatar button + dropdown -->
+      <div id="topbarUserBtn" style="display:none;position:relative">
+        <div class="topbar-user" onclick="toggleUserMenu(event)" id="topbarUserAvatar" title="Meu perfil">
+          <span id="topbarUserAvatarInner">?</span>
+        </div>
+        <!-- Dropdown menu -->
+        <div id="userMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;
+          background:var(--card);border:1px solid var(--border);border-radius:14px;
+          box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:220px;z-index:9999;overflow:hidden">
+          <!-- Header with avatar + name -->
+          <div id="userMenuHeader" style="padding:16px 16px 12px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;gap:12px;background:var(--surface2)">
+            <div id="userMenuAvatarBig" style="flex-shrink:0"></div>
+            <div style="min-width:0">
+              <div id="userMenuName" style="font-size:.88rem;font-weight:700;color:var(--text);
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+              <div id="userMenuEmail" style="font-size:.72rem;color:var(--muted);
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+              <div id="userMenuRole" style="font-size:.68rem;margin-top:3px"></div>
+            </div>
+          </div>
+          <!-- Menu items -->
+          <div style="padding:6px">
+            <button class="user-menu-item" onclick="openMyProfile()">
+              <span>🖼️</span><span>Alterar foto</span>
+            </button>
+            <button class="user-menu-item" onclick="showChangeMyPwd();closeUserMenu()">
+              <span>🔑</span><span>Alterar senha</span>
+            </button>
+            <div style="height:1px;background:var(--border);margin:4px 0"></div>
+            <button class="user-menu-item" onclick="doLogout()" style="color:var(--red,#dc2626)">
+              <span>↩</span><span>Sair</span>
+            </button>
+          </div>
+        </div>
       </div>
       
       <div id="familySwitcherWrap" style="display:none;align-items:center;gap:6px;margin-right:4px">
@@ -1012,13 +1044,21 @@
       <!-- Current user info -->
       <div class="settings-section" id="currentUserSection">
         <div class="settings-card">
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--accent-lt)">👤</div>
-            <div class="settings-row-info">
+          <div class="settings-row" style="gap:14px">
+            <div id="settingsUserAvatarWrap"
+                 onclick="openMyProfile()"
+                 title="Alterar foto"
+                 style="width:52px;height:52px;border-radius:50%;overflow:hidden;flex-shrink:0;
+                        cursor:pointer;border:2px solid var(--border);transition:opacity .15s;
+                        display:flex;align-items:center;justify-content:center;background:var(--surface2)"
+                 onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
+            </div>
+            <div class="settings-row-info" style="flex:1;min-width:0">
               <div class="settings-row-label" id="currentUserName">—</div>
               <div class="settings-row-sub" id="currentUserEmail">—</div>
             </div>
             <div class="settings-row-action" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="openMyProfile()">🖼️ Foto</button>
               <button class="btn btn-ghost btn-sm" onclick="showChangeMyPwd()">🔑 Senha</button>
               <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="doLogout()">↩ Sair</button>
             </div>
@@ -3094,6 +3134,86 @@
           <button class="btn btn-primary btn-sm" id="resetPwdBtn" onclick="doResetUserPwd()">💾 Salvar Nova Senha</button>
         </div>
         <p style="font-size:.75rem;color:var(--muted);margin-top:12px">O usuário será solicitado a trocar a senha no próximo login.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Profile Modal: avatar + password in one place -->
+  <div class="modal-overlay" id="myProfileModal">
+    <div class="modal" style="max-width:400px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">👤 Meu Perfil</span>
+        <button class="modal-close" onclick="closeModal('myProfileModal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding-top:8px">
+
+        <!-- Avatar section -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;
+                    padding:20px 0 18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+          <!-- Avatar circle clickable -->
+          <div id="myProfileAvatarWrap" onclick="document.getElementById('myProfileAvatarFile').click()"
+               title="Clique para alterar foto"
+               style="width:88px;height:88px;border-radius:50%;overflow:hidden;cursor:pointer;
+                      border:3px solid var(--accent);background:var(--surface2);
+                      display:flex;align-items:center;justify-content:center;
+                      transition:opacity .15s;flex-shrink:0;position:relative"
+               onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+          </div>
+          <div style="text-align:center">
+            <div id="myProfileName" style="font-size:.95rem;font-weight:700;color:var(--text)"></div>
+            <div id="myProfileEmail" style="font-size:.76rem;color:var(--muted)"></div>
+            <div id="myProfileRoleBadge" style="margin-top:4px"></div>
+          </div>
+          <!-- Avatar actions -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:.78rem">
+              📷 Alterar foto
+              <input type="file" id="myProfileAvatarFile" accept="image/*"
+                     style="display:none" onchange="previewMyProfileAvatar(this)">
+            </label>
+            <button id="myProfileRemoveAvatarBtn" class="btn btn-ghost btn-sm"
+                    style="font-size:.78rem;color:var(--red);display:none"
+                    onclick="removeMyProfileAvatar()">✕ Remover</button>
+          </div>
+          <input type="hidden" id="myProfileAvatarRemoveFlag" value="">
+          <div id="myProfileAvatarError" style="display:none;color:var(--red);font-size:.78rem;
+            padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;width:100%;text-align:center;box-sizing:border-box"></div>
+        </div>
+
+        <!-- Password section -->
+        <div style="margin-bottom:4px">
+          <div style="font-size:.8rem;font-weight:700;color:var(--text2);
+                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">
+            Alterar senha
+          </div>
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Nova senha</label>
+            <input type="password" id="myProfilePwd1" placeholder="Mínimo 8 caracteres"
+                   autocomplete="new-password" oninput="updateMyProfilePwdStrength()">
+            <!-- Strength bar -->
+            <div style="margin-top:5px;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
+              <div id="myProfilePwdBar" style="height:100%;width:0;transition:width .3s,background .3s;border-radius:3px"></div>
+            </div>
+            <div id="myProfilePwdHint" style="font-size:.7rem;color:var(--muted);margin-top:3px"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label>Confirmar senha</label>
+            <input type="password" id="myProfilePwd2" placeholder="Repita a nova senha"
+                   autocomplete="new-password"
+                   onkeydown="if(event.key==='Enter')saveMyProfile()">
+          </div>
+          <div id="myProfilePwdNote" style="font-size:.76rem;color:var(--muted);margin-bottom:14px">
+            Deixe em branco para manter a senha atual.
+          </div>
+        </div>
+
+        <div id="myProfileError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;
+          padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('myProfileModal')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="myProfileSaveBtn" onclick="saveMyProfile()">💾 Salvar</button>
+        </div>
+
       </div>
     </div>
   </div>
