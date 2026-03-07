@@ -1797,11 +1797,22 @@
                   <option value="admin">Administrador</option>
                 </select>
               </div>
-              <div class="form-group full" style="grid-column:1/-1">
-                <label>Família <span style="font-size:.72rem;color:var(--muted)">(admins sem família veem todos os dados)</span></label>
-                <select id="uFamilyId">
-                  <option value="">— Nenhuma (admin global) —</option>
-                </select>
+              <div class="form-group" style="grid-column:1/-1">
+                <label>Família inicial <span style="font-size:.72rem;color:var(--muted)">(opcional — gerencie vínculos na aba Famílias)</span></label>
+                <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+                  <select id="uInitFamilyId">
+                    <option value="">— Nenhuma (admin global) —</option>
+                  </select>
+                  <select id="uInitFamilyRole" style="width:148px">
+                    <option value="user">👤 Usuário</option>
+                    <option value="admin">🔧 Admin</option>
+                    <option value="viewer">👁 Visualizador</option>
+                    <option value="owner">👑 Owner</option>
+                  </select>
+                </div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
+                  Para adicionar o usuário a <strong>múltiplas famílias</strong>, use a aba <strong>Famílias</strong> após criar o usuário.
+                </div>
               </div>
             </div>
             <div style="font-size:.8rem;font-weight:600;color:var(--text2);margin:10px 0 6px">Permissões</div>
