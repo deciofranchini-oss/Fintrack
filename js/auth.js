@@ -1529,15 +1529,43 @@ async function doResetUserPwd() {
   const pwd1     = document.getElementById('resetPwdNew1').value;
   const pwd2     = document.getElementById('resetPwdNew2').value;
   const errEl    = document.getElementById('resetPwdError');
+  const btn      = document.getElementById('resetPwdBtn');
   errEl.style.display = 'none';
   if (pwd1.length < 8) { errEl.textContent = 'A senha deve ter pelo menos 8 caracteres.'; errEl.style.display = ''; return; }
   if (pwd1 !== pwd2)   { errEl.textContent = 'As senhas não coincidem.';                  errEl.style.display = ''; return; }
-  const hash = await sha256(pwd1);
-  const { error } = await sb.from('app_users').update({ password_hash: hash, must_change_pwd: true }).eq('id', userId);
-  if (error) { errEl.textContent = 'Erro: ' + error.message; errEl.style.display = ''; return; }
-  toast(`✓ Senha de ${userName} redefinida. Usuário deverá trocar no próximo login.`, 'success');
-  closeModal('resetPwdModal');
-  await loadUsersList();
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  try {
+    // 1. Buscar email do usuário alvo
+    const { data: userRow, error: fetchErr } = await sb
+      .from('app_users').select('email').eq('id', userId).maybeSingle();
+    if (fetchErr || !userRow) throw new Error(fetchErr?.message || 'Usuário não encontrado.');
+
+    // 2. Atualizar Supabase Auth via RPC SECURITY DEFINER
+    const { data: rpcResult, error: rpcErr } = await sb.rpc('admin_set_user_password', {
+      p_user_email:   userRow.email,
+      p_new_password: pwd1,
+    });
+    if (rpcErr) throw new Error('Erro Auth: ' + rpcErr.message);
+    if (rpcResult?.error) throw new Error(rpcResult.error);
+
+    // 3. Sincronizar hash + marcar must_change_pwd no app_users
+    const hash = await sha256(pwd1);
+    const { error: dbErr } = await sb
+      .from('app_users')
+      .update({ password_hash: hash, must_change_pwd: true })
+      .eq('id', userId);
+    if (dbErr) console.warn('[resetPwd] app_users sync:', dbErr.message);
+
+    toast(`✓ Senha de ${userName} redefinida. O usuário deve trocar no próximo login.`, 'success');
+    closeModal('resetPwdModal');
+    await loadUsersList();
+  } catch(e) {
+    errEl.textContent = 'Erro: ' + (e.message || e);
+    errEl.style.display = '';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar Nova Senha'; }
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════
