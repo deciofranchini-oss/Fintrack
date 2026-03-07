@@ -247,12 +247,6 @@
         <span class="topbar-user-name" id="topbarUserName"></span>
       </div>
       
-      <div id="familySwitcherWrap" style="display:none;align-items:center;gap:6px;margin-right:4px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <select id="familySwitcherSelect" onchange="switchFamily(this.value)"
-          style="font-size:.8rem;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 8px;cursor:pointer;max-width:160px;outline:none">
-        </select>
-      </div>
       <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
         <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
            style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;text-decoration:none;color:var(--text);">
@@ -263,16 +257,12 @@
           <span aria-hidden="true" style="font-size:16px;line-height:1">📥</span>
         </button>
         <button class="topbar-icon-btn" id="auditNav" onclick="navigate('audit')" title="Auditoria"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
+           style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
           <span aria-hidden="true" style="font-size:16px;line-height:1">🧾</span>
         </button>
         <button class="topbar-icon-btn" id="settingsNav" onclick="navigate('settings')" title="Configurações"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
+           style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
           <span aria-hidden="true" style="font-size:16px;line-height:1">⚙️</span>
-        </button>
-        <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--red,#dc2626);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
 <button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()" title="Nova Transação" aria-label="Nova Transação">+</button>
@@ -381,7 +371,7 @@
         <button class="tab" onclick="filterAccounts('dinheiro')">Dinheiro</button>
         <button class="tab" onclick="filterAccounts('__group__')">Por Grupo</button>
       </div>
-
+      <div id="accountsGroupBar" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
       <div class="account-grid" id="accountGrid"></div>
     </div>
 
@@ -588,39 +578,20 @@
     <!-- BUDGETS -->
 <div class="page" id="page-budgets">
 
-  <!-- Header: tabs + period picker + new button -->
-  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="tab-bar" style="margin-bottom:0">
-        <button class="tab active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">📅 Mensal</button>
-        <button class="tab" id="budgetTabAnnual"  onclick="setBudgetView('annual')">📆 Anual</button>
-      </div>
-      <div id="budgetMonthPicker">
-        <input type="month" id="budgetMonth" onchange="loadBudgets()" style="font-size:.85rem">
-      </div>
-      <div id="budgetYearPicker" style="display:none">
-        <select id="budgetYear" onchange="loadBudgets()" style="font-size:.85rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)"></select>
-      </div>
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="page-header-left">
+      <input type="month" id="budgetMonth" onchange="loadBudgets()">
     </div>
-    <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo orçamento</button>
+
+    <div class="page-header-right">
+      <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo</button>
+    </div>
   </div>
 
-  <!-- Budget cards grid -->
+  <!-- Espaço de uma linha -->
   <div style="height:16px;"></div>
-  <div class="budget-grid" id="budgetGrid"></div>
 
-  <!-- History panel -->
-  <div style="margin-top:32px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-      <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">📊 Histórico por categoria</span>
-      <select id="budgetHistCat" onchange="loadBudgetHistory()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:240px">
-        <option value="">— Selecionar categoria —</option>
-      </select>
-    </div>
-    <div id="budgetHistContainer" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;min-height:48px">
-      <div style="color:var(--muted);font-size:.83rem;padding:16px 12px">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
-    </div>
-  </div>
+  <div class="grid-2" id="budgetGrid"></div>
 
 </div>
 
@@ -628,95 +599,132 @@
     <!-- CATEGORIES -->
     <div class="page" id="page-categories">
       <div class="section-header mb-6">
-        <span class="section-title">Categorias de Transações</span>
+        <span class="section-title">Categorias</span>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">+ Despesa</button>
-          <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','receita')">+ Receita</button>
+          <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">＋ Despesa</button>
+          <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','receita')">＋ Receita</button>
         </div>
       </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Despesas</span>
-            <span id="catCountExpense" class="badge badge-red"></span>
-          </div>
-          <div id="catEditorExpense"></div>
+
+      <!-- Resumo rápido -->
+      <div class="cat-summary-bar">
+        <div class="cat-summary-chip cat-summary-expense">
+          <span class="cat-summary-icon">💸</span>
+          <span id="catCountExpense" class="cat-summary-count">—</span>
+          <span class="cat-summary-label">Despesas</span>
         </div>
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Receitas</span>
-            <span id="catCountIncome" class="badge badge-green"></span>
-          </div>
-          <div id="catEditorIncome"></div>
+        <div class="cat-summary-chip cat-summary-income">
+          <span class="cat-summary-icon">💰</span>
+          <span id="catCountIncome" class="cat-summary-count">—</span>
+          <span class="cat-summary-label">Receitas</span>
         </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="cat-tabs">
+        <button class="cat-tab active" id="catTabExpense" onclick="switchCatTab('expense')">
+          <span>💸</span> Despesas
+        </button>
+        <button class="cat-tab" id="catTabIncome" onclick="switchCatTab('income')">
+          <span>💰</span> Receitas
+        </button>
+      </div>
+
+      <div id="catPanelExpense" class="cat-panel">
+        <div id="catEditorExpense"></div>
+        <button class="cat-add-root-btn" onclick="openCategoryModal('','','despesa')">
+          ＋ Nova categoria de despesa
+        </button>
+      </div>
+      <div id="catPanelIncome" class="cat-panel" style="display:none">
+        <div id="catEditorIncome"></div>
+        <button class="cat-add-root-btn cat-add-root-btn--income" onclick="openCategoryModal('','','receita')">
+          ＋ Nova categoria de receita
+        </button>
       </div>
     </div>
 
     <!-- PAYEES -->
     <div class="page" id="page-payees">
-      <div class="section-header mb-6"><span class="section-title">Beneficiários & Fontes Pagadoras</span><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="openPayeeClipboardImport()">📋 Importar da Área de Transferência</button><button class="btn btn-primary" onclick="openPayeeModal()">+ Novo</button></div></div>
-      <div class="filters">
-        <div class="search-wrap">
+      <div class="section-header mb-6">
+        <span class="section-title">Beneficiários</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openPayeeClipboardImport()" title="Importar lista">📋</button>
+          <button class="btn btn-primary" onclick="openPayeeModal()">＋ Novo</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div id="payeeSummaryBar" class="payee-stats-bar"></div>
+
+      <!-- Filters -->
+      <div class="filters mb-6">
+        <div class="search-wrap" style="flex:1">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="payeeSearch" placeholder="Buscar..." oninput="filterPayees()">
+          <input type="text" id="payeeSearch" placeholder="Buscar beneficiário…" oninput="filterPayees()">
         </div>
         <select id="payeeTypeFilter" onchange="filterPayees()" style="max-width:180px">
           <option value="">Todos os tipos</option>
-          <option value="beneficiario">Beneficiários</option>
-          <option value="fonte_pagadora">Fontes Pagadoras</option>
-          <option value="ambos">Ambos</option>
+          <option value="beneficiario">👤 Beneficiários</option>
+          <option value="fonte_pagadora">🏢 Fontes Pagadoras</option>
+          <option value="ambos">🔀 Ambos</option>
         </select>
       </div>
-      <!-- Payee group summary chips -->
-      <div id="payeeSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+
       <!-- Grouped containers -->
       <div id="payeeGroups"></div>
     </div>
 
     <!-- SCHEDULED TRANSACTIONS -->
     <div class="page" id="page-scheduled">
-      <!-- Mobile header -->
       <div class="section-header mb-6">
-        <span class="section-title">Programados</span>
+        <span class="section-title">Transações Programadas</span>
         <button class="btn btn-primary" onclick="openScheduledModal()">+ Programar</button>
       </div>
 
-      <!-- Status summary chips (scrollable on mobile) -->
-      <div id="scheduledSummaryBar" class="sc-summary-bar"></div>
+      <!-- Status summary bar -->
+      <div id="scheduledSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"></div>
 
-      <!-- Compact filter bar -->
-      <div class="sc-filter-bar mb-6">
-        <div class="search-wrap" style="flex:1;min-width:120px">
+      <!-- Filter bar -->
+      <div class="filters mb-6" style="flex-wrap:wrap">
+        <div class="search-wrap">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" id="scSearch" placeholder="Buscar..." oninput="filterScheduled()">
         </div>
-        <div class="sc-filter-chips">
-          <button class="sc-chip active" id="scChipAll"    onclick="scChipFilter(event,'all')">Todos</button>
-          <button class="sc-chip"        id="scChipActive" onclick="scChipFilter(event,'active')">Ativos</button>
-          <button class="sc-chip"        id="scChipPaused" onclick="scChipFilter(event,'paused')">Pausados</button>
-          <button class="sc-chip"        id="scChipDone"   onclick="scChipFilter(event,'finished')">Concluídos</button>
-        </div>
-        <select id="scTypeFilter" onchange="filterScheduled()" class="sc-type-select">
+        <select id="scStatusFilter" onchange="filterScheduled()" style="max-width:160px">
+          <option value="">Todos os status</option>
+          <option value="active">Ativos</option>
+          <option value="paused">Pausados</option>
+          <option value="finished">Concluídos</option>
+        </select>
+        <select id="scTypeFilter" onchange="filterScheduled()" style="max-width:140px">
           <option value="">Todos os tipos</option>
-          <option value="expense">💸 Despesas</option>
-          <option value="income">💰 Receitas</option>
-          <option value="transfer">🔄 Transferências</option>
+          <option value="expense">Despesas</option>
+          <option value="income">Receitas</option>
+          <option value="transfer">Transferências</option>
           <option value="card_payment">💳 Pgto. Cartão</option>
         </select>
       </div>
 
-      <!-- Upcoming next 30 days -->
+      <!-- Upcoming next 30 days alert -->
       <div id="scheduledUpcomingCard" style="display:none" class="card mb-6">
         <div class="card-header">
           <span class="card-title">⏰ Próximos 30 dias</span>
           <span id="scheduledUpcomingTotal" class="badge badge-amber"></span>
         </div>
-        <div id="scheduledUpcomingList" class="sc-upcoming-list"></div>
+        <div class="table-wrap" style="margin:0 -20px -20px">
+          <table>
+            <thead><tr><th>Data</th><th>Descrição</th><th>Conta</th><th>Valor</th><th>Ação</th></tr></thead>
+            <tbody id="scheduledUpcomingBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Main list -->
       <div id="scheduledList"></div>
-    </div>    <!-- IMPORT / BACKUP PAGE -->
+    </div>
+
+    <!-- IMPORT / BACKUP PAGE -->
     <div class="page" id="page-import">
 
       <!-- ══ WIZARD STEPS ══ -->
@@ -944,7 +952,9 @@
 
     <!-- SETTINGS PAGE -->
     <div class="page" id="page-settings">
-      <div class="section-header mb-6"><span class="section-title">Configurações</span></div>
+      <div class="section-header mb-6">
+        <span class="section-title">Configurações</span>
+      </div>
 
 <div class="settings-section">
         <div class="settings-card">
@@ -962,6 +972,7 @@
 
 
       <!-- Current user info -->
+      <div class="settings-section-label">👤 Conta</div>
       <div class="settings-section" id="currentUserSection">
         <div class="settings-card">
           <div class="settings-row">
@@ -1061,35 +1072,31 @@
               <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()">Configurar</button>
             </div>
           </div>
-          <!-- IA / Anthropic -->
           <div class="settings-row">
-            <div class="settings-row-icon" style="background:#f5f3ff">🤖</div>
+            <div class="settings-row-icon" style="background:var(--blue-lt,#eff6ff)">📋</div>
             <div class="settings-row-info">
-              <div class="settings-row-label" style="display:flex;align-items:center;gap:6px">
-                Leitura de Recibos com IA
-                <span id="aiStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></span>
-              </div>
-              <div class="settings-row-sub" id="aiSettingsSub">Configure para habilitar leitura automática de recibos</div>
+              <div class="settings-row-label">SQL: Migração Auto-Registro</div>
+              <div class="settings-row-sub">Adiciona colunas de automação à tabela scheduled_transactions</div>
             </div>
             <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Configurar</button>
+              <button class="btn btn-ghost btn-sm" onclick="showAutoRegisterMigration()">Ver SQL</button>
             </div>
           </div>
-
+          <div class="settings-row">
+            <div class="settings-row-icon" style="background:#fef3c7">🔐</div>
+            <div class="settings-row-info">
+              <div class="settings-row-label">SQL: Migração Multi-Usuário</div>
+              <div class="settings-row-sub">Cria tabelas app_users e app_sessions para login com aprovação</div>
+            </div>
+            <div class="settings-row-action">
+              <button class="btn btn-ghost btn-sm" onclick="showAuthMigration()">Ver SQL</button>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- User Management (admin only) -->
       <div class="settings-section" id="userMgmtSection" style="display:none">
-        <!-- Pending approvals alert — shown when there are users awaiting approval -->
-        <div id="pendingApprovalsAlert" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:12px;padding:12px 16px;margin-bottom:8px;display:none;align-items:center;gap:12px">
-          <span style="font-size:1.3rem;flex-shrink:0">⏳</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.85rem;font-weight:700;color:#92400e" id="pendingApprovalsAlertText">Solicitações aguardando aprovação</div>
-            <div style="font-size:.76rem;color:#b45309;margin-top:1px">Acesse Gerenciar Usuários para aprovar ou rejeitar</div>
-          </div>
-          <button class="btn btn-sm" onclick="openUserAdmin()" style="background:#f59e0b;color:#fff;border:none;white-space:nowrap;font-size:.78rem;padding:6px 12px;border-radius:8px;font-weight:600;cursor:pointer">Ver agora →</button>
-        </div>
         <div class="settings-card">
           <div class="settings-row">
             <div class="settings-row-icon" style="background:#e0f2fe">👥</div>
@@ -1098,7 +1105,7 @@
               <div class="settings-row-sub" id="userMgmtSub">Controle de acesso e permissões</div>
             </div>
             <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
+              <button class="btn btn-ghost btn-sm" onclick="openUserAdmin()">Gerenciar</button>
             </div>
           </div>
         </div>
@@ -1139,6 +1146,18 @@
             </div>
           </div>
 
+<div class="settings-row">
+  <div class="settings-row-info">
+    <div class="settings-row-label">Modo compacto (Transações)</div>
+    <div class="settings-row-sub">Melhora leitura em telas menores e reduz altura das linhas</div>
+  </div>
+  <div class="settings-row-action">
+    <label style="position:relative;display:inline-block;width:42px;height:22px">
+      <input type="checkbox" id="txCompactToggle" onchange="saveTxCompactPreference()" style="opacity:0;width:0;height:0">
+      <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:100px;transition:.3s" id="txCompactKnob"></span>
+    </label>
+  </div>
+</div>
           <!-- Frequency -->
           <div class="settings-row" id="autoCheckFreqRow">
             <div class="settings-row-icon" style="background:var(--bg2)">⏱️</div>
@@ -1247,46 +1266,11 @@
           <div class="settings-row">
             <div class="settings-row-icon" style="background:var(--accent-lt)">📥</div>
             <div class="settings-row-info">
-              <div class="settings-row-label">Importar / Backup Local</div>
+              <div class="settings-row-label">Importar / Backup</div>
               <div class="settings-row-sub">MoneyWiz, backup JSON, limpar dados</div>
             </div>
             <div class="settings-row-action">
               <button class="btn btn-ghost btn-sm" onclick="navigate('import')">Abrir</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ BACKUP NO BANCO (admin only) ══ -->
-      <div class="settings-section" id="dbBackupSection" style="display:none">
-        <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;padding-left:4px">🗄️ Backup no Banco de Dados</div>
-        <div class="settings-card">
-          <!-- Header / create -->
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--blue-lt,#e8f0fb)">📸</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Snapshots no Supabase</div>
-              <div class="settings-row-sub">Salva uma cópia completa dos dados dentro do próprio banco. Até 20 snapshots armazenados.</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-primary btn-sm" id="dbBackupCreateBtn" onclick="openDbBackupCreate()">📸 Criar Snapshot</button>
-            </div>
-          </div>
-
-          <!-- Migration hint (shown when table doesn't exist) -->
-          <div id="dbBackupMigrationHint" style="display:none;margin:4px 16px 12px;padding:12px 14px;background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.8rem;line-height:1.6">
-            ⚠️ A tabela <code>app_backups</code> ainda não existe no banco.<br>
-            Execute o arquivo <code>migration_db_backup.sql</code> no SQL Editor do Supabase para habilitar esta funcionalidade.
-            <div style="margin-top:8px">
-              <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Abrir Supabase</button>
-            </div>
-          </div>
-
-          <!-- Backup list -->
-          <div style="padding:0 16px 12px">
-            <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Snapshots salvos</div>
-            <div id="dbBackupList">
-              <div style="color:var(--muted);font-size:.83rem;padding:8px 0">Acesse Configurações para ver os backups.</div>
             </div>
           </div>
         </div>
@@ -1308,34 +1292,67 @@
 
     <!-- AUDIT PAGE (admin) -->
     <div class="page" id="page-audit">
-      <div class="card">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <h3 style="margin:0">🧾 Auditoria: Auto-registros</h3>
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-            <select id="auditStatusFilter" class="input" style="max-width:180px" onchange="loadAuditLogs()">
-              <option value="">Todos</option>
-              <option value="confirmed">✅ Confirmadas</option>
-              <option value="pending">⏳ Pendentes</option>
-            </select>
-            <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Atualizar</button>
-          </div>
+      <div class="section-header mb-6">
+        <span class="section-title">Auditoria</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Atualizar</button>
+      </div>
+
+      <!-- Counters -->
+      <div class="audit-counters">
+        <div class="audit-counter">
+          <div class="audit-counter-val" id="auditCountTotal">—</div>
+          <div class="audit-counter-lbl">Total</div>
         </div>
-        <div class="text-muted" style="margin-top:6px;font-size:.82rem">
-          Mostra execuções automáticas de transações programadas (registro diário e timers).
+        <div class="audit-counter audit-counter-ok">
+          <div class="audit-counter-val" id="auditCountConfirmed">—</div>
+          <div class="audit-counter-lbl">Confirmadas</div>
         </div>
-        <div style="margin-top:12px;overflow:auto">
-          <table class="table tx-table" style="min-width:720px">
+        <div class="audit-counter audit-counter-pend">
+          <div class="audit-counter-val" id="auditCountPending">—</div>
+          <div class="audit-counter-lbl">Pendentes</div>
+        </div>
+        <div class="audit-counter audit-counter-err">
+          <div class="audit-counter-val" id="auditCountErrors">—</div>
+          <div class="audit-counter-lbl">Erros</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters mb-6" style="flex-wrap:wrap">
+        <div class="search-wrap" style="flex:1;min-width:180px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="auditSearch" placeholder="Buscar descrição…" oninput="loadAuditLogs()">
+        </div>
+        <select id="auditStatusFilter" onchange="loadAuditLogs()" style="max-width:160px">
+          <option value="">Todos os status</option>
+          <option value="confirmed">✅ Confirmadas</option>
+          <option value="pending">⏳ Pendentes</option>
+          <option value="skipped">⏭ Ignoradas</option>
+          <option value="error">❌ Erro</option>
+        </select>
+        <select id="auditTypeFilter" onchange="loadAuditLogs()" style="max-width:160px">
+          <option value="">Todos os tipos</option>
+          <option value="auto">🤖 Automático</option>
+          <option value="manual">👤 Manual</option>
+          <option value="timer">⏰ Timer</option>
+        </select>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="overflow:auto">
+          <table class="table tx-table" style="min-width:680px">
             <thead>
               <tr>
                 <th>Data</th>
                 <th>Descrição</th>
+                <th>Tipo</th>
                 <th>Status</th>
                 <th style="text-align:right">Valor</th>
                 <th>Transação</th>
               </tr>
             </thead>
             <tbody id="auditBody">
-              <tr><td colspan="5" class="text-muted" style="text-align:center;padding:18px">Carregando…</td></tr>
+              <tr><td colspan="6" class="text-muted" style="text-align:center;padding:24px">⏳ Carregando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -1355,133 +1372,34 @@
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af">Personal Finance Management</div>
       </div>
       <div id="loginFormArea">
-
-        <!-- Login method toggle -->
-        <div style="display:flex;background:#f3f4f6;border-radius:10px;padding:3px;margin-bottom:20px;gap:2px">
-          <button id="loginTabPassword" onclick="switchLoginTab('password')"
-            style="flex:1;padding:8px;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;font-family:inherit">
-            🔑 Senha
-          </button>
-          <button id="loginTabMagic" onclick="switchLoginTab('magic')"
-            style="flex:1;padding:8px;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:#6b7280;font-family:inherit">
-            ✉️ Link por E-mail
-          </button>
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com" 
+            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box"
+            onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
+            onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
         </div>
-
-        <!-- Password login panel -->
-        <div id="loginPanelPassword">
-          <div class="form-group" style="margin-bottom:16px">
-            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
-            <input type="email" id="loginEmail" placeholder="seu@email.com"
-              style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box"
-              onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
-              onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
-          </div>
-          <div class="form-group" style="margin-bottom:20px;position:relative">
-            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Senha</label>
-            <input type="password" id="loginPassword" placeholder="••••••••"
-              style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box;padding-right:44px"
-              onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
-              onkeydown="if(event.key==='Enter')doLogin()">
-            <button onclick="toggleLoginPwd()" style="position:absolute;right:12px;bottom:11px;background:none;border:none;cursor:pointer;font-size:1rem;color:#9ca3af">👁</button>
-          </div>
-          <div style="display:flex;align-items:center;margin-bottom:16px;gap:8px">
-            <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
-            <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none">Lembrar meu e-mail e senha</label>
-          </div>
-          <button onclick="doLogin()" id="loginBtn"
-            style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit">
-            Entrar
-          </button>
-          <div style="text-align:center;margin-top:10px">
-            <button onclick="showForgotPwdForm()" style="background:none;border:none;color:#6b7280;font-size:.78rem;cursor:pointer;text-decoration:underline">Esqueci minha senha</button>
-          </div>
+        <div class="form-group" style="margin-bottom:20px;position:relative">
+          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Senha</label>
+          <input type="password" id="loginPassword" placeholder="••••••••"
+            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box;padding-right:44px"
+            onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
+            onkeydown="if(event.key==='Enter')doLogin()">
+          <button onclick="toggleLoginPwd()" style="position:absolute;right:12px;bottom:11px;background:none;border:none;cursor:pointer;font-size:1rem;color:#9ca3af">👁</button>
         </div>
-
-        <!-- Magic link panel -->
-        <div id="loginPanelMagic" style="display:none">
-          <div style="text-align:center;margin-bottom:16px">
-            <div style="font-size:.83rem;color:#6b7280;line-height:1.5">
-              Informe seu e-mail e enviaremos um link para entrar sem senha.
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:20px">
-            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
-            <input type="email" id="magicEmail" placeholder="seu@email.com"
-              style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box"
-              onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
-              onkeydown="if(event.key==='Enter')doMagicLink()">
-          </div>
-          <button onclick="doMagicLink()" id="magicLinkBtn"
-            style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit">
-            ✉️ Enviar Link de Acesso
-          </button>
-          <!-- Sent confirmation state -->
-          <div id="magicLinkSent" style="display:none;margin-top:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px;text-align:center">
-            <div style="font-size:1.5rem;margin-bottom:6px">📬</div>
-            <div style="font-size:.85rem;font-weight:600;color:#166534;margin-bottom:4px">Link enviado!</div>
-            <div style="font-size:.78rem;color:#15803d;line-height:1.5">Verifique sua caixa de entrada e clique no link para entrar.</div>
-            <button onclick="doMagicLink()" id="magicResendBtn"
-              style="margin-top:10px;background:none;border:1px solid #86efac;color:#16a34a;font-size:.75rem;font-weight:600;padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit">
-              Reenviar
-            </button>
-          </div>
+        <div style="display:flex;align-items:center;margin-bottom:16px;gap:8px">
+          <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
+          <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none">Lembrar meu e-mail e senha</label>
         </div>
-
+        <button onclick="doLogin()" id="loginBtn"
+          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit">
+          Entrar
+        </button>
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
-        <div style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
+        <div style="text-align:center;margin-top:16px;font-size:.8rem;color:#6b7280">
           Não tem conta?
           <button onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline">Solicitar acesso</button>
         </div>
-      </div>
-
-      <!-- Forgot password form -->
-      <div id="forgotPwdArea" style="display:none">
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:8px">🔑 Recuperar Senha</div>
-        <div style="font-size:.82rem;color:#6b7280;text-align:center;margin-bottom:20px">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
-          <input type="email" id="forgotPwdEmail" placeholder="seu@email.com"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-            onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
-            onkeydown="if(event.key==='Enter')doForgotPwd()">
-        </div>
-        <button onclick="doForgotPwd()" id="forgotPwdBtn"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-          Enviar Link de Recuperação
-        </button>
-        <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
-        <div style="text-align:center;margin-top:14px">
-          <button onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
-        </div>
-      </div>
-
-      <!-- Password recovery form (shown after clicking reset link from email) -->
-      <div id="recoveryPwdArea" style="display:none">
-        <div style="text-align:center;margin-bottom:16px">
-          <div style="font-size:2rem;margin-bottom:8px">🔐</div>
-          <div style="font-size:1rem;font-weight:700;color:#1e5c42">Definir Nova Senha</div>
-          <div style="font-size:.8rem;color:#6b7280;margin-top:4px">Escolha uma senha segura para sua conta.</div>
-        </div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nova senha</label>
-          <input type="password" id="recoveryPwd1" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box"
-            onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
-            onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
-        </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Confirmar senha</label>
-          <input type="password" id="recoveryPwd2" placeholder="Repita a nova senha" autocomplete="new-password"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;transition:border .15s;box-sizing:border-box"
-            onfocus="this.style.borderColor='#2a6049'" onblur="this.style.borderColor='#e5e7eb'"
-            onkeydown="if(event.key==='Enter')doRecoveryPwd()">
-        </div>
-        <button onclick="doRecoveryPwd()" id="recoveryPwdBtn"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-          Salvar Nova Senha
-        </button>
-        <div id="recoveryPwdError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
       </div>
 
       <!-- Register form -->
@@ -1655,49 +1573,6 @@
     </div>
   </div>
 
-<!-- ── Modal: Configurar IA (Google Gemini API Key) ──────────────────────── -->
-<div class="modal-overlay" id="aiConfigModal">
-  <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title">🤖 Leitura de Recibos com IA</span>
-      <button class="modal-close" onclick="closeModal('aiConfigModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
-        O app usa o <strong>Google Gemini 2.0 Flash</strong> para ler fotos de recibos,
-        notas fiscais e PDFs e preencher automaticamente os campos da transação.
-        A chave fica salva no banco, acessível apenas pela sua família.
-      </p>
-
-      <!-- Como obter a chave -->
-      <div style="background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px;font-size:.8rem;line-height:1.7;margin-bottom:16px">
-        <strong>Como obter sua chave (gratuita):</strong><br>
-        1. Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb">aistudio.google.com/app/apikey</a><br>
-        2. Clique em <em>Create API Key</em><br>
-        3. Cole a chave abaixo (começa com <code>AIza</code>)<br>
-        <span style="color:var(--green,#16a34a);font-weight:600">✓ Camada gratuita: 1.500 leituras/dia sem custo</span>
-      </div>
-
-      <div class="form-group" style="position:relative">
-        <label>Chave API Google Gemini</label>
-        <div style="display:flex;gap:6px">
-          <input type="password" id="anthropicApiKeyInput"
-            placeholder="AIzaSy…"
-            autocomplete="off" autocorrect="off" spellcheck="false"
-            style="flex:1;font-family:monospace;font-size:.82rem">
-          <button type="button" id="aiKeyToggle"
-            onclick="toggleAiKeyVisibility()"
-            class="btn btn-ghost btn-sm" style="flex-shrink:0;font-size:1rem;padding:0 10px">👁</button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('aiConfigModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveAiConfig()">💾 Salvar chave</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="emailjsModal">
   <div class="modal" style="max-width:520px"><div class="modal-handle"></div>
     <div class="modal-header">
@@ -1820,58 +1695,8 @@
         <!-- Basic info -->
         <div class="form-group full"><label>Descrição *</label><input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."></div>
         <div class="form-group"><label>Valor *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="scAmountSignBtn" onclick="toggleAmtSign('scAmount')" aria-label="Alternar sinal">+</button><input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"></div></div>
-        <div class="form-group"><label>Conta Origem *</label><select id="scAccountId" onchange="onScTransferAccountChange()"></select></div>
-        <div class="form-group" id="scTransferToGroup" style="display:none">
-          <label>Conta Destino *</label>
-          <select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select>
-        </div>
-
-        <!-- FX panel for scheduled transfers between different currencies -->
-        <div id="scFxPanel" style="display:none;grid-column:1/-1;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:.82rem;font-weight:600;color:#1d4ed8">💱 <span id="scFxTitle">Câmbio</span></span>
-          </div>
-
-          <!-- Mode toggle -->
-          <div style="display:flex;gap:6px;margin-bottom:12px">
-            <button type="button" id="scFxModeFixed" onclick="setScFxMode('fixed')"
-              style="flex:1;padding:7px;border:1.5px solid #2563eb;border-radius:7px;background:#2563eb;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">
-              🔒 Taxa fixa
-            </button>
-            <button type="button" id="scFxModeApi" onclick="setScFxMode('api')"
-              style="flex:1;padding:7px;border:1.5px solid #e5e7eb;border-radius:7px;background:transparent;color:#6b7280;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">
-              📡 Buscar na API no registro
-            </button>
-          </div>
-
-          <!-- Fixed rate panel -->
-          <div id="scFxFixedPanel">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <div style="flex:1;min-width:120px">
-                <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:3px">
-                  Taxa de câmbio <span id="scFxLabel" style="font-weight:400;color:#6b7280"></span>
-                </label>
-                <input type="text" id="scFxRate" inputmode="decimal" placeholder="1.00000"
-                  style="width:100%;padding:8px 10px;border:1.5px solid #93c5fd;border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:#fff"
-                  oninput="updateScFxPreview()">
-              </div>
-              <div style="padding-top:18px">
-                <button type="button" onclick="fetchScSuggestedFxRate()" id="scFxFetchBtn"
-                  style="font-size:.75rem;padding:5px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600">
-                  <span id="scFxFetchIcon">🔄</span> Sugerir cotação hoje
-                </button>
-              </div>
-              <div id="scFxPreview" style="font-size:.82rem;color:#1d4ed8;padding-top:18px;white-space:nowrap"></div>
-            </div>
-            <div id="scFxSuggestion" style="display:none;font-size:.78rem;color:#1e40af;margin-top:8px;padding:6px 8px;background:#dbeafe;border-radius:6px"></div>
-          </div>
-
-          <!-- API mode info -->
-          <div id="scFxApiPanel" style="display:none;font-size:.8rem;color:#1e40af;background:#dbeafe;border-radius:8px;padding:10px 12px;line-height:1.6">
-            📡 A taxa de câmbio será buscada automaticamente na <strong>API do Frankfurter (BCE)</strong> na data de cada registro.<br>
-            <span style="color:#1d4ed8;font-size:.75rem">O valor lançado na conta destino usará a cotação do dia do registro.</span>
-          </div>
-        </div>
+        <div class="form-group"><label>Conta Origem *</label><select id="scAccountId"></select></div>
+        <div class="form-group" id="scTransferToGroup" style="display:none"><label>Conta Destino *</label><select id="scTransferToAccountId"></select></div>
         <div class="form-group" id="scPayeeGroup" style="position:relative">
           <label>Beneficiário / Fonte</label>
           <input type="hidden" id="scPayeeId">
@@ -2150,33 +1975,8 @@
         <div class="form-group"><label>Valor *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button><input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="if(document.getElementById('txIsInternational')?.checked)updateIofMirror()"></div></div>
         <div class="form-group full"><label>Descrição *</label><input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"></div>
                 <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
-<div class="form-group"><label>Conta *</label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
-        <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino *</label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
-
-        <!-- FX rate panel — shown only when source and destination accounts have different currencies -->
-        <div id="txFxPanel" style="display:none;grid-column:1/-1;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:.82rem;font-weight:600;color:#1d4ed8">
-              💱 <span id="txFxTitle">Câmbio</span>
-            </div>
-            <button type="button" onclick="fetchSuggestedFxRate()" id="txFxFetchBtn"
-              style="font-size:.75rem;padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:4px">
-              <span id="txFxFetchIcon">🔄</span> Buscar cotação
-            </button>
-          </div>
-          <div id="txFxSuggestion" style="display:none;font-size:.78rem;color:#1e40af;margin-bottom:8px;padding:6px 8px;background:#dbeafe;border-radius:6px"></div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:3px">
-                Taxa de câmbio <span id="txFxLabel" style="font-weight:400;color:#6b7280"></span>
-              </label>
-              <input type="text" id="txFxRate" inputmode="decimal" placeholder="1.00000"
-                style="width:100%;padding:8px 10px;border:1.5px solid #93c5fd;border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:#fff"
-                oninput="updateFxPreview()">
-            </div>
-            <div id="txFxPreview" style="font-size:.82rem;color:#1d4ed8;padding-top:18px;white-space:nowrap"></div>
-          </div>
-        </div>
+<div class="form-group"><label>Conta *</label><select id="txAccountId" onchange="checkAccountIofConfig(this.value)"></select></div>
+        <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino *</label><select id="txTransferTo"></select></div>
         <div class="form-group" id="txPayeeGroup" style="position:relative">
           <label>Beneficiário / Fonte</label>
           <input type="hidden" id="txPayeeId">
@@ -2236,22 +2036,6 @@
           <!-- Hidden fields persist attachment state between form resets -->
           <input type="hidden" id="txAttachUrl">
           <input type="hidden" id="txAttachNameHidden">
-
-          <!-- Botão IA (aparece automaticamente após selecionar arquivo) -->
-          <button type="button" id="receiptAiReadBtn"
-            onclick="readReceiptWithAI()"
-            style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
-            🤖 Ler com IA
-          </button>
-
-          <!-- Input oculto para câmera (aceita câmera em mobile) -->
-          <input type="file" id="receiptScanInput"
-            accept="image/*,application/pdf" capture="environment"
-            style="display:none"
-            onchange="onReceiptScanInput(this)">
-
-          <!-- Painel de resultado IA -->
-          <div id="receiptAiResultPanel" style="display:none;margin-top:10px"></div>
         </div>
       </div>
     </div>
@@ -2376,19 +2160,6 @@
           <div class="form-group" style="flex:1"><label>Nome do Grupo *</label><input type="text" id="groupName" placeholder="Ex: Brasil, França, Investimentos..."></div>
           <div class="form-group" style="flex:0 0 auto"><label>Emoji</label><input type="text" id="groupEmoji" placeholder="🇧🇷" maxlength="4" style="width:60px;text-align:center;font-size:1.2rem"></div>
           <div class="form-group" style="flex:0 0 auto"><label>Cor</label><input type="color" id="groupColor" value="#2a6049" style="width:44px;height:36px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--border)"></div>
-          <div class="form-group" style="flex:0 0 auto"><label>Moeda</label>
-            <select id="groupCurrency" style="padding:7px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.85rem;background:var(--surface);min-width:80px">
-              <option value="BRL">BRL R$</option>
-              <option value="USD">USD $</option>
-              <option value="EUR">EUR €</option>
-              <option value="GBP">GBP £</option>
-              <option value="CHF">CHF Fr</option>
-              <option value="JPY">JPY ¥</option>
-              <option value="CAD">CAD $</option>
-              <option value="AUD">AUD $</option>
-              <option value="ARS">ARS $</option>
-            </select>
-          </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
           <button class="btn btn-primary btn-sm" onclick="saveGroup()">💾 Salvar Grupo</button>
@@ -2414,130 +2185,7 @@
         <div class="form-group full"><label>Nome *</label><input type="text" id="categoryName" placeholder="Ex: Alimentação"></div>
         <div class="form-group"><label>Tipo *</label><select id="categoryType"><option value="despesa">Despesa</option><option value="receita">Receita</option><option value="transferencia">Transferência</option></select></div>
         <div class="form-group"><label>Categoria Pai</label><select id="categoryParent"><option value="">— Nenhuma —</option></select></div>
-        <div class="form-group full">
-          <label>Ícone</label>
-          <div class="icon-picker" id="categoryIconPicker" style="max-height:220px">
-            <div class="icon-picker-tabs">
-              <button class="icon-tab active" onclick="showCatIconGroup(event,'food')">🍽️ Alimentação</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'home')">🏠 Casa</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'transport')">🚗 Transporte</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'health')">❤️ Saúde</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'leisure')">🎭 Lazer</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'finance')">💰 Finanças</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'work')">💼 Trabalho</button>
-              <button class="icon-tab" onclick="showCatIconGroup(event,'other')">⭐ Outros</button>
-            </div>
-            <div class="icon-grid" id="catIconGroup-food">
-              <div class="icon-option" data-icon="emoji-🍽️" onclick="selectCatIcon(this)" title="Restaurante"><span style="font-size:1.4rem">🍽️</span><span class="icon-label">Restaurante</span></div>
-              <div class="icon-option" data-icon="emoji-🛒" onclick="selectCatIcon(this)" title="Supermercado"><span style="font-size:1.4rem">🛒</span><span class="icon-label">Mercado</span></div>
-              <div class="icon-option" data-icon="emoji-☕" onclick="selectCatIcon(this)" title="Café"><span style="font-size:1.4rem">☕</span><span class="icon-label">Café</span></div>
-              <div class="icon-option" data-icon="emoji-🍕" onclick="selectCatIcon(this)" title="Pizza"><span style="font-size:1.4rem">🍕</span><span class="icon-label">Pizza</span></div>
-              <div class="icon-option" data-icon="emoji-🍺" onclick="selectCatIcon(this)" title="Bar"><span style="font-size:1.4rem">🍺</span><span class="icon-label">Bar</span></div>
-              <div class="icon-option" data-icon="emoji-🍱" onclick="selectCatIcon(this)" title="Marmita"><span style="font-size:1.4rem">🍱</span><span class="icon-label">Marmita</span></div>
-              <div class="icon-option" data-icon="emoji-🥗" onclick="selectCatIcon(this)" title="Salada"><span style="font-size:1.4rem">🥗</span><span class="icon-label">Salada</span></div>
-              <div class="icon-option" data-icon="emoji-🥩" onclick="selectCatIcon(this)" title="Açougue"><span style="font-size:1.4rem">🥩</span><span class="icon-label">Açougue</span></div>
-              <div class="icon-option" data-icon="emoji-🧁" onclick="selectCatIcon(this)" title="Confeitaria"><span style="font-size:1.4rem">🧁</span><span class="icon-label">Confeitaria</span></div>
-              <div class="icon-option" data-icon="emoji-🥤" onclick="selectCatIcon(this)" title="Bebidas"><span style="font-size:1.4rem">🥤</span><span class="icon-label">Bebidas</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-home" style="display:none">
-              <div class="icon-option" data-icon="emoji-🏠" onclick="selectCatIcon(this)" title="Moradia"><span style="font-size:1.4rem">🏠</span><span class="icon-label">Moradia</span></div>
-              <div class="icon-option" data-icon="emoji-⚡" onclick="selectCatIcon(this)" title="Energia"><span style="font-size:1.4rem">⚡</span><span class="icon-label">Energia</span></div>
-              <div class="icon-option" data-icon="emoji-💧" onclick="selectCatIcon(this)" title="Água"><span style="font-size:1.4rem">💧</span><span class="icon-label">Água</span></div>
-              <div class="icon-option" data-icon="emoji-🔥" onclick="selectCatIcon(this)" title="Gás"><span style="font-size:1.4rem">🔥</span><span class="icon-label">Gás</span></div>
-              <div class="icon-option" data-icon="emoji-📱" onclick="selectCatIcon(this)" title="Internet/Tel"><span style="font-size:1.4rem">📱</span><span class="icon-label">Internet</span></div>
-              <div class="icon-option" data-icon="emoji-🛋️" onclick="selectCatIcon(this)" title="Mobiliário"><span style="font-size:1.4rem">🛋️</span><span class="icon-label">Mobília</span></div>
-              <div class="icon-option" data-icon="emoji-🔧" onclick="selectCatIcon(this)" title="Manutenção"><span style="font-size:1.4rem">🔧</span><span class="icon-label">Manutenção</span></div>
-              <div class="icon-option" data-icon="emoji-🧹" onclick="selectCatIcon(this)" title="Limpeza"><span style="font-size:1.4rem">🧹</span><span class="icon-label">Limpeza</span></div>
-              <div class="icon-option" data-icon="emoji-🌿" onclick="selectCatIcon(this)" title="Jardim"><span style="font-size:1.4rem">🌿</span><span class="icon-label">Jardim</span></div>
-              <div class="icon-option" data-icon="emoji-🔐" onclick="selectCatIcon(this)" title="Segurança"><span style="font-size:1.4rem">🔐</span><span class="icon-label">Segurança</span></div>
-              <div class="icon-option" data-icon="emoji-🏢" onclick="selectCatIcon(this)" title="Condomínio"><span style="font-size:1.4rem">🏢</span><span class="icon-label">Condomínio</span></div>
-              <div class="icon-option" data-icon="emoji-🛁" onclick="selectCatIcon(this)" title="Higiene Casa"><span style="font-size:1.4rem">🛁</span><span class="icon-label">Higiene</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-transport" style="display:none">
-              <div class="icon-option" data-icon="emoji-🚗" onclick="selectCatIcon(this)" title="Carro"><span style="font-size:1.4rem">🚗</span><span class="icon-label">Carro</span></div>
-              <div class="icon-option" data-icon="emoji-⛽" onclick="selectCatIcon(this)" title="Combustível"><span style="font-size:1.4rem">⛽</span><span class="icon-label">Combustível</span></div>
-              <div class="icon-option" data-icon="emoji-🚌" onclick="selectCatIcon(this)" title="Ônibus/Metro"><span style="font-size:1.4rem">🚌</span><span class="icon-label">Ônibus</span></div>
-              <div class="icon-option" data-icon="emoji-✈️" onclick="selectCatIcon(this)" title="Viagem"><span style="font-size:1.4rem">✈️</span><span class="icon-label">Viagem</span></div>
-              <div class="icon-option" data-icon="emoji-🚕" onclick="selectCatIcon(this)" title="Táxi/Uber"><span style="font-size:1.4rem">🚕</span><span class="icon-label">Uber/Táxi</span></div>
-              <div class="icon-option" data-icon="emoji-🚲" onclick="selectCatIcon(this)" title="Bicicleta"><span style="font-size:1.4rem">🚲</span><span class="icon-label">Bicicleta</span></div>
-              <div class="icon-option" data-icon="emoji-🛵" onclick="selectCatIcon(this)" title="Moto"><span style="font-size:1.4rem">🛵</span><span class="icon-label">Moto</span></div>
-              <div class="icon-option" data-icon="emoji-🚢" onclick="selectCatIcon(this)" title="Navio"><span style="font-size:1.4rem">🚢</span><span class="icon-label">Navio</span></div>
-              <div class="icon-option" data-icon="emoji-🅿️" onclick="selectCatIcon(this)" title="Estacionamento"><span style="font-size:1.4rem">🅿️</span><span class="icon-label">Parking</span></div>
-              <div class="icon-option" data-icon="emoji-🔩" onclick="selectCatIcon(this)" title="Manutenção Veículo"><span style="font-size:1.4rem">🔩</span><span class="icon-label">Mecânica</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-health" style="display:none">
-              <div class="icon-option" data-icon="emoji-❤️" onclick="selectCatIcon(this)" title="Saúde"><span style="font-size:1.4rem">❤️</span><span class="icon-label">Saúde</span></div>
-              <div class="icon-option" data-icon="emoji-💊" onclick="selectCatIcon(this)" title="Remédios"><span style="font-size:1.4rem">💊</span><span class="icon-label">Remédios</span></div>
-              <div class="icon-option" data-icon="emoji-🏥" onclick="selectCatIcon(this)" title="Hospital"><span style="font-size:1.4rem">🏥</span><span class="icon-label">Hospital</span></div>
-              <div class="icon-option" data-icon="emoji-🦷" onclick="selectCatIcon(this)" title="Dentista"><span style="font-size:1.4rem">🦷</span><span class="icon-label">Dentista</span></div>
-              <div class="icon-option" data-icon="emoji-👁️" onclick="selectCatIcon(this)" title="Ótica"><span style="font-size:1.4rem">👁️</span><span class="icon-label">Ótica</span></div>
-              <div class="icon-option" data-icon="emoji-🏋️" onclick="selectCatIcon(this)" title="Academia"><span style="font-size:1.4rem">🏋️</span><span class="icon-label">Academia</span></div>
-              <div class="icon-option" data-icon="emoji-🧘" onclick="selectCatIcon(this)" title="Bem-estar"><span style="font-size:1.4rem">🧘</span><span class="icon-label">Bem-estar</span></div>
-              <div class="icon-option" data-icon="emoji-🩺" onclick="selectCatIcon(this)" title="Consulta"><span style="font-size:1.4rem">🩺</span><span class="icon-label">Consulta</span></div>
-              <div class="icon-option" data-icon="emoji-🧴" onclick="selectCatIcon(this)" title="Higiene Pessoal"><span style="font-size:1.4rem">🧴</span><span class="icon-label">Higiene</span></div>
-              <div class="icon-option" data-icon="emoji-✂️" onclick="selectCatIcon(this)" title="Salão/Barbearia"><span style="font-size:1.4rem">✂️</span><span class="icon-label">Salão</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-leisure" style="display:none">
-              <div class="icon-option" data-icon="emoji-🎭" onclick="selectCatIcon(this)" title="Entretenimento"><span style="font-size:1.4rem">🎭</span><span class="icon-label">Entret.</span></div>
-              <div class="icon-option" data-icon="emoji-🎬" onclick="selectCatIcon(this)" title="Cinema"><span style="font-size:1.4rem">🎬</span><span class="icon-label">Cinema</span></div>
-              <div class="icon-option" data-icon="emoji-🎮" onclick="selectCatIcon(this)" title="Games"><span style="font-size:1.4rem">🎮</span><span class="icon-label">Games</span></div>
-              <div class="icon-option" data-icon="emoji-📚" onclick="selectCatIcon(this)" title="Livros"><span style="font-size:1.4rem">📚</span><span class="icon-label">Livros</span></div>
-              <div class="icon-option" data-icon="emoji-🎵" onclick="selectCatIcon(this)" title="Música"><span style="font-size:1.4rem">🎵</span><span class="icon-label">Música</span></div>
-              <div class="icon-option" data-icon="emoji-🏖️" onclick="selectCatIcon(this)" title="Férias"><span style="font-size:1.4rem">🏖️</span><span class="icon-label">Férias</span></div>
-              <div class="icon-option" data-icon="emoji-⚽" onclick="selectCatIcon(this)" title="Esporte"><span style="font-size:1.4rem">⚽</span><span class="icon-label">Esporte</span></div>
-              <div class="icon-option" data-icon="emoji-🐾" onclick="selectCatIcon(this)" title="Pets"><span style="font-size:1.4rem">🐾</span><span class="icon-label">Pets</span></div>
-              <div class="icon-option" data-icon="emoji-🎁" onclick="selectCatIcon(this)" title="Presentes"><span style="font-size:1.4rem">🎁</span><span class="icon-label">Presentes</span></div>
-              <div class="icon-option" data-icon="emoji-👗" onclick="selectCatIcon(this)" title="Roupas"><span style="font-size:1.4rem">👗</span><span class="icon-label">Roupas</span></div>
-              <div class="icon-option" data-icon="emoji-🍿" onclick="selectCatIcon(this)" title="Streaming"><span style="font-size:1.4rem">🍿</span><span class="icon-label">Streaming</span></div>
-              <div class="icon-option" data-icon="emoji-🎲" onclick="selectCatIcon(this)" title="Jogos"><span style="font-size:1.4rem">🎲</span><span class="icon-label">Jogos</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-finance" style="display:none">
-              <div class="icon-option" data-icon="emoji-💰" onclick="selectCatIcon(this)" title="Dinheiro"><span style="font-size:1.4rem">💰</span><span class="icon-label">Dinheiro</span></div>
-              <div class="icon-option" data-icon="emoji-💳" onclick="selectCatIcon(this)" title="Cartão"><span style="font-size:1.4rem">💳</span><span class="icon-label">Cartão</span></div>
-              <div class="icon-option" data-icon="emoji-📈" onclick="selectCatIcon(this)" title="Investimentos"><span style="font-size:1.4rem">📈</span><span class="icon-label">Invest.</span></div>
-              <div class="icon-option" data-icon="emoji-📉" onclick="selectCatIcon(this)" title="Perdas"><span style="font-size:1.4rem">📉</span><span class="icon-label">Perdas</span></div>
-              <div class="icon-option" data-icon="emoji-🏦" onclick="selectCatIcon(this)" title="Banco"><span style="font-size:1.4rem">🏦</span><span class="icon-label">Banco</span></div>
-              <div class="icon-option" data-icon="emoji-🧾" onclick="selectCatIcon(this)" title="Impostos"><span style="font-size:1.4rem">🧾</span><span class="icon-label">Impostos</span></div>
-              <div class="icon-option" data-icon="emoji-💵" onclick="selectCatIcon(this)" title="Salário"><span style="font-size:1.4rem">💵</span><span class="icon-label">Salário</span></div>
-              <div class="icon-option" data-icon="emoji-💸" onclick="selectCatIcon(this)" title="Despesas"><span style="font-size:1.4rem">💸</span><span class="icon-label">Despesas</span></div>
-              <div class="icon-option" data-icon="emoji-🐷" onclick="selectCatIcon(this)" title="Poupança"><span style="font-size:1.4rem">🐷</span><span class="icon-label">Poupança</span></div>
-              <div class="icon-option" data-icon="emoji-💱" onclick="selectCatIcon(this)" title="Câmbio"><span style="font-size:1.4rem">💱</span><span class="icon-label">Câmbio</span></div>
-              <div class="icon-option" data-icon="emoji-🎰" onclick="selectCatIcon(this)" title="Sorte/Loteria"><span style="font-size:1.4rem">🎰</span><span class="icon-label">Loteria</span></div>
-              <div class="icon-option" data-icon="emoji-🏷️" onclick="selectCatIcon(this)" title="Desconto"><span style="font-size:1.4rem">🏷️</span><span class="icon-label">Desconto</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-work" style="display:none">
-              <div class="icon-option" data-icon="emoji-💼" onclick="selectCatIcon(this)" title="Trabalho"><span style="font-size:1.4rem">💼</span><span class="icon-label">Trabalho</span></div>
-              <div class="icon-option" data-icon="emoji-🖥️" onclick="selectCatIcon(this)" title="Tecnologia"><span style="font-size:1.4rem">🖥️</span><span class="icon-label">Tech</span></div>
-              <div class="icon-option" data-icon="emoji-📝" onclick="selectCatIcon(this)" title="Escritório"><span style="font-size:1.4rem">📝</span><span class="icon-label">Escritório</span></div>
-              <div class="icon-option" data-icon="emoji-🎓" onclick="selectCatIcon(this)" title="Educação"><span style="font-size:1.4rem">🎓</span><span class="icon-label">Educação</span></div>
-              <div class="icon-option" data-icon="emoji-📦" onclick="selectCatIcon(this)" title="Compras"><span style="font-size:1.4rem">📦</span><span class="icon-label">Compras</span></div>
-              <div class="icon-option" data-icon="emoji-🛠️" onclick="selectCatIcon(this)" title="Serviços"><span style="font-size:1.4rem">🛠️</span><span class="icon-label">Serviços</span></div>
-              <div class="icon-option" data-icon="emoji-📡" onclick="selectCatIcon(this)" title="Assinaturas"><span style="font-size:1.4rem">📡</span><span class="icon-label">Assinat.</span></div>
-              <div class="icon-option" data-icon="emoji-🏗️" onclick="selectCatIcon(this)" title="Construção"><span style="font-size:1.4rem">🏗️</span><span class="icon-label">Construção</span></div>
-            </div>
-            <div class="icon-grid" id="catIconGroup-other" style="display:none">
-              <div class="icon-option" data-icon="emoji-⭐" onclick="selectCatIcon(this)" title="Outros"><span style="font-size:1.4rem">⭐</span><span class="icon-label">Outros</span></div>
-              <div class="icon-option" data-icon="emoji-📌" onclick="selectCatIcon(this)" title="Marcador"><span style="font-size:1.4rem">📌</span><span class="icon-label">Marcador</span></div>
-              <div class="icon-option" data-icon="emoji-🎯" onclick="selectCatIcon(this)" title="Meta"><span style="font-size:1.4rem">🎯</span><span class="icon-label">Meta</span></div>
-              <div class="icon-option" data-icon="emoji-🔄" onclick="selectCatIcon(this)" title="Transferência"><span style="font-size:1.4rem">🔄</span><span class="icon-label">Transfer.</span></div>
-              <div class="icon-option" data-icon="emoji-❓" onclick="selectCatIcon(this)" title="Indefinido"><span style="font-size:1.4rem">❓</span><span class="icon-label">Indefinido</span></div>
-              <div class="icon-option" data-icon="emoji-🔖" onclick="selectCatIcon(this)" title="Categoria"><span style="font-size:1.4rem">🔖</span><span class="icon-label">Categoria</span></div>
-              <div class="icon-option" data-icon="emoji-🌐" onclick="selectCatIcon(this)" title="Internacional"><span style="font-size:1.4rem">🌐</span><span class="icon-label">Inter.</span></div>
-              <div class="icon-option" data-icon="emoji-🤝" onclick="selectCatIcon(this)" title="Doações"><span style="font-size:1.4rem">🤝</span><span class="icon-label">Doações</span></div>
-              <div class="icon-option" data-icon="emoji-🏛️" onclick="selectCatIcon(this)" title="Governo"><span style="font-size:1.4rem">🏛️</span><span class="icon-label">Governo</span></div>
-              <div class="icon-option" data-icon="emoji-👶" onclick="selectCatIcon(this)" title="Filhos"><span style="font-size:1.4rem">👶</span><span class="icon-label">Filhos</span></div>
-              <div class="icon-option" data-icon="emoji-👴" onclick="selectCatIcon(this)" title="Família"><span style="font-size:1.4rem">👴</span><span class="icon-label">Família</span></div>
-              <div class="icon-option" data-icon="emoji-🙏" onclick="selectCatIcon(this)" title="Religioso"><span style="font-size:1.4rem">🙏</span><span class="icon-label">Religião</span></div>
-            </div>
-            <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;display:flex;align-items:center;gap:8px">
-              <span style="font-size:.75rem;color:var(--muted)">Selecionado:</span>
-              <span id="categoryIconPreview" style="font-size:1.3rem;min-width:28px">📦</span>
-              <input type="text" id="categoryIcon" placeholder="ou digite" maxlength="4"
-                style="width:64px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:1rem;text-align:center"
-                oninput="document.getElementById('categoryIconPreview').textContent=this.value||'📦'">
-            </div>
-          </div>
-        </div>
+        <div class="form-group"><label>Ícone</label><input type="text" id="categoryIcon" placeholder="📦" maxlength="4"></div>
         <div class="form-group"><label>Cor</label><input type="color" id="categoryColor" value="#2a6049"></div>
       </div>
     </div>
@@ -2687,114 +2335,17 @@
 </div>
 
 <div class="modal-overlay" id="budgetModal">
-  <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title" id="budgetModalTitle">Novo Orçamento</span>
-      <button class="modal-close" onclick="closeModal('budgetModal')">✕</button>
-    </div>
+  <div class="modal" style="max-width:400px"><div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Novo Orçamento</span><button class="modal-close" onclick="closeModal('budgetModal')">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="budgetId">
-      <!-- hidden tracker for current type -->
-      <div id="budgetModalTypeCurrent" data-type="monthly" style="display:none"></div>
-
       <div class="form-grid">
-        <!-- Type tabs -->
-        <div class="form-group full">
-          <label>Tipo de orçamento</label>
-          <div class="tab-bar" style="margin-bottom:0">
-            <button type="button" class="tab active" id="budgetModalTypeMonthly" onclick="setBudgetModalType('monthly')">📅 Mensal</button>
-            <button type="button" class="tab" id="budgetModalTypeAnnual"  onclick="setBudgetModalType('annual')">📆 Anual</button>
-          </div>
-        </div>
-
-        <!-- Month picker (monthly) -->
-        <div class="form-group full" id="budgetModalMonthGroup">
-          <label>Mês *</label>
-          <input type="month" id="budgetModalMonth">
-        </div>
-
-        <!-- Year picker (annual) -->
-        <div class="form-group full" id="budgetModalYearGroup" style="display:none">
-          <label>Ano *</label>
-          <select id="budgetModalYear" style="width:100%"></select>
-        </div>
-
-        <!-- Category: parents + indented children -->
-        <div class="form-group full">
-          <label>Categoria *</label>
-          <select id="budgetCategory"></select>
-          <div id="budgetCatHint" style="font-size:.72rem;color:var(--muted);margin-top:4px;display:none">
-            💡 Orçamento de categoria pai inclui gastos de todas as subcategorias.
-          </div>
-        </div>
-
-        <!-- Amount -->
-        <div class="form-group full">
-          <label>Valor limite *</label>
-          <div class="amt-wrap">
-            <button type="button" class="amt-sign-btn" style="visibility:hidden">+</button>
-            <input type="text" id="budgetAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off">
-          </div>
-        </div>
-
-        <!-- Auto-reset (monthly only) -->
-        <div class="form-group full" id="budgetAutoResetGroup">
-          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
-            <input type="checkbox" id="budgetAutoReset" checked style="width:16px;height:16px;margin-top:2px;cursor:pointer">
-            <div>
-              <div style="font-weight:600;font-size:.88rem">🔄 Resetar a cada mês</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">O orçamento se repete automaticamente todo mês, contabilizando apenas as transações do período</div>
-            </div>
-          </label>
-        </div>
-
-        <!-- Notes -->
-        <div class="form-group full">
-          <label>Observação</label>
-          <input type="text" id="budgetNotes" placeholder="Ex: Limite do cartão, verba de viagem...">
-        </div>
+        <div class="form-group full"><label>Categoria *</label><select id="budgetCategory"></select></div>
+        <div class="form-group"><label>Mês *</label><input type="month" id="budgetMonthInput"></div>
+        <div class="form-group"><label>Valor (R$) *</label><input type="text" id="budgetAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"></div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('budgetModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveBudget()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Modal: Reatribuir categoria antes de excluir ─────────────────── -->
-<div class="modal-overlay" id="catReassignModal">
-  <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title" id="catReassignTitle">Excluir Categoria</span>
-      <button class="modal-close" onclick="closeModal('catReassignModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="catReassignDeleteId">
-      <input type="hidden" id="catReassignChildIds" value="[]">
-
-      <!-- Resumo dos vínculos -->
-      <div id="catReassignSummary"
-        style="background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);padding:12px 14px;font-size:.84rem;color:var(--text);line-height:1.6;margin-bottom:16px">
-      </div>
-
-      <!-- Seleção da categoria destino -->
-      <div class="form-group">
-        <label>Transferir todos os registros para *</label>
-        <select id="catReassignTarget" style="width:100%">
-          <option value="">— Selecionar categoria destino —</option>
-        </select>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
-          Somente categorias do mesmo tipo são listadas. Você pode criar uma nova categoria antes de excluir.
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('catReassignModal')">Cancelar</button>
-      <button class="btn btn-primary" id="catReassignConfirmBtn"
-        style="background:var(--red);border-color:var(--red)"
-        onclick="confirmCatReassign()">✅ Transferir e Excluir</button>
-    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('budgetModal')">Cancelar</button><button class="btn btn-primary" onclick="saveBudget()">Salvar</button></div>
   </div>
 </div>
 
@@ -2822,106 +2373,6 @@
   <script src="js/auth.js"></script>
   <script src="js/auto_register.js"></script>
 <script src="js/audit.js"></script>
-<script src="js/receipt_ai.js"></script>
-
-  <!-- Approval Modal -->
-  <div class="modal-overlay" id="approvalModal">
-    <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">✅ Aprovar Acesso</span>
-        <button class="modal-close" onclick="closeModal('approvalModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="approvalUserId">
-        <p style="font-size:.85rem;color:var(--text2);margin-bottom:18px">
-          Aprovando acesso para: <strong id="approvalUserName"></strong>
-        </p>
-        <div class="form-group" style="margin-bottom:14px">
-          <label style="font-size:.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:4px">Vincular à família existente</label>
-          <select id="approvalFamilyId" style="width:100%">
-            <option value="">— Nenhuma (admin global) —</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-          <span style="font-size:.75rem;color:var(--muted);white-space:nowrap">ou criar nova família</span>
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-        </div>
-        <div class="form-group" style="margin-bottom:18px">
-          <label style="font-size:.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:4px">
-            Nome da nova família <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(deixe em branco para não criar)</span>
-          </label>
-          <input type="text" id="approvalNewFamilyName" placeholder="Ex: Família Silva" style="width:100%;box-sizing:border-box">
-        </div>
-        <div id="approvalError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#166534;margin-bottom:16px">
-          📧 Um e-mail de boas-vindas será enviado automaticamente ao usuário informando a liberação do acesso e a família vinculada.
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('approvalModal')">Cancelar</button>
-          <button class="btn btn-primary btn-sm" onclick="doApproveUser()" style="background:#16a34a">✅ Aprovar e Notificar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reset Password Modal (admin resets another user's password) -->
-  <div class="modal-overlay" id="resetPwdModal">
-    <div class="modal" style="max-width:400px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🔑 Redefinir Senha</span>
-        <button class="modal-close" onclick="closeModal('resetPwdModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="resetPwdUserId">
-        <p style="font-size:.85rem;color:var(--text2);margin-bottom:16px">
-          Definindo nova senha para: <strong id="resetPwdUserName"></strong>
-        </p>
-        <div class="form-group" style="margin-bottom:10px">
-          <label>Nova senha</label>
-          <input type="password" id="resetPwdNew1" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
-        </div>
-        <div class="form-group" style="margin-bottom:16px">
-          <label>Confirmar senha</label>
-          <input type="password" id="resetPwdNew2" placeholder="Repita a nova senha" autocomplete="new-password"
-            onkeydown="if(event.key==='Enter')doResetUserPwd()">
-        </div>
-        <div id="resetPwdError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('resetPwdModal')">Cancelar</button>
-          <button class="btn btn-primary btn-sm" onclick="doResetUserPwd()">💾 Salvar Nova Senha</button>
-        </div>
-        <p style="font-size:.75rem;color:var(--muted);margin-top:12px">O usuário será solicitado a trocar a senha no próximo login.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Change My Password Modal (from settings) -->
-  <div class="modal-overlay" id="changeMyPwdModal">
-    <div class="modal" style="max-width:380px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🔑 Alterar Minha Senha</span>
-        <button class="modal-close" onclick="closeModal('changeMyPwdModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group" style="margin-bottom:10px">
-          <label>Nova senha</label>
-          <input type="password" id="changeMyPwd1" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
-        </div>
-        <div class="form-group" style="margin-bottom:16px">
-          <label>Confirmar senha</label>
-          <input type="password" id="changeMyPwd2" placeholder="Repita a nova senha" autocomplete="new-password"
-            onkeydown="if(event.key==='Enter')doChangeMyPwd()">
-        </div>
-        <div id="changeMyPwdError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('changeMyPwdModal')">Cancelar</button>
-          <button class="btn btn-primary btn-sm" onclick="doChangeMyPwd()">💾 Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
 </body>
 </html>
 
