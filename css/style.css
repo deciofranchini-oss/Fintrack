@@ -2949,3 +2949,152 @@ html, body{
   padding-top: 10px;
   border-top: 1px dashed var(--border);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   FAMILY SWITCHER PICKER
+══════════════════════════════════════════════════════════════════ */
+.fam-switcher-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  max-width: 200px;
+  min-width: 0;
+  color: var(--text);
+}
+.fam-switcher-btn:hover,
+.fam-switcher-btn.open {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+  box-shadow: 0 0 0 3px rgba(42,96,73,.10);
+}
+.fam-switcher-icon {
+  font-size: .95rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.fam-switcher-name {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+}
+.fam-switcher-role {
+  font-size: .66rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+.fam-switcher-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform .2s;
+}
+.fam-switcher-btn.open .fam-switcher-chevron { transform: rotate(180deg); }
+
+/* Dropdown */
+.fam-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 260px;
+  max-width: 320px;
+  background: var(--surface);
+  border: 1.5px solid var(--border2,var(--border));
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.20), 0 2px 8px rgba(0,0,0,.10);
+  z-index: 9998;
+  overflow: hidden;
+  animation: famPickerIn .15s ease;
+}
+@keyframes famPickerIn {
+  from { opacity:0; transform:translateY(-6px) scale(.97); }
+  to   { opacity:1; transform:translateY(0)    scale(1); }
+}
+.fam-picker-header {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.fam-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background .12s;
+  border-bottom: 1px solid var(--border);
+}
+.fam-picker-item:last-child { border-bottom: none; }
+.fam-picker-item:hover { background: var(--bg2); }
+.fam-picker-item.active {
+  background: var(--accent-lt);
+}
+.fam-picker-item.active .fam-picker-item-name {
+  color: var(--accent);
+}
+.fam-picker-item-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  transition: background .12s;
+}
+.fam-picker-item.active .fam-picker-item-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fam-picker-item-body { flex: 1; min-width: 0; }
+.fam-picker-item-name {
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fam-picker-item-meta {
+  font-size: .72rem;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.fam-picker-item-check {
+  flex-shrink: 0;
+  color: var(--accent);
+  font-size: 1rem;
+  opacity: 0;
+}
+.fam-picker-item.active .fam-picker-item-check { opacity: 1; }
+
+/* Role badge colors */
+.role-badge-owner  { background:#fef3c7; color:#92400e; }
+.role-badge-admin  { background:#fef3c7; color:#b45309; }
+.role-badge-user   { background:var(--accent-lt); color:var(--accent); }
+.role-badge-viewer { background:var(--bg2); color:var(--muted); }
+
+/* Responsive: collapse name on small screens */
+@media(max-width:600px){
+  .fam-switcher-name { max-width:70px; }
+  .fam-picker-dropdown { min-width:220px; left:auto; right:0; }
+}
