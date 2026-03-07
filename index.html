@@ -279,11 +279,19 @@
         </div>
       </div>
       
-      <div id="familySwitcherWrap" style="display:none;align-items:center;gap:6px;margin-right:4px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <select id="familySwitcherSelect" onchange="switchFamily(this.value)"
-          style="font-size:.8rem;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 8px;cursor:pointer;max-width:160px;outline:none">
-        </select>
+      <!-- Family Switcher Picker -->
+      <div id="familySwitcherWrap" style="display:none;position:relative;margin-right:2px">
+        <button id="familySwitcherBtn" class="fam-switcher-btn" onclick="toggleFamilyPicker(event)" title="Trocar família">
+          <span class="fam-switcher-icon">🏠</span>
+          <span class="fam-switcher-name" id="famSwitcherLabel">Família</span>
+          <span class="fam-switcher-role" id="famSwitcherRole"></span>
+          <svg class="fam-switcher-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <!-- Dropdown -->
+        <div id="familyPickerDropdown" class="fam-picker-dropdown" style="display:none">
+          <div class="fam-picker-header">Suas famílias</div>
+          <div id="familyPickerList"></div>
+        </div>
       </div>
       <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
         <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
