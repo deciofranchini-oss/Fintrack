@@ -2341,21 +2341,81 @@ async function doRecoveryPwd() {
 }
 
 
-// ── Family switcher ──────────────────────────────────────────────────────────
+// ── Family switcher picker ───────────────────────────────────────────────────
 function _renderFamilySwitcher() {
-  const container = document.getElementById('familySwitcherWrap');
-  if (!container) return;
+  const wrap = document.getElementById('familySwitcherWrap');
+  if (!wrap) return;
   const families = currentUser?.families || [];
-  if (families.length <= 1) { container.style.display = 'none'; return; }
-  container.style.display = 'flex';
-  const sel = document.getElementById('familySwitcherSelect');
-  if (!sel) return;
-  // Rebuild options with role label
-  sel.innerHTML = families.map(f => {
-    const roleShort = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[f.role] || '👤';
-    return `<option value="${f.id}">${roleShort} ${esc(f.name)}</option>`;
+
+  // Hide if only 0 or 1 family
+  if (families.length <= 1) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  // Update button label
+  const activeFam  = families.find(f => f.id === currentUser.family_id) || families[0];
+  const roleIcon   = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[activeFam?.role] || '👤';
+  const roleLabel  = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[activeFam?.role] || '';
+  const roleClass  = 'role-badge-' + (activeFam?.role || 'user');
+
+  const nameEl  = document.getElementById('famSwitcherLabel');
+  const roleEl  = document.getElementById('famSwitcherRole');
+  if (nameEl)  nameEl.textContent = activeFam?.name || 'Família';
+  if (roleEl)  { roleEl.textContent = roleIcon + ' ' + roleLabel; roleEl.className = 'fam-switcher-role ' + roleClass; }
+
+  // Rebuild dropdown list
+  const list = document.getElementById('familyPickerList');
+  if (!list) return;
+  list.innerHTML = families.map(f => {
+    const isActive  = f.id === currentUser.family_id;
+    const fRoleIcon = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[f.role] || '👤';
+    const fRoleLbl  = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[f.role] || f.role;
+    const fRoleCls  = 'role-badge-' + (f.role || 'user');
+    return `<button class="fam-picker-item${isActive ? ' active' : ''}"
+                    onclick="_pickFamily('${f.id}')">
+      <div class="fam-picker-item-icon">${isActive ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' : '🏠'}</div>
+      <div class="fam-picker-item-body">
+        <div class="fam-picker-item-name">${esc(f.name)}</div>
+        <div class="fam-picker-item-meta">
+          <span class="fam-switcher-role ${fRoleCls}" style="font-size:.64rem">${fRoleIcon} ${fRoleLbl}</span>
+        </div>
+      </div>
+      <svg class="fam-picker-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+    </button>`;
   }).join('');
-  sel.value = currentUser.family_id || '';
+}
+
+function toggleFamilyPicker(e) {
+  e?.stopPropagation();
+  const btn      = document.getElementById('familySwitcherBtn');
+  const dropdown = document.getElementById('familyPickerDropdown');
+  if (!dropdown) return;
+  const isOpen = dropdown.style.display !== 'none';
+  if (isOpen) {
+    _closeFamilyPicker();
+  } else {
+    dropdown.style.display = 'block';
+    btn?.classList.add('open');
+    // Close on outside click
+    setTimeout(() => document.addEventListener('click', _closeFamilyPickerOutside), 0);
+  }
+}
+
+function _closeFamilyPickerOutside(e) {
+  const wrap = document.getElementById('familySwitcherWrap');
+  if (!wrap?.contains(e.target)) _closeFamilyPicker();
+}
+
+function _closeFamilyPicker() {
+  const dropdown = document.getElementById('familyPickerDropdown');
+  const btn      = document.getElementById('familySwitcherBtn');
+  if (dropdown) dropdown.style.display = 'none';
+  btn?.classList.remove('open');
+  document.removeEventListener('click', _closeFamilyPickerOutside);
+}
+
+async function _pickFamily(familyId) {
+  _closeFamilyPicker();
+  await switchFamily(familyId);
 }
 
 async function switchFamily(familyId) {
@@ -2363,9 +2423,16 @@ async function switchFamily(familyId) {
   const fam = (currentUser.families || []).find(f => f.id === familyId);
   if (!fam) return;
 
+  // Loading state on picker button
+  const btn     = document.getElementById('familySwitcherBtn');
+  const nameEl  = document.getElementById('famSwitcherLabel');
+  const roleEl  = document.getElementById('famSwitcherRole');
+  if (btn)    { btn.disabled = true; btn.style.opacity = '.55'; }
+  if (nameEl) nameEl.textContent = 'Carregando…';
+  if (roleEl) roleEl.textContent = '';
+
   currentUser.family_id = familyId;
   // Atualiza role para o perfil do usuário NESSA família
-  // Admin/owner global mantêm seu role; usuários comuns herdam o role da família
   if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
     currentUser.role = fam.role || 'user';
     const r = currentUser.role;
@@ -2377,18 +2444,24 @@ async function switchFamily(familyId) {
   }
 
   localStorage.setItem('ft_active_family_' + currentUser.id, familyId);
-  toast('Família: ' + (fam.name || familyId) + ' · Perfil: ' + _roleLabel(currentUser.role), 'info');
+
+  try {
+    await Promise.all([
+      loadAccounts().catch(()=>{}),
+      loadCategories().catch(()=>{}),
+      loadPayees().catch(()=>{}),
+      loadAppSettings().catch(()=>{})
+    ]);
+    populateSelects();
+    navigate(state.currentPage || 'dashboard');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+
+  const roleIcon = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[currentUser.role] || '👤';
+  toast(roleIcon + ' ' + fam.name, 'success');
   updateUserUI();
   _renderFamilySwitcher();
-
-  await Promise.all([
-    loadAccounts().catch(()=>{}),
-    loadCategories().catch(()=>{}),
-    loadPayees().catch(()=>{}),
-    loadAppSettings().catch(()=>{})
-  ]);
-  populateSelects();
-  navigate(state.currentPage || 'dashboard');
 }
 
 function _roleLabel(role) {
