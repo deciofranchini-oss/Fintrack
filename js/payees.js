@@ -2,10 +2,27 @@ async function loadPayees(){const{data,error}=await famQ(sb.from('payees').selec
 function payeeTypeBadge(t){const m={beneficiario:'badge-blue',fonte_pagadora:'badge-green',ambos:'badge-amber'};const l={beneficiario:'Beneficiário',fonte_pagadora:'Fonte Pagadora',ambos:'Ambos'};return`<span class="badge ${m[t]||'badge-muted'}">${l[t]||t}</span>`;}
 
 function payeeRow(p) {
-  return `<tr>
-    <td><strong>${esc(p.name)}</strong>${p.notes?`<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(p.notes)}</div>`:''}</td>
-    <td class="text-muted" style="font-size:.82rem">${p.categories?.name||'—'}</td>
-    <td><div style="display:flex;gap:5px"><button class="btn-icon" onclick="openPayeeModal('${p.id}')">✏️</button><button class="btn-icon" onclick="deletePayee('${p.id}')">🗑️</button></div></td>
+  const initials = (p.name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const colors = ['#2a6049','#1e5ba8','#b45309','#6d28d9','#0e7490','#be185d','#047857','#7c3aed'];
+  const colorIdx = (p.name||'').charCodeAt(0) % colors.length;
+  const avatarColor = colors[colorIdx];
+  return `<tr class="payee-row">
+    <td>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="payee-row-avatar" style="background:${avatarColor}18;border:1.5px solid ${avatarColor}40;color:${avatarColor}">${initials}</div>
+        <div>
+          <div style="font-weight:600;font-size:.875rem">${esc(p.name)}</div>
+          ${p.notes ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(p.notes)}</div>` : ''}
+        </div>
+      </div>
+    </td>
+    <td style="font-size:.82rem;color:var(--text2)">${p.categories?.name||'<span style="color:var(--muted)">—</span>'}</td>
+    <td>
+      <div style="display:flex;gap:5px;justify-content:flex-end">
+        <button class="btn-icon" onclick="openPayeeModal('${p.id}')" title="Editar">✏️</button>
+        <button class="btn-icon" onclick="deletePayee('${p.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
+      </div>
+    </td>
   </tr>`;
 }
 

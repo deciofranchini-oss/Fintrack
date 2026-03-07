@@ -474,7 +474,7 @@ async function saveBudget() {
     data.auto_reset  = btype === 'monthly' ? autoReset : false;
     data.year        = year;
     data.notes       = notes;
-    data.updated_at  = new Date().toISOString();
+    // updated_at omitido — coluna não existe no schema atual
   }
 
   let err;

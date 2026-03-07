@@ -707,8 +707,10 @@ async function doRegister() {
     });
     if (insErr) throw insErr;
 
-    // Notify admins via _checkPendingApprovals badge update
-    // (they will see the badge next time they visit settings)
+    // Notificar admin por e-mail via EmailJS (best-effort)
+    await _notifyAdminNewRegistration(name, email).catch(e =>
+      console.warn('[register] email admin falhou:', e.message)
+    );
 
     // Show pending screen
     document.getElementById('registerFormArea').style.display = 'none';
@@ -912,21 +914,32 @@ async function loadUsersList() {
   let html = '';
 
   if (pendingUsers.length) {
-    html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.82rem;color:#92400e">
-      ⏳ <strong>${pendingUsers.length} solicitação(ões) aguardando aprovação</strong>
+    html += `<div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">
+      <div style="font-size:1.6rem;flex-shrink:0">⏳</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:.92rem;color:#92400e;margin-bottom:2px">${pendingUsers.length} solicitação(ões) aguardando aprovação</div>
+        <div style="font-size:.78rem;color:#b45309">Novos usuários não têm acesso até você aprovar.</div>
+      </div>
     </div>`;
-    html += '<div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Solicitado</th><th>Ações</th></tr></thead><tbody>';
-    html += pendingUsers.map(u => `<tr style="background:#fffbeb">
-      <td><strong>${esc(u.name||'—')}</strong></td>
-      <td style="font-size:.82rem">${esc(u.email)}</td>
-      <td style="font-size:.75rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-primary btn-sm" onclick="approveUser('${u.id}','${esc(u.name||u.email)}')" style="padding:3px 10px;font-size:.73rem;background:#16a34a">✅ Aprovar</button>
-        <button class="btn btn-ghost btn-sm" onclick="rejectUser('${u.id}','${esc(u.name||u.email)}')" style="padding:3px 10px;font-size:.73rem;color:#dc2626">🗑 Rejeitar</button>
-      </td>
-    </tr>`).join('');
+    html += '<div class="table-wrap" style="margin-bottom:20px;border-radius:var(--r);overflow:hidden;border:1.5px solid #f59e0b"><table><thead><tr style="background:#fef3c7"><th>Solicitante</th><th>E-mail</th><th>Aguardando</th><th style="text-align:center">Ações</th></tr></thead><tbody>';
+    html += pendingUsers.map(u => {
+      const daysAgo = Math.floor((Date.now() - new Date(u.created_at)) / 86400000);
+      const ageLabel = daysAgo === 0 ? 'Hoje' : daysAgo === 1 ? '1 dia' : (daysAgo + ' dias');
+      const ageStyle = daysAgo >= 3 ? 'color:#dc2626;font-weight:600' : 'color:var(--muted)';
+      const initials = (u.name || u.email || '?').slice(0, 2).toUpperCase();
+      return '<tr style="background:#fffbeb">' +
+        '<td><div style="display:flex;align-items:center;gap:10px">' +
+        '<div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;border:2px solid #f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:#92400e;flex-shrink:0">' + initials + '</div>' +
+        '<strong>' + esc(u.name||'—') + '</strong></div></td>' +
+        '<td style="font-size:.82rem">' + esc(u.email) + '</td>' +
+        '<td><span style="' + ageStyle + '">' + ageLabel + '</span></td>' +
+        '<td style="text-align:center;white-space:nowrap">' +
+        '<button class="btn btn-primary btn-sm" onclick="approveUser(' + "'" + u.id + "','" + esc(u.name||u.email) + "')" + ' style="background:#16a34a;margin-right:4px">✅ Aprovar</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="rejectUser(' + "'" + u.id + "','" + esc(u.name||u.email) + "')" + ' style="color:#dc2626">✕ Rejeitar</button>' +
+        '</td></tr>';
+    }).join('');
     html += '</tbody></table></div>';
-    html += '<div style="font-weight:600;font-size:.82rem;margin-bottom:8px;color:var(--muted)">Usuários ativos</div>';
+    html += '<div style="font-weight:600;font-size:.82rem;margin-bottom:10px;color:var(--muted)">Usuários ativos</div>';
   }
 
   if (!activeUsers.length) {
@@ -1129,6 +1142,43 @@ function _randomPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
   return Array.from(crypto.getRandomValues(new Uint8Array(16)))
     .map(b => chars[b % chars.length]).join('');
+}
+
+
+// Envia e-mail ao admin avisando sobre novo cadastro pendente
+async function _notifyAdminNewRegistration(userName, userEmail) {
+  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
+  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  if (!tplId) return;
+  let adminEmail = '';
+  try {
+    const raw = localStorage.getItem('fintrack_auto_check_config');
+    if (raw) adminEmail = JSON.parse(raw).emailDefault || '';
+  } catch(e) {}
+  if (!adminEmail) {
+    try {
+      const { data } = await sb.from('app_users')
+        .select('email').eq('role', 'admin').limit(1).maybeSingle();
+      adminEmail = data?.email || '';
+    } catch(e) {}
+  }
+  if (!adminEmail) { console.warn('[register] sem email admin'); return; }
+  const now = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  emailjs.init(EMAILJS_CONFIG.publicKey);
+  const nameHtml = userName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const emailHtml = userEmail.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+    to_email:   adminEmail,
+    Subject:    'FinTrack: Nova solicitacao de acesso — ' + userName,
+    month_year: now,
+    report_content:
+      '<div style="font-family:sans-serif;max-width:520px">' +
+      '<h2 style="color:#2a6049">Nova solicitacao de acesso</h2>' +
+      '<p>Usuario: <strong>' + nameHtml + '</strong> (' + emailHtml + ')</p>' +
+      '<p>Solicitado em: ' + now + '</p>' +
+      '<p>Acesse Configuracoes para aprovar ou rejeitar.</p>' +
+      '</div>',
+  });
 }
 
 async function _sendApprovalEmail(email, name, familyName) {
