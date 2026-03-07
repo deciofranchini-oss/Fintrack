@@ -111,57 +111,65 @@ async function _loadCurrentUserContext() {
   const user = uRes?.user;
   if (!user) return null;
 
-  // app_users é a fonte de verdade: role, name, avatar_url, family_id
-  // (user_profiles não existe neste schema — nunca lançar erro por ela)
+  // app_users: fonte de verdade para dados pessoais e role global
   const { data: appUserRow } = await sb
     .from('app_users')
     .select('id, family_id, avatar_url, role, name')
     .eq('email', user.email)
     .maybeSingle();
 
-  // family_members é opcional — ignorar erros se a tabela não existir ainda
+  // family_members: fonte de verdade para vínculos multi-família
   let fm = [];
   try {
     const { data: fmData } = await sb
       .from('family_members')
-      .select('family_id,role,families(id,name)')
-      .eq('user_id', user.id)
+      .select('family_id, role, families(id,name)')
+      .eq('user_id', appUserRow?.id || user.id)
       .order('created_at', { ascending: true });
     fm = fmData || [];
-  } catch (_) { /* tabela opcional */ }
+  } catch (_) { /* tabela ainda não existe */ }
 
-  // Role: app_users tem prioridade sobre family_members
-  const famRow  = fm.length ? fm[0] : null;
-  const appRole = appUserRow?.role || famRow?.role || 'viewer';
+  // Role global: app_users tem prioridade (owner/admin global)
+  const appRole = appUserRow?.role || 'viewer';
 
-  // Lista de famílias disponíveis ao usuário
+  // Monta lista de famílias disponíveis com o role específico em cada uma
   let userFamilies = fm
     .filter(r => r.family_id)
-    .map(r => ({ id: r.family_id, name: r.families?.name || r.family_id, role: r.role }));
+    .map(r => ({ id: r.family_id, name: r.families?.name || r.family_id, role: r.role || 'user' }));
+
+  // Fallback: se family_members ainda não tem dados, usa app_users.family_id
   if (!userFamilies.length && appUserRow?.family_id) {
     userFamilies = [{ id: appUserRow.family_id, name: appUserRow.family_id, role: appRole }];
   }
 
-  // Respeitar última família ativa escolhida pelo usuário
+  // Respeitar última família ativa salva pelo usuário
   const savedFamilyId = localStorage.getItem('ft_active_family_' + user.id);
-  const activeFamId   = (savedFamilyId && userFamilies.find(f => f.id === savedFamilyId))
-    ? savedFamilyId : (userFamilies[0]?.id || appUserRow?.family_id || null);
+  const activeFam     = (savedFamilyId && userFamilies.find(f => f.id === savedFamilyId))
+    ? userFamilies.find(f => f.id === savedFamilyId)
+    : userFamilies[0] || null;
+  const activeFamId   = activeFam?.id || appUserRow?.family_id || null;
 
+  // Role efetivo: admins/owners globais mantêm role global;
+  // usuários comuns usam o role que têm na família ativa
+  const isGlobal  = appRole === 'admin' || appRole === 'owner';
+  const activeRole = isGlobal ? appRole : (activeFam?.role || appRole);
+
+  const r = activeRole;
   const caps = {
     can_view:   true,
-    can_create: appRole !== 'viewer',
-    can_edit:   appRole !== 'viewer',
-    can_delete: appRole === 'admin' || appRole === 'owner',
+    can_create: r !== 'viewer',
+    can_edit:   r !== 'viewer',
+    can_delete: r === 'admin' || r === 'owner',
     can_export: true,
-    can_import: appRole === 'admin' || appRole === 'owner',
-    can_admin:  appRole === 'admin' || appRole === 'owner'
+    can_import: r === 'admin' || r === 'owner',
+    can_admin:  r === 'admin' || r === 'owner',
   };
 
   currentUser = {
     id:         user.id,
     email:      user.email || '',
     name:       appUserRow?.name || user.email || 'Usuário',
-    role:       appRole,
+    role:       activeRole,
     family_id:  activeFamId,
     families:   userFamilies,
     avatar_url: appUserRow?.avatar_url || null,
@@ -1183,7 +1191,7 @@ async function _inlineApprove(userId, userName) {
     // family_members
     if (familyId) {
       const { error: fmErr } = await sb.from('family_members').upsert(
-        { user_id: userId, family_id: familyId, role: 'editor' },
+        { user_id: userId, family_id: familyId, role: 'user' },
         { onConflict: 'user_id,family_id' }
       );
       if (fmErr) console.warn('[approve] family_members:', fmErr.message);
@@ -1223,30 +1231,21 @@ async function _inlineReject(userId, userName) {
 
 
 async function loadFamiliesList() {
+  // ── Carregar famílias ──────────────────────────────────────────────────────
   let families = [];
   try {
     const { data, error } = await sb.from('families').select('*').order('name');
     if (error) throw error;
     families = data || [];
   } catch(e) {
-    // families table may not exist yet — show migration hint
     const el = document.getElementById('familiesList');
     if (el) el.innerHTML = `<div style="background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:14px;font-size:.82rem">
       ⚠️ <strong>Tabela "families" não encontrada.</strong><br>
-      Execute o script <code>migration_families.sql</code> no Supabase SQL Editor para habilitar o suporte a múltiplas famílias.
+      Execute <code>migration_families.sql</code> e <code>migration_multi_family.sql</code> no Supabase.
     </div>`;
     return;
   }
   _families = families;
-
-  // Populate family select in user form
-  const sel = document.getElementById('uFamilyId');
-  if (sel) {
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">— Nenhuma (admin global) —</option>' +
-      _families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
-    if (cur) sel.value = cur;
-  }
 
   const el = document.getElementById('familiesList');
   if (!el) return;
@@ -1256,36 +1255,95 @@ async function loadFamiliesList() {
     return;
   }
 
-  // For each family show its members
-  const { data: allUsers } = await sb.from('app_users').select('id,name,email,role,active,family_id').order('name');
-  const usersByFamily = {};
-  (allUsers || []).forEach(u => {
-    const fid = u.family_id || '__none__';
-    if (!usersByFamily[fid]) usersByFamily[fid] = [];
-    usersByFamily[fid].push(u);
+  // ── Carregar membros via RPC SECURITY DEFINER (bypassa RLS) ──────────────
+  let allMembers = [];
+  try {
+    const { data: rpcData, error: rpcErr } = await sb.rpc('get_all_family_members');
+    if (!rpcErr && rpcData) {
+      allMembers = rpcData;
+    } else {
+      // Fallback: join direto (funciona se RLS permitir)
+      const { data: fmData } = await sb
+        .from('family_members')
+        .select('member_id:id, user_id, family_id, member_role:role, created_at, user_name:app_users(name), user_email:app_users(email), user_role:app_users(role), user_active:app_users(active), user_avatar:app_users(avatar_url)')
+        .order('family_id');
+      allMembers = (fmData || []).map(r => ({
+        ...r,
+        user_name:   r.user_name?.name   || '—',
+        user_email:  r.user_email?.email || '—',
+        user_role:   r.user_role?.role   || 'user',
+        user_active: r.user_active?.active ?? true,
+        user_avatar: r.user_avatar?.avatar_url || null,
+      }));
+    }
+  } catch(_) {}
+
+  // ── Carregar todos os usuários aprovados para o dropdown "Adicionar" ──────
+  const { data: allUsers } = await sb
+    .from('app_users')
+    .select('id,name,email,role,active,approved')
+    .eq('approved', true)
+    .order('name');
+
+  // Índice: family_id → membros
+  const membersByFamily = {};
+  allMembers.forEach(m => {
+    if (!membersByFamily[m.family_id]) membersByFamily[m.family_id] = [];
+    membersByFamily[m.family_id].push(m);
   });
 
+  // Índice: user_id → set de family_ids (para saber se já é membro)
+  const familiesByUser = {};
+  allMembers.forEach(m => {
+    if (!familiesByUser[m.user_id]) familiesByUser[m.user_id] = new Set();
+    familiesByUser[m.user_id].add(m.family_id);
+  });
+
+  const roleBadgeClass = r =>
+    r === 'owner' ? 'style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b"'
+    : r === 'admin' ? 'style="background:#fef3c7;color:#b45309"'
+    : r === 'viewer' ? 'style="background:var(--bg2);color:var(--muted)"'
+    : 'style="background:var(--accent-lt);color:var(--accent)"';
+
+  const roleIcon = r => ({ owner:'👑', admin:'🔧', user:'👤', viewer:'👁' })[r] || '👤';
+  const roleLabel = r => ({ owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' })[r] || r;
+
   el.innerHTML = _families.map(f => {
-    const members = usersByFamily[f.id] || [];
+    const members = membersByFamily[f.id] || [];
+
     const membersHtml = members.length
-      ? members.map(u => `
-          <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:.82rem;flex:1"><strong>${esc(u.name||'—')}</strong> <span style="color:var(--muted);font-size:.75rem">${esc(u.email)}</span></span>
-            <span class="badge ${(u.role==='admin'||u.role==='owner')?'badge-amber':'badge-muted'}" style="font-size:.7rem">${u.role}</span>
-            <button class="btn-icon" title="Remover da família" onclick="removeUserFromFamily('${u.id}','${esc(u.name||u.email)}','${esc(f.name)}')">✕</button>
-          </div>`).join('')
-      : '<div style="font-size:.78rem;color:var(--muted);padding:8px 0">Nenhum membro</div>';
+      ? members.map(m => `
+        <div class="fm-row" data-member-id="${m.member_id||''}" data-user-id="${m.user_id}" data-family-id="${f.id}">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+            ${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 30)}
+            <div style="min-width:0">
+              <div style="font-size:.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.user_name||'—')}</div>
+              <div style="font-size:.72rem;color:var(--muted)">${esc(m.user_email||'—')}</div>
+            </div>
+          </div>
+          <select class="fm-role-sel" data-uid="${m.user_id}" data-fid="${f.id}"
+                  style="font-size:.78rem;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);width:120px"
+                  onchange="updateMemberRole(this)">
+            <option value="owner"   ${m.member_role==='owner'   ? 'selected':''}>👑 Owner</option>
+            <option value="admin"   ${m.member_role==='admin'   ? 'selected':''}>🔧 Admin</option>
+            <option value="user"    ${m.member_role==='user'    ? 'selected':''}>👤 Usuário</option>
+            <option value="viewer"  ${m.member_role==='viewer'  ? 'selected':''}>👁 Visualizador</option>
+          </select>
+          <button class="btn-icon" title="Remover da família"
+                  onclick="removeUserFromFamily('${m.user_id}','${esc(m.user_name||m.user_email)}','${esc(f.name)}','${f.id}')">✕</button>
+        </div>`).join('')
+      : '<div style="font-size:.78rem;color:var(--muted);padding:10px 0;text-align:center">Nenhum membro ainda</div>';
 
-    // Users not yet in this family (for adding)
-    const available = (allUsers||[]).filter(u => !u.family_id || u.family_id !== f.id);
+    // Usuários que ainda NÃO são membros desta família
+    const available = (allUsers||[]).filter(u => !familiesByUser[u.id]?.has(f.id));
 
-    return `<div class="card" style="margin-bottom:12px">
+    return `<div class="card" style="margin-bottom:14px">
       <div class="card-header">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:1.3rem">🏠</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:10px;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏠</div>
           <div>
-            <div style="font-weight:700">${esc(f.name)}</div>
-            ${f.description ? `<div style="font-size:.75rem;color:var(--muted)">${esc(f.description)}</div>` : ''}
+            <div style="font-weight:700;font-size:.95rem">${esc(f.name)}</div>
+            <div style="font-size:.74rem;color:var(--muted)">${members.length} membro${members.length!==1?'s':''} ${f.description ? '· ' + esc(f.description) : ''}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px">
@@ -1294,18 +1352,22 @@ async function loadFamiliesList() {
         </div>
       </div>
       <div style="padding:4px 0">
-        <div style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
-          Membros (${members.length})
-        </div>
         ${membersHtml}
         ${available.length ? `
-        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <div class="fm-add-row">
           <select id="addMemberSel-${f.id}" style="font-size:.8rem;flex:1">
-            <option value="">— Selecionar usuário —</option>
+            <option value="">— Adicionar usuário —</option>
             ${available.map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('')}
           </select>
-          <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${f.id}')" style="font-size:.78rem;white-space:nowrap">+ Adicionar</button>
-        </div>` : ''}
+          <select id="addMemberRole-${f.id}" style="font-size:.8rem;width:130px">
+            <option value="user">👤 Usuário</option>
+            <option value="admin">🔧 Admin</option>
+            <option value="viewer">👁 Visualizador</option>
+            <option value="owner">👑 Owner</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${f.id}')"
+                  style="font-size:.78rem;white-space:nowrap">+ Adicionar</button>
+        </div>` : '<div style="font-size:.75rem;color:var(--muted);text-align:center;padding:6px 0">Todos os usuários já são membros desta família</div>'}
       </div>
     </div>`;
   }).join('');
@@ -1349,21 +1411,63 @@ async function deleteFamily(id, name) {
 }
 
 async function addUserToFamily(familyId) {
-  const sel = document.getElementById(`addMemberSel-${familyId}`);
-  const userId = sel?.value;
+  const sel     = document.getElementById(`addMemberSel-${familyId}`);
+  const roleSel = document.getElementById(`addMemberRole-${familyId}`);
+  const userId  = sel?.value;
+  const role    = roleSel?.value || 'user';
   if (!userId) { toast('Selecione um usuário','error'); return; }
-  const { error } = await sb.from('app_users').update({ family_id: familyId }).eq('id', userId);
+
+  // Inserir em family_members (upsert para ser idempotente)
+  const { error } = await sb.from('family_members').upsert(
+    { user_id: userId, family_id: familyId, role },
+    { onConflict: 'user_id,family_id' }
+  );
   if (error) { toast('Erro: '+error.message,'error'); return; }
-  toast('✓ Usuário adicionado à família','success');
+
+  // Manter app_users.family_id sincronizado (para compatibilidade com código legado)
+  await sb.from('app_users').update({ family_id: familyId }).eq('id', userId);
+
+  const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[role] || role;
+  toast(`✓ Usuário adicionado como ${roleLabel}`, 'success');
   await loadFamiliesList();
 }
 
-async function removeUserFromFamily(userId, userName, familyName) {
-  if (!confirm(`Remover "${userName}" da família "${familyName}"?`)) return;
-  const { error } = await sb.from('app_users').update({ family_id: null }).eq('id', userId);
+async function removeUserFromFamily(userId, userName, familyName, familyId) {
+  if (!confirm(`Remover "${userName}" da família "${familyName}"?\n\nO usuário perderá acesso a esta família.`)) return;
+
+  // Remover de family_members
+  const { error } = await sb.from('family_members')
+    .delete().eq('user_id', userId).eq('family_id', familyId);
   if (error) { toast('Erro: '+error.message,'error'); return; }
-  toast('Usuário removido da família','success');
+
+  // Se app_users.family_id aponta para esta família, limpar
+  const { data: au } = await sb.from('app_users').select('family_id').eq('id', userId).maybeSingle();
+  if (au?.family_id === familyId) {
+    // Verificar se tem outra família em family_members para usar como fallback
+    const { data: remaining } = await sb.from('family_members')
+      .select('family_id').eq('user_id', userId).order('created_at').limit(1);
+    const fallback = remaining?.[0]?.family_id || null;
+    await sb.from('app_users').update({ family_id: fallback }).eq('id', userId);
+  }
+
+  toast('✓ Usuário removido da família', 'success');
   await loadFamiliesList();
+}
+
+async function updateMemberRole(selectEl) {
+  const userId   = selectEl.dataset.uid;
+  const familyId = selectEl.dataset.fid;
+  const newRole  = selectEl.value;
+  const { error } = await sb.from('family_members')
+    .update({ role: newRole }).eq('user_id', userId).eq('family_id', familyId);
+  if (error) {
+    toast('Erro ao alterar perfil: '+error.message, 'error');
+    // Revert select visually
+    await loadFamiliesList();
+    return;
+  }
+  const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[newRole] || newRole;
+  toast(`✓ Perfil atualizado para ${roleLabel}`, 'success');
 }
 
 // ── USERS ─────────────────────────────────────────────────────────
@@ -1408,6 +1512,13 @@ async function loadUsersList() {
   // Build family name lookup
   const famById = {};
   _families.forEach(f => famById[f.id] = f.name);
+
+  // Load family memberships for all users
+  let allMembers = [];
+  try {
+    const { data: rpcData } = await sb.rpc('get_all_family_members');
+    allMembers = rpcData || [];
+  } catch(_) {}
 
   let html = '';
 
@@ -1464,7 +1575,16 @@ async function loadUsersList() {
           </div>
         </td>
         <td>${roleBadge}</td>
-        <td style="font-size:.78rem;color:var(--text2)">${u.family_id ? (famById[u.family_id]||'—') : '<span style="color:var(--muted)">—</span>'}</td>
+        <td style="font-size:.78rem;color:var(--text2)">
+          ${(() => {
+            const userFams = (allMembers||[]).filter(m => m.user_id === u.id);
+            if (!userFams.length) return '<span style="color:var(--muted)">—</span>';
+            return userFams.map(m => {
+              const roleIcon = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role]||'👤';
+              return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:.7rem;margin:1px">${roleIcon} ${esc(m.family_name||'—')}</span>`;
+            }).join('');
+          })()}
+        </td>
         <td><span style="font-size:.75rem;color:${u.active?'var(--green)':'var(--red)'}">● ${u.active?'Ativo':'Inativo'}</span></td>
         <td style="white-space:nowrap" onclick="event.stopPropagation()">
           ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="toggleUserActive('${u.id}',${u.active})" style="padding:3px 8px;font-size:.73rem" title="${u.active?'Desativar':'Ativar'}">${u.active?'🚫':'✅'}</button>` : ''}
@@ -1484,7 +1604,9 @@ function showNewUserForm() {
   document.getElementById('uEmail').value = '';
   document.getElementById('uPassword').value = '';
   document.getElementById('uRole').value = 'user';
-  document.getElementById('uFamilyId').value = '';
+  const initFamSel = document.getElementById('uInitFamilyId');
+  if (initFamSel) { initFamSel.innerHTML = '<option value="">— Nenhuma (admin global) —</option>' + _families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join(''); initFamSel.value = ''; }
+  const initRoleSel = document.getElementById('uInitFamilyRole'); if (initRoleSel) initRoleSel.value = 'user';
   document.getElementById('pView').checked = true;
   document.getElementById('pCreate').checked = true;
   document.getElementById('pEdit').checked = true;
@@ -1507,7 +1629,10 @@ async function editUser(userId) {
   document.getElementById('uEmail').value = u.email;
   document.getElementById('uPassword').value = '';
   document.getElementById('uRole').value = u.role;
-  document.getElementById('uFamilyId').value = u.family_id||'';
+  // Multi-família: o vínculo é gerenciado na aba Famílias; campo inicial só aparece em novos usuários
+  const initFamSelE = document.getElementById('uInitFamilyId'); if (initFamSelE) initFamSelE.style.display = 'none';
+  const initRoleSelE = document.getElementById('uInitFamilyRole'); if (initRoleSelE) initRoleSelE.style.display = 'none';
+  const initFamLabel = document.querySelector('label[for="uInitFamilyId"]');
   document.getElementById('pView').checked   = u.can_view;
   document.getElementById('pCreate').checked = u.can_create;
   document.getElementById('pEdit').checked   = u.can_edit;
@@ -1579,30 +1704,29 @@ async function removeUserAvatar() {
 }
 
 async function saveUser() {
-  const userId    = document.getElementById('editUserId').value;
-  const name      = document.getElementById('uName').value.trim();
-  const email     = document.getElementById('uEmail').value.trim().toLowerCase();
-  const pwd       = document.getElementById('uPassword').value;
-  const role      = document.getElementById('uRole').value;
-  const newFamId  = document.getElementById('uFamilyId').value || null;
+  const userId = document.getElementById('editUserId').value;
+  const name   = document.getElementById('uName').value.trim();
+  const email  = document.getElementById('uEmail').value.trim().toLowerCase();
+  const pwd    = document.getElementById('uPassword').value;
+  const role   = document.getElementById('uRole').value;
   if (!name || !email) { toast('Preencha nome e e-mail','error'); return; }
   if (!userId && pwd.length < 8) { toast('Senha deve ter pelo menos 8 caracteres','error'); return; }
   if (userId && pwd && pwd.length < 8) { toast('Senha deve ter pelo menos 8 caracteres','error'); return; }
 
   // Handle avatar upload/removal
-  let avatarUrl = undefined; // undefined = don't change
+  let avatarUrl = undefined;
   const avatarFile   = document.getElementById('uAvatarFile')?.files?.[0];
   const avatarRemove = document.getElementById('uAvatarRemoveFlag')?.value === '1';
   if (avatarFile && userId) {
     try { avatarUrl = await _uploadUserAvatar(userId, avatarFile); }
     catch(e) { toast('Aviso: ' + e.message, 'warning'); }
   } else if (avatarRemove && userId) {
-    avatarUrl = null; // set null to remove
+    avatarUrl = null;
   }
 
+  // app_users record — sem family_id (gerenciado por family_members)
   const record = {
     name, email, role,
-    family_id:  newFamId,
     can_view:   document.getElementById('pView').checked,
     can_create: document.getElementById('pCreate').checked,
     can_edit:   document.getElementById('pEdit').checked,
@@ -1613,19 +1737,46 @@ async function saveUser() {
   };
   if (avatarUrl !== undefined) record.avatar_url = avatarUrl;
   if (pwd) record.password_hash = await sha256(pwd);
-  // Reset avatar flag
   const flagEl = document.getElementById('uAvatarRemoveFlag'); if (flagEl) flagEl.value = '';
-  if (!userId) { record.must_change_pwd = false; record.active = true; record.approved = true; record.created_by = currentUser?.id; }
+  if (!userId) {
+    record.must_change_pwd = false;
+    record.active          = true;
+    record.approved        = true;
+    record.created_by      = currentUser?.id;
+  }
 
   try {
+    let savedId = userId;
     let error;
-    if (userId) { ({ error } = await sb.from('app_users').update(record).eq('id', userId)); }
-    else        { ({ error } = await sb.from('app_users').insert(record)); }
+
+    if (userId) {
+      ({ error } = await sb.from('app_users').update(record).eq('id', userId));
+    } else {
+      const { data: ins, error: insErr } = await sb.from('app_users').insert(record).select('id').single();
+      error = insErr;
+      if (ins?.id) savedId = ins.id;
+    }
     if (error) throw error;
+
+    // Para novos usuários: vincular família inicial se informada
+    if (!userId) {
+      const initFam = document.getElementById('uInitFamilyId')?.value;
+      const initRole = document.getElementById('uInitFamilyRole')?.value || 'user';
+      if (initFam && savedId) {
+        await sb.from('family_members').upsert(
+          { user_id: savedId, family_id: initFam, role: initRole },
+          { onConflict: 'user_id,family_id' }
+        );
+        await sb.from('app_users').update({ family_id: initFam }).eq('id', savedId);
+      }
+    }
+
     toast(userId ? '✓ Usuário atualizado!' : '✓ Usuário criado!', 'success');
     document.getElementById('userFormArea').style.display = 'none';
-    // If editing current user, refresh avatar
-    if (userId === currentUser?.id) { if (record.avatar_url !== undefined) currentUser.avatar_url = record.avatar_url; _applyCurrentUserAvatar(); }
+    if (userId === currentUser?.id) {
+      if (record.avatar_url !== undefined) currentUser.avatar_url = record.avatar_url;
+      _applyCurrentUserAvatar();
+    }
     await loadUsersList();
     await loadFamiliesList();
   } catch(e) { toast('Erro: '+e.message,'error'); }
@@ -2199,20 +2350,37 @@ function _renderFamilySwitcher() {
   container.style.display = 'flex';
   const sel = document.getElementById('familySwitcherSelect');
   if (!sel) return;
-  const prev = Array.from(sel.options).map(o => o.value).join(',');
-  const next = families.map(f => f.id).join(',');
-  if (prev !== next) {
-    sel.innerHTML = families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
-  }
+  // Rebuild options with role label
+  sel.innerHTML = families.map(f => {
+    const roleShort = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[f.role] || '👤';
+    return `<option value="${f.id}">${roleShort} ${esc(f.name)}</option>`;
+  }).join('');
   sel.value = currentUser.family_id || '';
 }
 
 async function switchFamily(familyId) {
   if (!familyId || familyId === currentUser?.family_id) return;
-  currentUser.family_id = familyId;
-  localStorage.setItem('ft_active_family_' + currentUser.id, familyId);
   const fam = (currentUser.families || []).find(f => f.id === familyId);
-  toast('Família: ' + (fam?.name || familyId), 'info');
+  if (!fam) return;
+
+  currentUser.family_id = familyId;
+  // Atualiza role para o perfil do usuário NESSA família
+  // Admin/owner global mantêm seu role; usuários comuns herdam o role da família
+  if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
+    currentUser.role = fam.role || 'user';
+    const r = currentUser.role;
+    currentUser.can_create = r !== 'viewer';
+    currentUser.can_edit   = r !== 'viewer';
+    currentUser.can_delete = r === 'admin' || r === 'owner';
+    currentUser.can_import = r === 'admin' || r === 'owner';
+    currentUser.can_admin  = r === 'admin' || r === 'owner';
+  }
+
+  localStorage.setItem('ft_active_family_' + currentUser.id, familyId);
+  toast('Família: ' + (fam.name || familyId) + ' · Perfil: ' + _roleLabel(currentUser.role), 'info');
+  updateUserUI();
+  _renderFamilySwitcher();
+
   await Promise.all([
     loadAccounts().catch(()=>{}),
     loadCategories().catch(()=>{}),
@@ -2221,6 +2389,10 @@ async function switchFamily(familyId) {
   ]);
   populateSelects();
   navigate(state.currentPage || 'dashboard');
+}
+
+function _roleLabel(role) {
+  return { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[role] || role;
 }
 
 // ── Pending approvals badge ───────────────────────────────────────────────────
