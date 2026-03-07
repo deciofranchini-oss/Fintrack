@@ -3129,8 +3129,9 @@ html, body{
   border: 1px solid var(--border);
 }
 .um-family-item--active .um-family-icon {
-  background: var(--accent-lt);
+  background: var(--accent);
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(42,96,73,.18);
 }
 .um-family-body { flex: 1; min-width: 0; }
 .um-family-name {
