@@ -1743,20 +1743,15 @@ async function doResetUserPwd() {
     const admin = sbAdmin || initSbAdmin();
 
     if (admin) {
-      // Buscar auth.users.id pelo email via Admin API
-      const { data: listData, error: listErr } = await admin.auth.admin.listUsers();
-      if (!listErr && listData?.users) {
-        const authUser = listData.users.find(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
-        if (authUser?.id) {
-          const { error: updErr } = await admin.auth.admin.updateUserById(authUser.id, { password: pwd1 });
-          if (updErr) throw new Error('Admin API: ' + updErr.message);
-          authUpdated = true;
-        } else {
-          throw new Error('Usuário não encontrado no Supabase Auth: ' + targetEmail);
-        }
-      } else {
-        throw new Error('Erro ao listar usuários: ' + (listErr?.message || 'desconhecido'));
-      }
+      // Buscar auth user diretamente pelo email — evita listUsers() que tem
+      // limitações de paginação e pode falhar com "Database error finding users"
+      const { data: userData, error: userErr } = await admin.auth.admin.getUserByEmail(targetEmail);
+      if (userErr) throw new Error('Admin API (getUserByEmail): ' + userErr.message);
+      if (!userData?.user?.id) throw new Error('Usuário não encontrado no Supabase Auth: ' + targetEmail);
+
+      const { error: updErr } = await admin.auth.admin.updateUserById(userData.user.id, { password: pwd1 });
+      if (updErr) throw new Error('Admin API (updateUserById): ' + updErr.message);
+      authUpdated = true;
     }
 
     if (!authUpdated) {
