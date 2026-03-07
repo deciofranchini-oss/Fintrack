@@ -44,6 +44,11 @@ const SOURCE_PRESETS = {
     fields: { date:'Data', description:'Descrição / Produto', amount:'Movimentação', type_col:'Tipo' },
     accountName: 'XP Investimentos',
   },
+  ofx: {
+    label: 'Extrato Bancário (OFX/CSV)',
+    fields: { date:'Data', description:'Descrição', amount:'Valor', type_col:'Tipo' },
+    amountInvert: false,
+  },
 };
 
 const FINTRACK_FIELDS = [
@@ -65,20 +70,30 @@ const FINTRACK_FIELDS = [
 
 /* ─── Wizard navigation ─── */
 function goToStep(n) {
+  // Hide all panels first
   ['importStep1','colMapperScreen','fieldMapScreen','importProgress','importStagingArea'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  // Log is always visible when import is in progress
+  const logEl = document.getElementById('importLog');
+
   document.querySelectorAll('.import-wizard-step').forEach((el,i) => {
     el.classList.remove('active','done');
     if (i+1 < n) el.classList.add('done');
     else if (i+1 === n) el.classList.add('active');
   });
-  if (n === 1) document.getElementById('importStep1').style.display = '';
-  else if (n === 2) document.getElementById('colMapperScreen').style.display = '';
-  else if (n === 3) {
-    document.getElementById('importProgress').style.display = '';
-    document.getElementById('importStagingArea').style.display = 'none';
+
+  if (n === 1) {
+    if (document.getElementById('importStep1')) document.getElementById('importStep1').style.display = '';
+    if (logEl) logEl.style.display = 'none';  // hide log on step 1
+  } else if (n === 2) {
+    if (document.getElementById('colMapperScreen')) document.getElementById('colMapperScreen').style.display = '';
+    if (logEl) logEl.style.display = 'none';  // hide log on mapper step
+  } else if (n === 3) {
+    if (document.getElementById('importProgress')) document.getElementById('importProgress').style.display = '';
+    if (document.getElementById('importStagingArea')) document.getElementById('importStagingArea').style.display = 'none';
+    if (logEl) logEl.style.display = '';  // show log during import
   }
 }
 
@@ -102,6 +117,11 @@ function importDrop(e) { e.preventDefault(); importDragLeave(); const f = e.data
 function importFileSelected(e) { const f = e.target.files[0]; if (f) loadImportFile(f); }
 
 function initImportPage() {
+  // Reset wizard to step 1 — hide all other panels
+  goToStep(1);
+  const logEl = document.getElementById('importLog');
+  if (logEl) logEl.style.display = '';
+
   const sel = document.getElementById('importAccountFilter');
   if (sel) {
     sel.innerHTML = '<option value="">— Detectar automaticamente —</option>' +
@@ -850,14 +870,17 @@ async function stageTransactions(allTx, out) {
     if (mode === 'new') {
       for (const acc of (state.accounts||[])) {
         const { data } = await sb.from('transactions').select('date')
-          .eq('account_id', acc.id).order('date',{ascending:false}).limit(1);
+          .eq('account_id', acc.id)
+          .eq('family_id', famId())
+          .order('date',{ascending:false}).limit(1);
         if (data?.length) cutoffs[acc.name.toLowerCase()] = data[0].date;
       }
     } else if (mode === 'update') {
-      // Check if import_key column exists by trying to select it
       const { data, error } = await sb.from('transactions').select('import_key').limit(1);
       if (!error) {
-        const { data: allKeys } = await sb.from('transactions').select('import_key').not('import_key','is',null);
+        const { data: allKeys } = await sb.from('transactions').select('import_key')
+          .eq('family_id', famId())
+          .not('import_key','is',null);
         (allKeys||[]).forEach(r => exKeys.add(r.import_key));
       }
     }
@@ -976,7 +999,7 @@ async function commitImport() {
       // First: top-level
       for (const cat of toC.filter(c => !c.parentName)) {
         const { data, error } = await sb.from('categories')
-          .insert({ name: cat.name, type: cat.type || 'despesa', icon: '📦', color: '#2a6049' })
+          .insert({ family_id: famId(), name: cat.name, type: cat.type || 'despesa', icon: '📦', color: '#2a6049' })
           .select('id,name').single();
         if (data) pIds[cat.name.toLowerCase()] = data.id;
         else if (error) importLogMsg('err', `Cat "${cat.name}": ${error.message}`);
@@ -1157,9 +1180,12 @@ function cancelImport() {
   document.getElementById('importDropSub').textContent = 'Suporta CSV, XLSX, XLS — qualquer formato';
   document.getElementById('importProgress').style.display = 'none';
   const log = document.getElementById('importLog');
-  if (log) log.innerHTML = '';
+  if (log) { log.innerHTML = ''; log.style.display = ''; }
   showStagingArea(false);
   goToStep(1);
+  // Make sure importStep1 is visible and col mapper is hidden
+  const step1 = document.getElementById('importStep1');
+  if (step1) step1.style.display = '';
 }
 
 /* ─── Progress / Log helpers ─── */
