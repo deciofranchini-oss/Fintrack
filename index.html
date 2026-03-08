@@ -3195,6 +3195,21 @@
           </div>
         </div>
 
+        <!-- Família preferida (só aparece se o usuário pertence a mais de uma) -->
+        <div id="myProfileFamilyRow" style="display:none;margin-bottom:4px">
+          <div style="font-size:.8rem;font-weight:700;color:var(--text2);
+                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+            Família preferida
+          </div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label style="font-size:.8rem">Carregar ao entrar</label>
+            <select id="myProfilePreferredFamily" style="width:100%"></select>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
+              Será a família pré-selecionada em qualquer dispositivo ao fazer login.
+            </div>
+          </div>
+        </div>
+
         <div id="myProfileError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;
           padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
