@@ -224,7 +224,6 @@
     </div>
 </div>
   <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:3px">
-<button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none"><span class="ni-icon">🏷️</span>Preços</button>
 <button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
   </div>
 </nav>
@@ -243,57 +242,17 @@
       <button id="privacyToggleBtn" onclick="togglePrivacy()" title="Ocultar valores" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--muted);display:flex;align-items:center;transition:color 0.2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
-      <!-- User avatar button + dropdown -->
-      <div id="topbarUserBtn" style="display:none;position:relative">
-        <div class="topbar-user" onclick="toggleUserMenu(event)" id="topbarUserAvatar" title="Meu perfil">
-          <span id="topbarUserAvatarInner">?</span>
-        </div>
-        <!-- Dropdown menu -->
-        <div id="userMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;
-          background:var(--surface);border:1.5px solid var(--border2);border-radius:14px;
-          box-shadow:0 12px 40px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.10);min-width:230px;z-index:9999;overflow:hidden">
-          <!-- Header with avatar + name -->
-          <div id="userMenuHeader" style="padding:16px 16px 12px;border-bottom:1.5px solid var(--border);
-            display:flex;align-items:center;gap:12px;background:var(--bg2)">
-            <div id="userMenuAvatarBig" style="flex-shrink:0"></div>
-            <div style="min-width:0">
-              <div id="userMenuName" style="font-size:.88rem;font-weight:700;color:var(--text);
-                overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-              <div id="userMenuEmail" style="font-size:.72rem;color:var(--muted);
-                overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-              <div id="userMenuRole" style="font-size:.68rem;margin-top:3px"></div>
-            </div>
-          </div>
-          <!-- Family switcher section (só aparece se tiver > 1 família) -->
-          <div id="userMenuFamilySection" style="display:none;border-bottom:1.5px solid var(--border)">
-            <div style="padding:8px 12px 4px;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">
-              Família ativa
-            </div>
-            <div id="userMenuFamilyList" style="padding:0 6px 6px"></div>
-          </div>
-
-          <!-- Menu items -->
-          <div style="padding:6px">
-            <button class="user-menu-item" onclick="openMyProfile()">
-              <span>🖼️</span><span>Meu Perfil</span>
-            </button>
-            <button class="user-menu-item" onclick="showChangeMyPwd();closeUserMenu()">
-              <span>🔑</span><span>Alterar senha</span>
-            </button>
-            <!-- Gerenciar Família: visível para owners de família que não são admin global -->
-            <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
-                    onclick="closeUserMenu();openUserAdmin()">
-              <span>🏠</span><span>Gerenciar minha família</span>
-            </button>
-            <div style="height:1px;background:var(--border);margin:4px 0"></div>
-            <button class="user-menu-item" onclick="doLogout()" style="color:var(--red,#dc2626)">
-              <span>↩</span><span>Sair</span>
-            </button>
-          </div>
-        </div>
+      <div class="topbar-user" onclick="showUserMenu()" id="topbarUserBtn" style="display:none">
+        <div class="topbar-user-avatar" id="topbarUserAvatar">?</div>
+        <span class="topbar-user-name" id="topbarUserName"></span>
       </div>
       
-
+      <div id="familySwitcherWrap" style="display:none;align-items:center;gap:6px;margin-right:4px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <select id="familySwitcherSelect" onchange="switchFamily(this.value)"
+          style="font-size:.8rem;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 8px;cursor:pointer;max-width:160px;outline:none">
+        </select>
+      </div>
       <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
         <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
            style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;text-decoration:none;color:var(--text);">
@@ -743,14 +702,7 @@
 
     <!-- PAYEES -->
     <div class="page" id="page-payees">
-      <div class="section-header mb-6">
-        <span class="section-title">Beneficiários &amp; Fontes Pagadoras</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="openNormalizePayeesModal()" title="Padronizar Title Case em todos os nomes">🔤 Normalizar Nomes</button>
-          <button class="btn btn-ghost" onclick="openPayeeClipboardImport()">📋 Importar</button>
-          <button class="btn btn-primary" onclick="openPayeeModal()">+ Novo</button>
-        </div>
-      </div>
+      <div class="section-header mb-6"><span class="section-title">Beneficiários & Fontes Pagadoras</span><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="openPayeeClipboardImport()">📋 Importar da Área de Transferência</button><button class="btn btn-primary" onclick="openPayeeModal()">+ Novo</button></div></div>
       <div class="filters">
         <div class="search-wrap">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -865,35 +817,21 @@
         </div>
 
         <!-- Source preset chips -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Formato do arquivo <span style="font-weight:400;text-transform:none;color:var(--accent);font-size:.7rem">— ou carregue o arquivo para detecção automática 🤖</span></div>
-        </div>
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Formato do arquivo</div>
         <div class="source-chips" id="sourceChips">
-          <div class="source-chip active" onclick="selectSourcePreset('generic')" id="chip-generic">📄 CSV Genérico</div>
-          <div class="source-chip" onclick="selectSourcePreset('moneywiz')" id="chip-moneywiz">💰 MoneyWiz</div>
-          <div class="source-chip" onclick="selectSourcePreset('ofx')" id="chip-ofx">🏦 OFX / QFX</div>
-          <div class="source-chip" onclick="selectSourcePreset('nubank')" id="chip-nubank">🟣 Nubank</div>
-          <div class="source-chip" onclick="selectSourcePreset('inter')" id="chip-inter">🟠 Banco Inter</div>
-          <div class="source-chip" onclick="selectSourcePreset('itau')" id="chip-itau">🔵 Itaú</div>
-          <div class="source-chip" onclick="selectSourcePreset('bradesco')" id="chip-bradesco">🔴 Bradesco</div>
-          <div class="source-chip" onclick="selectSourcePreset('santander')" id="chip-santander">🔴 Santander</div>
-          <div class="source-chip" onclick="selectSourcePreset('bb')" id="chip-bb">🟡 Banco do Brasil</div>
-          <div class="source-chip" onclick="selectSourcePreset('caixa')" id="chip-caixa">🔵 Caixa</div>
-          <div class="source-chip" onclick="selectSourcePreset('xp')" id="chip-xp">⚫ XP / Rico</div>
-          <div class="source-chip" onclick="selectSourcePreset('c6bank')" id="chip-c6bank">⚫ C6 Bank</div>
-          <div class="source-chip" onclick="selectSourcePreset('pagbank')" id="chip-pagbank">🟢 PagBank</div>
-          <div class="source-chip" onclick="selectSourcePreset('picpay')" id="chip-picpay">🟢 PicPay</div>
-          <div class="source-chip" onclick="selectSourcePreset('mercadopago')" id="chip-mercadopago">🔵 Mercado Pago</div>
-          <div class="source-chip" onclick="selectSourcePreset('sicoob')" id="chip-sicoob">🟢 Sicoob</div>
+          <div class="source-chip" onclick="selectSourcePreset('moneywiz')" id="chip-moneywiz">MoneyWiz</div>
+          <div class="source-chip active" onclick="selectSourcePreset('generic')" id="chip-generic">CSV Genérico</div>
+          <div class="source-chip" onclick="selectSourcePreset('ofx')" id="chip-ofx">Extrato Bancário (OFX/CSV)</div>
+          <div class="source-chip" onclick="selectSourcePreset('nubank')" id="chip-nubank">Nubank</div>
+          <div class="source-chip" onclick="selectSourcePreset('inter')" id="chip-inter">Banco Inter</div>
+          <div class="source-chip" onclick="selectSourcePreset('itau')" id="chip-itau">Itaú</div>
+          <div class="source-chip" onclick="selectSourcePreset('xp')" id="chip-xp">XP / Rico</div>
         </div>
-
-        <!-- AI analysis badge (shown after file load) -->
-        <div id="importAiBadge" style="display:none;margin-top:10px"></div>
 
         <!-- File drop zone -->
         <div class="import-drop-zone" id="importDropZone"
              ondragover="importDragOver(event)" ondragleave="importDragLeave(event)" ondrop="importDrop(event)">
-          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv,.ofx,.qfx,.tsv" onchange="importFileSelected(event)">
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv,.ofx" onchange="importFileSelected(event)">
           <div class="import-drop-icon">📂</div>
           <div class="import-drop-title" id="importDropTitle">Arraste o arquivo ou clique para selecionar</div>
           <div class="import-drop-sub" id="importDropSub">Suporta CSV, XLSX, XLS — qualquer formato</div>
@@ -1018,6 +956,38 @@
         <div id="stagingContent"></div>
       </div>
 
+      <hr style="margin:28px 0;border:none;border-top:1.5px solid var(--border)">
+
+      <!-- Backup / Restore -->
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px">💾 Backup &amp; Restauração</div>
+
+      <div class="backup-card">
+        <h4>📤 Exportar Backup</h4>
+        <p>Exporta todas as contas, categorias, beneficiários e transações para um arquivo JSON.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="exportBackup()">📥 Baixar JSON</button>
+          <span id="backupStatus" style="font-size:.78rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="backup-card">
+        <h4>📥 Restaurar Backup</h4>
+        <p>Restaura dados de um backup .json do FinTrack (upsert — não apaga dados existentes).</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-ghost" style="cursor:pointer">
+            📂 Selecionar arquivo .json
+            <input type="file" id="restoreFileInput" accept=".json" onchange="restoreBackup(event)" style="display:none">
+          </label>
+          <span id="restoreStatus" style="font-size:.78rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="backup-card danger-zone">
+        <h4>🗑️ Limpar Base de Dados</h4>
+        <p>Remove <strong>TODOS</strong> os dados permanentemente. Requer confirmação dupla + Masterpin.</p>
+        <button class="btn" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:var(--r-sm);cursor:pointer;font-family:var(--font-sans);font-size:.85rem" onclick="confirmClearDatabase()">⚠️ Limpar Tudo</button>
+      </div>
+
     </div>
 
     <!-- SETTINGS PAGE -->
@@ -1042,21 +1012,13 @@
       <!-- Current user info -->
       <div class="settings-section" id="currentUserSection">
         <div class="settings-card">
-          <div class="settings-row" style="gap:14px">
-            <div id="settingsUserAvatarWrap"
-                 onclick="openMyProfile()"
-                 title="Alterar foto"
-                 style="width:52px;height:52px;border-radius:50%;overflow:hidden;flex-shrink:0;
-                        cursor:pointer;border:2px solid var(--border);transition:opacity .15s;
-                        display:flex;align-items:center;justify-content:center;background:var(--surface2)"
-                 onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
-            </div>
-            <div class="settings-row-info" style="flex:1;min-width:0">
+          <div class="settings-row">
+            <div class="settings-row-icon" style="background:var(--accent-lt)">👤</div>
+            <div class="settings-row-info">
               <div class="settings-row-label" id="currentUserName">—</div>
               <div class="settings-row-sub" id="currentUserEmail">—</div>
             </div>
             <div class="settings-row-action" style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="openMyProfile()">🖼️ Foto</button>
               <button class="btn btn-ghost btn-sm" onclick="showChangeMyPwd()">🔑 Senha</button>
               <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="doLogout()">↩ Sair</button>
             </div>
@@ -1214,6 +1176,21 @@
         </div>
       </div>
 
+      <!-- Users Management (admin only) -->
+      <div class="settings-section" id="settingsUserMgmt" style="display:none">
+        <div class="settings-card">
+          <div class="settings-row">
+            <div class="settings-row-icon" style="background:#fef3c7">👥</div>
+            <div class="settings-row-info">
+              <div class="settings-row-label">Gerenciar Usuários</div>
+              <div class="settings-row-sub">Criar, editar e controlar acesso</div>
+            </div>
+            <div class="settings-row-action">
+              <button class="btn btn-ghost btn-sm" onclick="openUserAdmin()">Abrir</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ══ VISIBILIDADE DAS CONFIGURAÇÕES (admin only) ══ -->
       <div class="settings-section" id="settingsVisibilitySection" style="display:none">
@@ -1399,36 +1376,18 @@
         </div>
       </div>
 
-
-      <!-- ══ NORMALIZAÇÃO DE NOMES (admin only) ══ -->
-      <div class="settings-section" id="normalizeNamesSection" style="display:none">
-        <div class="settings-group-label">🔤 Normalização de Nomes</div>
+      <!-- Import / Backup -->
+      <div class="settings-section">
         <div class="settings-card">
           <div class="settings-row">
-            <div class="settings-row-icon" style="background:#f0fdf4">🔤</div>
+            <div class="settings-row-icon" style="background:var(--accent-lt)">📥</div>
             <div class="settings-row-info">
-              <div class="settings-row-label">Padronizar beneficiários e categorias</div>
-              <div class="settings-row-sub" id="normalizeNamesSub">
-                Converte todos os nomes para Title Case (Primeira Letra Maiúscula por Palavra),
-                respeitando preposições e siglas. Executado automaticamente todo domingo às 03:00 UTC via pg_cron.
-              </div>
+              <div class="settings-row-label">Importar / Backup Local</div>
+              <div class="settings-row-sub">MoneyWiz, backup JSON, limpar dados</div>
             </div>
-            <div class="settings-row-action" style="flex-direction:column;align-items:flex-end;gap:6px">
-              <button class="btn btn-ghost btn-sm" onclick="openNormalizeNamesPreview()">🔍 Prévia</button>
-              <button class="btn btn-primary btn-sm" id="normalizeNamesRunBtn" onclick="runNormalizeNames()">▶ Executar agora</button>
+            <div class="settings-row-action">
+              <button class="btn btn-ghost btn-sm" onclick="navigate('import')">Abrir</button>
             </div>
-          </div>
-          <!-- Last run info -->
-          <div id="normalizeNamesLastRun" style="display:none;margin:0 16px 12px;padding:10px 14px;
-               background:var(--surface2);border-radius:var(--r-sm);font-size:.78rem;color:var(--muted)"></div>
-          <!-- pg_cron hint -->
-          <div id="normalizeNamesCronHint" style="display:none;margin:0 16px 12px;padding:10px 14px;
-               background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);
-               font-size:.78rem;line-height:1.6">
-            ⚠️ <strong>pg_cron não detectado.</strong>
-            Habilite em <em>Supabase → Database → Extensions → pg_cron</em>, depois execute
-            <code>migration_normalize_names.sql</code> novamente.
-            A execução manual pelo botão acima funciona independentemente.
           </div>
         </div>
       </div>
@@ -1469,55 +1428,6 @@
       </div>
 
 
-    </div>
-
-
-    <!-- ══ PRICES PAGE ══════════════════════════════════════════════════════ -->
-    <div class="page" id="page-prices">
-      <div class="section-header mb-6">
-        <span class="section-title">🏷️ Gestão de Preços</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn"
-                  onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
-          <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()">+ Novo Item</button>
-        </div>
-      </div>
-
-      <!-- Receipt drop zone -->
-      <div id="pricesReceiptZone" style="display:none;margin-bottom:16px;padding:20px;
-           border:2px dashed var(--accent);border-radius:var(--r);background:var(--accent-lt);
-           text-align:center;cursor:pointer"
-           ondragover="event.preventDefault()" ondrop="onPricesReceiptDrop(event)"
-           onclick="document.getElementById('pricesReceiptInput').click()">
-        <div style="font-size:2rem;margin-bottom:8px">📷</div>
-        <div style="font-size:.85rem;font-weight:600;color:var(--accent)">
-          Arraste uma foto/PDF do recibo ou clique para selecionar
-        </div>
-        <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
-          JPG, PNG, PDF — a imagem <strong>não é armazenada</strong>
-        </div>
-        <input type="file" id="pricesReceiptInput" accept="image/*,application/pdf"
-               style="display:none" onchange="onPricesReceiptSelected(this)">
-        <button class="btn btn-ghost btn-sm" style="margin-top:12px"
-                onclick="event.stopPropagation();closePricesReceiptZone()">✕ Cancelar</button>
-      </div>
-
-      <!-- Filters -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <input type="text" id="pricesSearch" placeholder="🔍 Buscar item…"
-               oninput="pricesSearch(this.value)"
-               style="flex:1;min-width:180px;font-size:.85rem">
-        <select id="pricesCatFilter" onchange="pricesCatFilter(this.value)"
-                style="font-size:.85rem;min-width:160px">
-          <option value="">Todas as categorias</option>
-        </select>
-      </div>
-
-      <div id="pricesItemList">
-        <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">
-          ⏳ Carregando…
-        </div>
-      </div>
     </div>
 
     <!-- AUDIT PAGE (admin) -->
@@ -1847,22 +1757,11 @@
                   <option value="admin">Administrador</option>
                 </select>
               </div>
-              <div class="form-group" style="grid-column:1/-1">
-                <label>Família inicial <span style="font-size:.72rem;color:var(--muted)">(opcional — gerencie vínculos na aba Famílias)</span></label>
-                <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
-                  <select id="uInitFamilyId">
-                    <option value="">— Nenhuma (admin global) —</option>
-                  </select>
-                  <select id="uInitFamilyRole" style="width:148px">
-                    <option value="user">👤 Usuário</option>
-                    <option value="admin">🔧 Admin</option>
-                    <option value="viewer">👁 Visualizador</option>
-                    <option value="owner">👑 Owner</option>
-                  </select>
-                </div>
-                <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
-                  Para adicionar o usuário a <strong>múltiplas famílias</strong>, use a aba <strong>Famílias</strong> após criar o usuário.
-                </div>
+              <div class="form-group full" style="grid-column:1/-1">
+                <label>Família <span style="font-size:.72rem;color:var(--muted)">(admins sem família veem todos os dados)</span></label>
+                <select id="uFamilyId">
+                  <option value="">— Nenhuma (admin global) —</option>
+                </select>
               </div>
             </div>
             <div style="font-size:.8rem;font-weight:600;color:var(--text2);margin:10px 0 6px">Permissões</div>
@@ -1873,13 +1772,6 @@
               <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pDelete"> Excluir</label>
               <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pExport" checked> Exportar</label>
               <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pImport"> Importar</label>
-            </div>
-            <!-- Visibilidade do ícone de escola -->
-            <div id="schoolLinkPermRow" style="display:none;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
-              <label style="display:flex;align-items:center;gap:8px;font-size:.8rem;cursor:pointer">
-                <input type="checkbox" id="pSchoolLink" checked>
-                <span>🎓 Ver atalho da escola na barra superior</span>
-              </label>
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-primary btn-sm" onclick="saveUser()">💾 Salvar</button>
@@ -2436,11 +2328,6 @@
             style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
             🤖 Ler com IA
           </button>
-          <button type="button" id="txRegisterPricesBtn"
-            onclick="openRegisterPricesFromReceipt()"
-            style="display:none;align-items:center;gap:8px;margin-top:6px;width:100%;padding:8px 14px;background:linear-gradient(135deg,#047857,#059669);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
-            🏷️ Registrar Preços
-          </button>
           <input type="file" id="receiptScanInput"
             accept="image/*,application/pdf" capture="environment"
             style="display:none"
@@ -2819,29 +2706,7 @@
       <div class="form-grid">
         <div class="form-group full"><label>Nome *</label><input type="text" id="payeeName" placeholder="Ex: Supermercado Extra"></div>
         <div class="form-group"><label>Tipo *</label><select id="payeeType"><option value="beneficiario">Beneficiário</option><option value="fonte_pagadora">Fonte Pagadora</option><option value="ambos">Ambos</option></select></div>
-        <div class="form-group">
-          <label>Categoria Padrão</label>
-          <div id="payeeCatPickerWrap" style="position:relative">
-            <button type="button" id="payeeCatPickerBtn"
-                    onclick="togglePayeeCatPicker()"
-                    style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);
-                           border-radius:var(--r-sm);padding:8px 10px;font-size:.85rem;cursor:pointer;
-                           display:flex;align-items:center;gap:8px;color:var(--text)">
-              <span id="payeeCatPickerDot" style="width:10px;height:10px;border-radius:50%;
-                    background:var(--muted);flex-shrink:0;display:inline-block"></span>
-              <span id="payeeCatPickerLabel" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                — Nenhuma —
-              </span>
-              <span style="color:var(--muted);font-size:.75rem">▾</span>
-            </button>
-            <div id="payeeCatPickerDropdown"
-                 style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
-                        background:var(--surface);border:1px solid var(--border);
-                        border-radius:var(--r-sm);box-shadow:var(--shadow-md);
-                        max-height:240px;overflow-y:auto;z-index:200"></div>
-            <input type="hidden" id="payeeCategory">
-          </div>
-        </div>
+        <div class="form-group"><label>Categoria Padrão</label><select id="payeeCategory"><option value="">— Nenhuma —</option></select></div>
         <div class="form-group full"><label>Notas</label><textarea id="payeeNotes" rows="2" placeholder="Observações..."></textarea></div>
       </div>
     </div>
@@ -3160,7 +3025,6 @@
   <script src="js/auto_register.js"></script>
 <script src="js/audit.js"></script>
 <script src="js/receipt_ai.js"></script>
-<script src="js/prices.js"></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -3234,492 +3098,6 @@
     </div>
   </div>
 
-  <!-- My Profile Modal: avatar + password in one place -->
-  <div class="modal-overlay" id="myProfileModal">
-    <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
-      <div class="modal-header" style="padding:12px 16px 11px">
-        <span class="modal-title" style="font-size:1rem">👤 Meu Perfil</span>
-        <button class="modal-close" onclick="closeModal('myProfileModal')">✕</button>
-      </div>
-      <div class="modal-body" style="padding:14px 16px 20px">
-
-        <!-- Avatar section — row layout on mobile to save vertical space -->
-        <div style="display:flex;flex-direction:row;align-items:center;gap:14px;
-                    padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px">
-          <!-- Avatar circle clickable -->
-          <div id="myProfileAvatarWrap" onclick="document.getElementById('myProfileAvatarFile').click()"
-               title="Clique para alterar foto"
-               style="width:72px;height:72px;border-radius:50%;overflow:hidden;cursor:pointer;
-                      border:3px solid var(--accent);background:var(--surface2);
-                      display:flex;align-items:center;justify-content:center;
-                      transition:opacity .15s;flex-shrink:0;position:relative"
-               onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
-          </div>
-          <!-- Info + actions stacked beside avatar -->
-          <div style="flex:1;min-width:0">
-            <div id="myProfileName" style="font-size:.92rem;font-weight:700;color:var(--text);
-                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-            <div id="myProfileEmail" style="font-size:.72rem;color:var(--muted);
-                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
-            <div id="myProfileRoleBadge" style="margin-top:5px"></div>
-            <!-- Avatar actions inline -->
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:.75rem;padding:3px 10px">
-                📷 Foto
-                <input type="file" id="myProfileAvatarFile" accept="image/*"
-                       style="display:none" onchange="previewMyProfileAvatar(this)">
-              </label>
-              <button id="myProfileRemoveAvatarBtn" class="btn btn-ghost btn-sm"
-                      style="font-size:.75rem;color:var(--red);display:none;padding:3px 10px"
-                      onclick="removeMyProfileAvatar()">✕ Remover</button>
-            </div>
-          </div>
-          <input type="hidden" id="myProfileAvatarRemoveFlag" value="">
-        </div>
-        <div id="myProfileAvatarError" style="display:none;color:var(--red);font-size:.78rem;
-          padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;
-          margin-bottom:12px;text-align:center"></div>
-
-        <!-- Password section -->
-        <div style="margin-bottom:4px">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
-            Alterar senha
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-            <div class="form-group" style="margin-bottom:0">
-              <label style="font-size:.75rem">Nova senha</label>
-              <input type="password" id="myProfilePwd1" placeholder="Mín. 8 caracteres"
-                     autocomplete="new-password" oninput="updateMyProfilePwdStrength()">
-              <div style="margin-top:4px;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
-                <div id="myProfilePwdBar" style="height:100%;width:0;transition:width .3s,background .3s;border-radius:3px"></div>
-              </div>
-              <div id="myProfilePwdHint" style="font-size:.68rem;color:var(--muted);margin-top:2px"></div>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label style="font-size:.75rem">Confirmar senha</label>
-              <input type="password" id="myProfilePwd2" placeholder="Repita a senha"
-                     autocomplete="new-password"
-                     onkeydown="if(event.key==='Enter')saveMyProfile()">
-            </div>
-          </div>
-          <div id="myProfilePwdNote" style="font-size:.72rem;color:var(--muted);margin-bottom:12px">
-            Deixe em branco para manter a senha atual.
-          </div>
-        </div>
-
-        <!-- Família preferida (só aparece se o usuário pertence a mais de uma) -->
-        <div id="myProfileFamilyRow" style="display:none;margin-bottom:4px">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-            Família preferida
-          </div>
-          <div class="form-group" style="margin-bottom:4px">
-            <label style="font-size:.75rem">Carregar ao entrar</label>
-            <select id="myProfilePreferredFamily" style="width:100%;font-size:.83rem"></select>
-            <div style="font-size:.7rem;color:var(--muted);margin-top:3px">
-              Pré-selecionada em qualquer dispositivo ao fazer login.
-            </div>
-          </div>
-        </div>
-
-        <!-- Gerenciar família (só para owners) -->
-        <div id="myProfileFamilyMgmtBtn" style="display:none;margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;gap:8px;font-size:.8rem"
-                  onclick="closeModal('myProfileModal');openMyFamilyMgmt()">
-            🏠 Gerenciar minha família
-          </button>
-        </div>
-
-        <div id="myProfileError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;
-          padding:7px 11px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('myProfileModal')">Cancelar</button>
-          <button class="btn btn-primary btn-sm" id="myProfileSaveBtn" onclick="saveMyProfile()">💾 Salvar</button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Excluir Usuário ══════════════════════════════════════════════ -->
-
-
-  <!-- ══ Modal: Prévia de Normalização de Nomes ════════════════════════════ -->
-  <div class="modal-overlay" id="normalizeNamesPreviewModal">
-    <div class="modal" style="max-width:620px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🔍 Prévia — Normalização de Nomes</span>
-        <button class="modal-close" onclick="closeModal('normalizeNamesPreviewModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
-                      padding:8px 14px;font-size:.82rem">
-            👥 Beneficiários: <strong id="nnPreviewPayeeCount" style="color:var(--accent)">—</strong>
-          </div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
-                      padding:8px 14px;font-size:.82rem">
-            🏷️ Categorias: <strong id="nnPreviewCatCount" style="color:var(--accent)">—</strong>
-          </div>
-        </div>
-        <div id="nnPreviewList"
-             style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)">
-          <div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando...</div>
-        </div>
-        <div style="font-size:.75rem;color:var(--muted);margin-top:10px">
-          Nenhuma alteração é feita até clicar em <strong>Executar agora</strong>.
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('normalizeNamesPreviewModal')">Fechar</button>
-          <button class="btn btn-primary btn-sm"
-                  onclick="closeModal('normalizeNamesPreviewModal');runNormalizeNames()">▶ Executar agora</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Detalhe do Item de Preço ════════════════════════════════════ -->
-  <div class="modal-overlay" id="priceItemDetailModal">
-    <div class="modal" style="max-width:560px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title" id="pidModalTitle">📦 Detalhe do Item</span>
-        <button class="modal-close" onclick="closeModal('priceItemDetailModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <!-- Stats strip -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Preço Médio</div>
-            <div class="pid-stat-val" id="pidAvgPrice">—</div>
-          </div>
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Último Preço</div>
-            <div class="pid-stat-val" id="pidLastPrice">—</div>
-          </div>
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Registros</div>
-            <div class="pid-stat-val" id="pidCount">—</div>
-          </div>
-        </div>
-        <!-- History -->
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;
-                    letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Histórico</div>
-        <div id="pidHistoryList" style="max-height:320px;overflow-y:auto"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('priceItemDetailModal')">Fechar</button>
-          <button class="btn btn-ghost btn-sm" id="pidEditBtn" onclick="openEditPriceItem()">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" id="pidDeleteBtn"
-                  style="color:var(--red)" onclick="deletePriceItemCurrent()">🗑️ Excluir</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Cadastro / Edição de Item de Preço ═════════════════════════ -->
-  <div class="modal-overlay" id="priceItemFormModal">
-    <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title" id="pifModalTitle">Novo Item</span>
-        <button class="modal-close" onclick="closeModal('priceItemFormModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="pifItemId">
-        <div class="form-grid">
-          <div class="form-group full">
-            <label>Nome *</label>
-            <input type="text" id="pifName" placeholder="Ex: Arroz 5kg">
-          </div>
-          <div class="form-group full">
-            <label>Descrição</label>
-            <input type="text" id="pifDesc" placeholder="Marca, variante…">
-          </div>
-          <div class="form-group">
-            <label>Unidade</label>
-            <input type="text" id="pifUnit" placeholder="un, kg, L…" value="un">
-          </div>
-          <div class="form-group">
-            <label>Categoria</label>
-            <select id="pifCategory"><option value="">— Nenhuma —</option></select>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('priceItemFormModal')">Cancelar</button>
-          <button class="btn btn-primary" onclick="savePriceItem()">Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Registrar Preços do Recibo ═════════════════════════════════ -->
-  <div class="modal-overlay" id="registerPricesModal">
-    <div class="modal" style="max-width:640px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🏷️ Registrar Preços do Recibo</span>
-        <button class="modal-close" onclick="closeModal('registerPricesModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-grid" style="margin-bottom:14px">
-          <div class="form-group">
-            <label>Estabelecimento</label>
-            <input type="text" id="rpmStoreName" placeholder="Nome do estabelecimento">
-          </div>
-          <div class="form-group">
-            <label>Data da Compra</label>
-            <input type="date" id="rpmDate">
-          </div>
-        </div>
-        <div id="rpmItemList" style="max-height:380px;overflow-y:auto"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="closeModal('registerPricesModal')">Cancelar</button>
-          <button class="btn btn-primary" onclick="saveRegisterPrices()">💾 Salvar Preços</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="deleteUserModal">
-    <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🗑️ Excluir Usuário</span>
-        <button class="modal-close" onclick="closeModal('deleteUserModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="duUserId">
-
-        <!-- Warning block -->
-        <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-start">
-          <div style="font-size:1.5rem;flex-shrink:0;line-height:1">⚠️</div>
-          <div>
-            <div style="font-weight:700;font-size:.9rem;color:#991b1b;margin-bottom:4px">Ação irreversível</div>
-            <div style="font-size:.8rem;color:#7f1d1d;line-height:1.55">
-              O usuário <strong id="duUserName"></strong> será removido permanentemente do sistema,
-              incluindo todas as suas associações de família.<br><br>
-              <span style="color:#991b1b">Os dados financeiros da família <u>não</u> serão apagados.</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Confirm email -->
-        <div class="form-group" style="margin-bottom:16px">
-          <label style="font-size:.82rem;font-weight:600">
-            Digite o e-mail do usuário para confirmar:
-            <span id="duUserEmail" style="color:var(--accent);font-family:monospace"></span>
-          </label>
-          <input type="email" id="duConfirmEmail" placeholder="e-mail do usuário"
-                 autocomplete="off"
-                 onkeydown="if(event.key==='Enter')confirmDeleteUser()"
-                 style="margin-top:6px">
-        </div>
-
-        <div id="duError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;
-          padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('deleteUserModal')">Cancelar</button>
-          <button class="btn btn-sm" id="duConfirmBtn"
-                  style="background:var(--red);color:#fff;border:none;cursor:pointer;font-family:var(--font-sans)"
-                  onclick="confirmDeleteUser()">🗑️ Excluir permanentemente</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Gerenciar Minha Família (owner) ══════════════════════════════ -->
-  <div class="modal-overlay" id="myFamilyMgmtModal">
-    <div class="modal" style="max-width:580px;width:95vw"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🏠 Gerenciar Família</span>
-        <button class="modal-close" onclick="closeModal('myFamilyMgmtModal')">✕</button>
-      </div>
-      <div class="modal-body" style="padding:0">
-
-        <!-- Family tabs (when owner of multiple families) -->
-        <div id="mfmFamilyTabs" style="display:none;border-bottom:1px solid var(--border);padding:0 16px;overflow-x:auto;white-space:nowrap"></div>
-
-        <!-- Family name heading -->
-        <div style="padding:14px 20px 0">
-          <div id="mfmFamilyName" style="font-size:1rem;font-weight:700;color:var(--text)"></div>
-          <div id="mfmFamilyDesc" style="font-size:.75rem;color:var(--muted);margin-top:2px"></div>
-        </div>
-
-        <!-- Members list -->
-        <div style="padding:14px 20px 0">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">
-            Membros
-          </div>
-          <div id="mfmMembersList" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;padding-right:4px"></div>
-        </div>
-
-        <!-- Add existing user -->
-        <div style="padding:12px 20px 0" id="mfmAddExistingRow">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">
-            Adicionar usuário existente
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <select id="mfmAddUserSel" style="flex:1;min-width:140px;font-size:.82rem">
-              <option value="">— Selecionar usuário —</option>
-            </select>
-            <select id="mfmAddUserRole" style="width:130px;font-size:.82rem">
-              <option value="user">👤 Usuário</option>
-              <option value="admin">🔧 Admin</option>
-              <option value="viewer">👁 Visualizador</option>
-              <option value="owner">👑 Owner</option>
-            </select>
-            <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()" style="white-space:nowrap;font-size:.8rem">+ Adicionar</button>
-          </div>
-        </div>
-
-        <!-- Invite by email -->
-        <div style="padding:12px 20px 16px">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">
-            Convidar por e-mail
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <input type="email" id="mfmInviteEmail" placeholder="email@exemplo.com"
-                   style="flex:1;min-width:160px;font-size:.82rem"
-                   onkeydown="if(event.key==='Enter')mfmInvite()">
-            <select id="mfmInviteRole" style="width:130px;font-size:.82rem">
-              <option value="user">👤 Usuário</option>
-              <option value="admin">🔧 Admin</option>
-              <option value="viewer">👁 Visualizador</option>
-              <option value="owner">👑 Owner</option>
-            </select>
-            <button class="btn btn-primary btn-sm" id="mfmInviteBtn" onclick="mfmInvite()" style="white-space:nowrap;font-size:.8rem">📨 Convidar</button>
-          </div>
-          <div id="mfmMsg" style="display:none;font-size:.78rem;margin-top:8px;padding:6px 10px;border-radius:6px"></div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- Delete Account Modal -->
-  <div class="modal-overlay" id="deleteAccountModal">
-    <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🗑️ Excluir Conta</span>
-        <button class="modal-close" onclick="closeModal('deleteAccountModal')">✕</button>
-      </div>
-      <div class="modal-body">
-
-        <!-- Account summary -->
-        <div id="delAccSummary" style="display:flex;align-items:center;gap:14px;
-          padding:14px 16px;border-radius:10px;background:var(--bg2);
-          border:1px solid var(--border);margin-bottom:20px">
-          <div id="delAccIcon" style="width:42px;height:42px;border-radius:50%;
-            display:flex;align-items:center;justify-content:center;font-size:1.3rem;
-            flex-shrink:0;background:var(--surface)"></div>
-          <div style="min-width:0">
-            <div id="delAccName" style="font-size:.95rem;font-weight:700;color:var(--text)"></div>
-            <div id="delAccMeta" style="font-size:.78rem;color:var(--muted);margin-top:1px"></div>
-          </div>
-          <div id="delAccBalance" style="margin-left:auto;font-size:1rem;font-weight:800;flex-shrink:0"></div>
-        </div>
-
-        <!-- Warning banner if transactions exist -->
-        <div id="delAccWarning" style="display:none;padding:10px 14px;border-radius:8px;
-          background:#fef3c7;border:1px solid #fbbf24;margin-bottom:18px;font-size:.82rem;color:#92400e">
-          <span style="font-weight:700">⚠️ Atenção:</span>
-          <span id="delAccWarningText"></span>
-        </div>
-
-        <!-- Options -->
-        <div style="font-size:.8rem;font-weight:700;color:var(--muted);
-          text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">
-          O que fazer com os registros?
-        </div>
-
-        <!-- Option 1: Transfer to existing account -->
-        <label class="del-acc-option" id="delAccOpt1Label">
-          <input type="radio" name="delAccAction" value="transfer" id="delAccOptTransfer"
-                 onchange="onDelAccOptionChange()">
-          <div class="del-acc-option-body">
-            <div class="del-acc-option-icon" style="background:#e8f2ee;color:var(--accent)">🔄</div>
-            <div>
-              <div class="del-acc-option-title">Transferir para outra conta</div>
-              <div class="del-acc-option-sub">Todos os registros migram para a conta selecionada</div>
-            </div>
-          </div>
-          <div id="delAccTransferTarget" style="display:none;margin-top:10px;padding-top:10px;
-            border-top:1px solid var(--border)">
-            <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Conta destino</label>
-            <select id="delAccTargetSelect" style="width:100%;margin-top:4px">
-              <option value="">— Selecione a conta —</option>
-            </select>
-          </div>
-        </label>
-
-        <!-- Option 2: Create new account -->
-        <label class="del-acc-option" id="delAccOpt2Label">
-          <input type="radio" name="delAccAction" value="new_account" id="delAccOptNew"
-                 onchange="onDelAccOptionChange()">
-          <div class="del-acc-option-body">
-            <div class="del-acc-option-icon" style="background:#e8f0fb;color:#1e5ba8">➕</div>
-            <div>
-              <div class="del-acc-option-title">Criar nova conta e transferir</div>
-              <div class="del-acc-option-sub">Uma nova conta será criada e receberá todos os registros</div>
-            </div>
-          </div>
-          <div id="delAccNewAccountForm" style="display:none;margin-top:10px;padding-top:10px;
-            border-top:1px solid var(--border)">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div class="form-group" style="margin:0">
-                <label>Nome da nova conta</label>
-                <input type="text" id="delAccNewName" placeholder="Ex: Arquivo Histórico">
-              </div>
-              <div class="form-group" style="margin:0">
-                <label>Tipo</label>
-                <select id="delAccNewType">
-                  <option value="corrente">Conta Corrente</option>
-                  <option value="poupanca">Poupança</option>
-                  <option value="cartao_credito">Cartão de Crédito</option>
-                  <option value="investimento">Investimento</option>
-                  <option value="carteira">Carteira</option>
-                  <option value="outro">Outro</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </label>
-
-        <!-- Option 3: Delete all records -->
-        <label class="del-acc-option del-acc-option-danger" id="delAccOpt3Label">
-          <input type="radio" name="delAccAction" value="delete_all" id="delAccOptDelete"
-                 onchange="onDelAccOptionChange()">
-          <div class="del-acc-option-body">
-            <div class="del-acc-option-icon" style="background:#fdf0ee;color:var(--red)">🗑️</div>
-            <div>
-              <div class="del-acc-option-title">Excluir todos os registros</div>
-              <div class="del-acc-option-sub">Todas as transações e agendamentos serão apagados permanentemente</div>
-            </div>
-          </div>
-          <!-- Confirmation input appears when this option is chosen -->
-          <div id="delAccConfirmWrap" style="display:none;margin-top:10px;padding-top:10px;
-            border-top:1px solid #fecaca">
-            <label style="font-size:.78rem;font-weight:600;color:var(--red)">
-              Digite <strong>EXCLUIR</strong> para confirmar
-            </label>
-            <input type="text" id="delAccConfirmInput"
-                   placeholder="EXCLUIR"
-                   style="margin-top:4px;border-color:#fca5a5"
-                   oninput="onDelAccConfirmType()">
-          </div>
-        </label>
-
-        <div id="delAccError" style="display:none;color:var(--red);font-size:.82rem;margin-top:12px;
-          padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeModal('deleteAccountModal')">Cancelar</button>
-        <button class="btn btn-danger" id="delAccConfirmBtn" onclick="confirmDeleteAccount()" disabled>
-          Confirmar Exclusão
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Change My Password Modal (from settings) -->
   <div class="modal-overlay" id="changeMyPwdModal">
     <div class="modal" style="max-width:380px"><div class="modal-handle"></div>
@@ -3745,53 +3123,6 @@
       </div>
     </div>
   </div>
-
-  <script src="js/import_ai.js"></script>
-
-<!-- ══ Modal: Normalizar Nomes de Beneficiários ══════════════════════════ -->
-<div class="modal-overlay" id="normalizePayeesModal">
-  <div class="modal" style="max-width:580px">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <div class="modal-title">🔤 Normalizar Nomes de Beneficiários</div>
-      <button class="modal-close" onclick="closeModal('normalizePayeesModal')">✕</button>
-    </div>
-
-    <div style="padding:0 20px 4px">
-      <!-- Explicação -->
-      <p style="font-size:.83rem;color:var(--text2);margin:0 0 12px">
-        Converte todos os nomes para <strong>Title Case</strong>: primeira letra de cada palavra em maiúsculo, demais em minúsculo.
-        Preposições (<em>de, da, do, para, com…</em>), siglas (<em>BB, XP, PIX, CPF…</em>) e abreviações (<em>Ltda, S/A…</em>) são tratadas automaticamente.
-      </p>
-
-      <!-- Contador -->
-      <div class="norm-counter">
-        <span style="font-size:1.15rem">📊</span>
-        <span><strong id="normPayeeCount">0</strong> nome(s) serão alterados</span>
-      </div>
-
-      <!-- Label da lista -->
-      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">
-        Prévia das alterações
-      </div>
-
-      <!-- Cabeçalho da tabela -->
-      <div class="norm-table-head">
-        <span>Nome atual</span>
-        <span></span>
-        <span>Após normalização</span>
-      </div>
-
-      <!-- Lista scrollável -->
-      <div id="normPayeeList" class="norm-list"></div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('normalizePayeesModal')">Cancelar</button>
-      <button class="btn btn-primary" id="normPayeeApplyBtn" onclick="applyNormalizePayees()">✅ Aplicar</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
