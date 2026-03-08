@@ -115,13 +115,15 @@ async function tryAutoConnect(){
     const hasLegacyHash   = window.location.hash.includes('type=recovery');
     const mightBeRecovery = hasCodeParam || hasLegacyHash;
 
-    // Strip ?code from URL now so a page-refresh doesn't re-trigger
+    // Create client FIRST — Supabase JS v2 PKCE needs ?code in
+    // window.location.search at this point to exchange it for a session.
+    sb = supabase.createClient(url, key);
+
+    // Strip ?code from URL AFTER client creation so a page-refresh
+    // doesn't attempt to reuse the (now spent) code.
     if (hasCodeParam) {
       history.replaceState(null, '', window.location.pathname + window.location.hash);
     }
-
-    // Create client — this triggers the ?code exchange internally
-    sb = supabase.createClient(url, key);
 
     if (mightBeRecovery) {
       // Supabase JS v2 event order when ?code= is a recovery link:
@@ -234,6 +236,10 @@ async function bootApp(){
   if (typeof runScheduledAutoRegister === 'function') { await runScheduledAutoRegister(); }
 
   populateSelects();
+
+  // Apply dynamic feature flags after user context + settings are loaded
+  try { if (typeof applyPricesFeature === 'function') await applyPricesFeature(); } catch (e) { console.warn('[prices feature]', e.message); }
+
   // Start auto-check timer if configured
   const _cfg = getAutoCheckConfig();
   if(_cfg.enabled && _cfg.method === 'browser') applyAutoCheckTimer(_cfg);
@@ -251,7 +257,7 @@ async function bootApp(){
   updateUserUI();
 }
 
-const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações'};
+const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',prices:'Gestão de Preços'};
 function togglePrivacy(){
   state.privacyMode=!state.privacyMode;
   const btn=document.getElementById('privacyToggleBtn');
@@ -272,7 +278,7 @@ function togglePrivacy(){
 
 function navigate(page){
   // Guard: settings is admin-only
-  if((page==='settings' || page==='audit') && !(currentUser?.role==='admin' || currentUser?.role==='owner' || currentUser?.can_admin)) {
+  if((page==='settings' || page==='audit') && currentUser?.role !== 'admin') {
     toast('Acesso restrito: apenas admin/owner pode acessar Configurações.','warning');
     return;
   }
@@ -296,6 +302,7 @@ function navigate(page){
   else if(page==='import')initImportPage();
   else if(page==='settings')loadSettings();
   else if(page==='audit')loadAuditLogs();
+  else if(page==='prices')initPricesPage();
 }
 // Handle SW messages (e.g., deep links from notifications)
 if('serviceWorker' in navigator){
