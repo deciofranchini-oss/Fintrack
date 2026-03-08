@@ -224,6 +224,7 @@
     </div>
 </div>
   <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:3px">
+<button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none"><span class="ni-icon">🏷️</span>Preços</button>
 <button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
   </div>
 </nav>
@@ -1398,6 +1399,40 @@
         </div>
       </div>
 
+
+      <!-- ══ NORMALIZAÇÃO DE NOMES (admin only) ══ -->
+      <div class="settings-section" id="normalizeNamesSection" style="display:none">
+        <div class="settings-group-label">🔤 Normalização de Nomes</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div class="settings-row-icon" style="background:#f0fdf4">🔤</div>
+            <div class="settings-row-info">
+              <div class="settings-row-label">Padronizar beneficiários e categorias</div>
+              <div class="settings-row-sub" id="normalizeNamesSub">
+                Converte todos os nomes para Title Case (Primeira Letra Maiúscula por Palavra),
+                respeitando preposições e siglas. Executado automaticamente todo domingo às 03:00 UTC via pg_cron.
+              </div>
+            </div>
+            <div class="settings-row-action" style="flex-direction:column;align-items:flex-end;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="openNormalizeNamesPreview()">🔍 Prévia</button>
+              <button class="btn btn-primary btn-sm" id="normalizeNamesRunBtn" onclick="runNormalizeNames()">▶ Executar agora</button>
+            </div>
+          </div>
+          <!-- Last run info -->
+          <div id="normalizeNamesLastRun" style="display:none;margin:0 16px 12px;padding:10px 14px;
+               background:var(--surface2);border-radius:var(--r-sm);font-size:.78rem;color:var(--muted)"></div>
+          <!-- pg_cron hint -->
+          <div id="normalizeNamesCronHint" style="display:none;margin:0 16px 12px;padding:10px 14px;
+               background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);
+               font-size:.78rem;line-height:1.6">
+            ⚠️ <strong>pg_cron não detectado.</strong>
+            Habilite em <em>Supabase → Database → Extensions → pg_cron</em>, depois execute
+            <code>migration_normalize_names.sql</code> novamente.
+            A execução manual pelo botão acima funciona independentemente.
+          </div>
+        </div>
+      </div>
+
       <!-- ══ BACKUP NO BANCO (admin only) ══ -->
       <div class="settings-section" id="dbBackupSection" style="display:none">
         <div class="settings-group-label">🗄️ Backup no Banco de Dados</div>
@@ -1434,6 +1469,55 @@
       </div>
 
 
+    </div>
+
+
+    <!-- ══ PRICES PAGE ══════════════════════════════════════════════════════ -->
+    <div class="page" id="page-prices">
+      <div class="section-header mb-6">
+        <span class="section-title">🏷️ Gestão de Preços</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn"
+                  onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
+          <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()">+ Novo Item</button>
+        </div>
+      </div>
+
+      <!-- Receipt drop zone -->
+      <div id="pricesReceiptZone" style="display:none;margin-bottom:16px;padding:20px;
+           border:2px dashed var(--accent);border-radius:var(--r);background:var(--accent-lt);
+           text-align:center;cursor:pointer"
+           ondragover="event.preventDefault()" ondrop="onPricesReceiptDrop(event)"
+           onclick="document.getElementById('pricesReceiptInput').click()">
+        <div style="font-size:2rem;margin-bottom:8px">📷</div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--accent)">
+          Arraste uma foto/PDF do recibo ou clique para selecionar
+        </div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
+          JPG, PNG, PDF — a imagem <strong>não é armazenada</strong>
+        </div>
+        <input type="file" id="pricesReceiptInput" accept="image/*,application/pdf"
+               style="display:none" onchange="onPricesReceiptSelected(this)">
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px"
+                onclick="event.stopPropagation();closePricesReceiptZone()">✕ Cancelar</button>
+      </div>
+
+      <!-- Filters -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <input type="text" id="pricesSearch" placeholder="🔍 Buscar item…"
+               oninput="pricesSearch(this.value)"
+               style="flex:1;min-width:180px;font-size:.85rem">
+        <select id="pricesCatFilter" onchange="pricesCatFilter(this.value)"
+                style="font-size:.85rem;min-width:160px">
+          <option value="">Todas as categorias</option>
+        </select>
+      </div>
+
+      <div id="pricesItemList">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">
+          ⏳ Carregando…
+        </div>
+      </div>
     </div>
 
     <!-- AUDIT PAGE (admin) -->
@@ -2352,6 +2436,11 @@
             style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
             🤖 Ler com IA
           </button>
+          <button type="button" id="txRegisterPricesBtn"
+            onclick="openRegisterPricesFromReceipt()"
+            style="display:none;align-items:center;gap:8px;margin-top:6px;width:100%;padding:8px 14px;background:linear-gradient(135deg,#047857,#059669);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
+            🏷️ Registrar Preços
+          </button>
           <input type="file" id="receiptScanInput"
             accept="image/*,application/pdf" capture="environment"
             style="display:none"
@@ -2730,7 +2819,29 @@
       <div class="form-grid">
         <div class="form-group full"><label>Nome *</label><input type="text" id="payeeName" placeholder="Ex: Supermercado Extra"></div>
         <div class="form-group"><label>Tipo *</label><select id="payeeType"><option value="beneficiario">Beneficiário</option><option value="fonte_pagadora">Fonte Pagadora</option><option value="ambos">Ambos</option></select></div>
-        <div class="form-group"><label>Categoria Padrão</label><select id="payeeCategory"><option value="">— Nenhuma —</option></select></div>
+        <div class="form-group">
+          <label>Categoria Padrão</label>
+          <div id="payeeCatPickerWrap" style="position:relative">
+            <button type="button" id="payeeCatPickerBtn"
+                    onclick="togglePayeeCatPicker()"
+                    style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);
+                           border-radius:var(--r-sm);padding:8px 10px;font-size:.85rem;cursor:pointer;
+                           display:flex;align-items:center;gap:8px;color:var(--text)">
+              <span id="payeeCatPickerDot" style="width:10px;height:10px;border-radius:50%;
+                    background:var(--muted);flex-shrink:0;display:inline-block"></span>
+              <span id="payeeCatPickerLabel" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                — Nenhuma —
+              </span>
+              <span style="color:var(--muted);font-size:.75rem">▾</span>
+            </button>
+            <div id="payeeCatPickerDropdown"
+                 style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+                        background:var(--surface);border:1px solid var(--border);
+                        border-radius:var(--r-sm);box-shadow:var(--shadow-md);
+                        max-height:240px;overflow-y:auto;z-index:200"></div>
+            <input type="hidden" id="payeeCategory">
+          </div>
+        </div>
         <div class="form-group full"><label>Notas</label><textarea id="payeeNotes" rows="2" placeholder="Observações..."></textarea></div>
       </div>
     </div>
@@ -3049,6 +3160,7 @@
   <script src="js/auto_register.js"></script>
 <script src="js/audit.js"></script>
 <script src="js/receipt_ai.js"></script>
+<script src="js/prices.js"></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -3231,6 +3343,141 @@
   </div>
 
   <!-- ══ Modal: Excluir Usuário ══════════════════════════════════════════════ -->
+
+
+  <!-- ══ Modal: Prévia de Normalização de Nomes ════════════════════════════ -->
+  <div class="modal-overlay" id="normalizeNamesPreviewModal">
+    <div class="modal" style="max-width:620px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">🔍 Prévia — Normalização de Nomes</span>
+        <button class="modal-close" onclick="closeModal('normalizeNamesPreviewModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+                      padding:8px 14px;font-size:.82rem">
+            👥 Beneficiários: <strong id="nnPreviewPayeeCount" style="color:var(--accent)">—</strong>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+                      padding:8px 14px;font-size:.82rem">
+            🏷️ Categorias: <strong id="nnPreviewCatCount" style="color:var(--accent)">—</strong>
+          </div>
+        </div>
+        <div id="nnPreviewList"
+             style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)">
+          <div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando...</div>
+        </div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:10px">
+          Nenhuma alteração é feita até clicar em <strong>Executar agora</strong>.
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('normalizeNamesPreviewModal')">Fechar</button>
+          <button class="btn btn-primary btn-sm"
+                  onclick="closeModal('normalizeNamesPreviewModal');runNormalizeNames()">▶ Executar agora</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: Detalhe do Item de Preço ════════════════════════════════════ -->
+  <div class="modal-overlay" id="priceItemDetailModal">
+    <div class="modal" style="max-width:560px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title" id="pidModalTitle">📦 Detalhe do Item</span>
+        <button class="modal-close" onclick="closeModal('priceItemDetailModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Stats strip -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+          <div class="pid-stat-card">
+            <div class="pid-stat-label">Preço Médio</div>
+            <div class="pid-stat-val" id="pidAvgPrice">—</div>
+          </div>
+          <div class="pid-stat-card">
+            <div class="pid-stat-label">Último Preço</div>
+            <div class="pid-stat-val" id="pidLastPrice">—</div>
+          </div>
+          <div class="pid-stat-card">
+            <div class="pid-stat-label">Registros</div>
+            <div class="pid-stat-val" id="pidCount">—</div>
+          </div>
+        </div>
+        <!-- History -->
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;
+                    letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Histórico</div>
+        <div id="pidHistoryList" style="max-height:320px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('priceItemDetailModal')">Fechar</button>
+          <button class="btn btn-ghost btn-sm" id="pidEditBtn" onclick="openEditPriceItem()">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" id="pidDeleteBtn"
+                  style="color:var(--red)" onclick="deletePriceItemCurrent()">🗑️ Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: Cadastro / Edição de Item de Preço ═════════════════════════ -->
+  <div class="modal-overlay" id="priceItemFormModal">
+    <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title" id="pifModalTitle">Novo Item</span>
+        <button class="modal-close" onclick="closeModal('priceItemFormModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pifItemId">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Nome *</label>
+            <input type="text" id="pifName" placeholder="Ex: Arroz 5kg">
+          </div>
+          <div class="form-group full">
+            <label>Descrição</label>
+            <input type="text" id="pifDesc" placeholder="Marca, variante…">
+          </div>
+          <div class="form-group">
+            <label>Unidade</label>
+            <input type="text" id="pifUnit" placeholder="un, kg, L…" value="un">
+          </div>
+          <div class="form-group">
+            <label>Categoria</label>
+            <select id="pifCategory"><option value="">— Nenhuma —</option></select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-ghost" onclick="closeModal('priceItemFormModal')">Cancelar</button>
+          <button class="btn btn-primary" onclick="savePriceItem()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: Registrar Preços do Recibo ═════════════════════════════════ -->
+  <div class="modal-overlay" id="registerPricesModal">
+    <div class="modal" style="max-width:640px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">🏷️ Registrar Preços do Recibo</span>
+        <button class="modal-close" onclick="closeModal('registerPricesModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group">
+            <label>Estabelecimento</label>
+            <input type="text" id="rpmStoreName" placeholder="Nome do estabelecimento">
+          </div>
+          <div class="form-group">
+            <label>Data da Compra</label>
+            <input type="date" id="rpmDate">
+          </div>
+        </div>
+        <div id="rpmItemList" style="max-height:380px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="closeModal('registerPricesModal')">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveRegisterPrices()">💾 Salvar Preços</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="deleteUserModal">
     <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
       <div class="modal-header">
