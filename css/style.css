@@ -3154,3 +3154,95 @@ html, body{
   margin-top: 2px;
   line-height: 1.5;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   IMPORT AI — badge de resultado de análise inteligente
+══════════════════════════════════════════════════════════════════ */
+.import-ai-badge {
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: .82rem;
+  border: 1.5px solid var(--border);
+}
+.import-ai-badge--ok {
+  background: linear-gradient(135deg, var(--accent-lt), #f0faf5);
+  border-color: var(--accent);
+}
+.import-ai-badge--warn {
+  background: linear-gradient(135deg, #fff8e1, #fffde7);
+  border-color: var(--amber, #f59e0b);
+}
+.import-ai-badge--loading {
+  background: var(--bg2);
+  border-color: var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.import-ai-badge-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.import-ai-badge-body { flex: 1; min-width: 0; }
+.import-ai-badge-title {
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.import-ai-conf {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0,0,0,.06);
+}
+.import-ai-badge-sub {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.import-ai-badge-status {
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 4px;
+}
+.import-ai-warns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.import-ai-warns span {
+  font-size: .7rem;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.import-ai-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .8rem;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: .6;
+}
+.import-ai-dismiss:hover { opacity: 1; }
+
+/* Source chips — scroll quando muitos */
+.source-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
