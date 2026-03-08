@@ -1147,7 +1147,8 @@ async function commitImport() {
         const newPayees = [...txPayees.values()].filter(n => n.length > 0);
         importLogMsg('info', `Auto-criando ${newPayees.length} beneficiário(s) das transações...`);
         for (let i = 0; i < newPayees.length; i += 100) {
-          const batch = newPayees.slice(i, i+100).map(name => ({ name, family_id: famId() }));
+          const normFn = typeof normalizePayeeName === 'function' ? normalizePayeeName : n => n;
+          const batch = newPayees.slice(i, i+100).map(name => ({ name: normFn(name), family_id: famId() }));
           const { error } = await sb.from('payees').insert(batch);
           if (error) importLogMsg('warn', `Payees auto-create: ${error.message}`);
         }
