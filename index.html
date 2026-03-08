@@ -852,21 +852,35 @@
         </div>
 
         <!-- Source preset chips -->
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Formato do arquivo</div>
-        <div class="source-chips" id="sourceChips">
-          <div class="source-chip" onclick="selectSourcePreset('moneywiz')" id="chip-moneywiz">MoneyWiz</div>
-          <div class="source-chip active" onclick="selectSourcePreset('generic')" id="chip-generic">CSV Genérico</div>
-          <div class="source-chip" onclick="selectSourcePreset('ofx')" id="chip-ofx">Extrato Bancário (OFX/CSV)</div>
-          <div class="source-chip" onclick="selectSourcePreset('nubank')" id="chip-nubank">Nubank</div>
-          <div class="source-chip" onclick="selectSourcePreset('inter')" id="chip-inter">Banco Inter</div>
-          <div class="source-chip" onclick="selectSourcePreset('itau')" id="chip-itau">Itaú</div>
-          <div class="source-chip" onclick="selectSourcePreset('xp')" id="chip-xp">XP / Rico</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Formato do arquivo <span style="font-weight:400;text-transform:none;color:var(--accent);font-size:.7rem">— ou carregue o arquivo para detecção automática 🤖</span></div>
         </div>
+        <div class="source-chips" id="sourceChips">
+          <div class="source-chip active" onclick="selectSourcePreset('generic')" id="chip-generic">📄 CSV Genérico</div>
+          <div class="source-chip" onclick="selectSourcePreset('moneywiz')" id="chip-moneywiz">💰 MoneyWiz</div>
+          <div class="source-chip" onclick="selectSourcePreset('ofx')" id="chip-ofx">🏦 OFX / QFX</div>
+          <div class="source-chip" onclick="selectSourcePreset('nubank')" id="chip-nubank">🟣 Nubank</div>
+          <div class="source-chip" onclick="selectSourcePreset('inter')" id="chip-inter">🟠 Banco Inter</div>
+          <div class="source-chip" onclick="selectSourcePreset('itau')" id="chip-itau">🔵 Itaú</div>
+          <div class="source-chip" onclick="selectSourcePreset('bradesco')" id="chip-bradesco">🔴 Bradesco</div>
+          <div class="source-chip" onclick="selectSourcePreset('santander')" id="chip-santander">🔴 Santander</div>
+          <div class="source-chip" onclick="selectSourcePreset('bb')" id="chip-bb">🟡 Banco do Brasil</div>
+          <div class="source-chip" onclick="selectSourcePreset('caixa')" id="chip-caixa">🔵 Caixa</div>
+          <div class="source-chip" onclick="selectSourcePreset('xp')" id="chip-xp">⚫ XP / Rico</div>
+          <div class="source-chip" onclick="selectSourcePreset('c6bank')" id="chip-c6bank">⚫ C6 Bank</div>
+          <div class="source-chip" onclick="selectSourcePreset('pagbank')" id="chip-pagbank">🟢 PagBank</div>
+          <div class="source-chip" onclick="selectSourcePreset('picpay')" id="chip-picpay">🟢 PicPay</div>
+          <div class="source-chip" onclick="selectSourcePreset('mercadopago')" id="chip-mercadopago">🔵 Mercado Pago</div>
+          <div class="source-chip" onclick="selectSourcePreset('sicoob')" id="chip-sicoob">🟢 Sicoob</div>
+        </div>
+
+        <!-- AI analysis badge (shown after file load) -->
+        <div id="importAiBadge" style="display:none;margin-top:10px"></div>
 
         <!-- File drop zone -->
         <div class="import-drop-zone" id="importDropZone"
              ondragover="importDragOver(event)" ondragleave="importDragLeave(event)" ondrop="importDrop(event)">
-          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv,.ofx" onchange="importFileSelected(event)">
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv,.ofx,.qfx,.tsv" onchange="importFileSelected(event)">
           <div class="import-drop-icon">📂</div>
           <div class="import-drop-title" id="importDropTitle">Arraste o arquivo ou clique para selecionar</div>
           <div class="import-drop-sub" id="importDropSub">Suporta CSV, XLSX, XLS — qualquer formato</div>
@@ -3384,6 +3398,7 @@
     </div>
   </div>
 
+  <script src="js/import_ai.js"></script>
 </body>
 </html>
 
