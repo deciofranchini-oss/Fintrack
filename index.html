@@ -3124,103 +3124,156 @@
 
   <!-- My Profile Modal: avatar + password in one place -->
   <div class="modal-overlay" id="myProfileModal">
-    <div class="modal" style="max-width:400px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">👤 Meu Perfil</span>
+    <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
+      <div class="modal-header" style="padding:12px 16px 11px">
+        <span class="modal-title" style="font-size:1rem">👤 Meu Perfil</span>
         <button class="modal-close" onclick="closeModal('myProfileModal')">✕</button>
       </div>
-      <div class="modal-body" style="padding-top:8px">
+      <div class="modal-body" style="padding:14px 16px 20px">
 
-        <!-- Avatar section -->
-        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;
-                    padding:20px 0 18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+        <!-- Avatar section — row layout on mobile to save vertical space -->
+        <div style="display:flex;flex-direction:row;align-items:center;gap:14px;
+                    padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px">
           <!-- Avatar circle clickable -->
           <div id="myProfileAvatarWrap" onclick="document.getElementById('myProfileAvatarFile').click()"
                title="Clique para alterar foto"
-               style="width:88px;height:88px;border-radius:50%;overflow:hidden;cursor:pointer;
+               style="width:72px;height:72px;border-radius:50%;overflow:hidden;cursor:pointer;
                       border:3px solid var(--accent);background:var(--surface2);
                       display:flex;align-items:center;justify-content:center;
                       transition:opacity .15s;flex-shrink:0;position:relative"
                onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
           </div>
-          <div style="text-align:center">
-            <div id="myProfileName" style="font-size:.95rem;font-weight:700;color:var(--text)"></div>
-            <div id="myProfileEmail" style="font-size:.76rem;color:var(--muted)"></div>
-            <div id="myProfileRoleBadge" style="margin-top:4px"></div>
-          </div>
-          <!-- Avatar actions -->
-          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
-            <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:.78rem">
-              📷 Alterar foto
-              <input type="file" id="myProfileAvatarFile" accept="image/*"
-                     style="display:none" onchange="previewMyProfileAvatar(this)">
-            </label>
-            <button id="myProfileRemoveAvatarBtn" class="btn btn-ghost btn-sm"
-                    style="font-size:.78rem;color:var(--red);display:none"
-                    onclick="removeMyProfileAvatar()">✕ Remover</button>
+          <!-- Info + actions stacked beside avatar -->
+          <div style="flex:1;min-width:0">
+            <div id="myProfileName" style="font-size:.92rem;font-weight:700;color:var(--text);
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            <div id="myProfileEmail" style="font-size:.72rem;color:var(--muted);
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
+            <div id="myProfileRoleBadge" style="margin-top:5px"></div>
+            <!-- Avatar actions inline -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:.75rem;padding:3px 10px">
+                📷 Foto
+                <input type="file" id="myProfileAvatarFile" accept="image/*"
+                       style="display:none" onchange="previewMyProfileAvatar(this)">
+              </label>
+              <button id="myProfileRemoveAvatarBtn" class="btn btn-ghost btn-sm"
+                      style="font-size:.75rem;color:var(--red);display:none;padding:3px 10px"
+                      onclick="removeMyProfileAvatar()">✕ Remover</button>
+            </div>
           </div>
           <input type="hidden" id="myProfileAvatarRemoveFlag" value="">
-          <div id="myProfileAvatarError" style="display:none;color:var(--red);font-size:.78rem;
-            padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;width:100%;text-align:center;box-sizing:border-box"></div>
         </div>
+        <div id="myProfileAvatarError" style="display:none;color:var(--red);font-size:.78rem;
+          padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;
+          margin-bottom:12px;text-align:center"></div>
 
         <!-- Password section -->
         <div style="margin-bottom:4px">
-          <div style="font-size:.8rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
+                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
             Alterar senha
           </div>
-          <div class="form-group" style="margin-bottom:10px">
-            <label>Nova senha</label>
-            <input type="password" id="myProfilePwd1" placeholder="Mínimo 8 caracteres"
-                   autocomplete="new-password" oninput="updateMyProfilePwdStrength()">
-            <!-- Strength bar -->
-            <div style="margin-top:5px;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
-              <div id="myProfilePwdBar" style="height:100%;width:0;transition:width .3s,background .3s;border-radius:3px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div class="form-group" style="margin-bottom:0">
+              <label style="font-size:.75rem">Nova senha</label>
+              <input type="password" id="myProfilePwd1" placeholder="Mín. 8 caracteres"
+                     autocomplete="new-password" oninput="updateMyProfilePwdStrength()">
+              <div style="margin-top:4px;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
+                <div id="myProfilePwdBar" style="height:100%;width:0;transition:width .3s,background .3s;border-radius:3px"></div>
+              </div>
+              <div id="myProfilePwdHint" style="font-size:.68rem;color:var(--muted);margin-top:2px"></div>
             </div>
-            <div id="myProfilePwdHint" style="font-size:.7rem;color:var(--muted);margin-top:3px"></div>
+            <div class="form-group" style="margin-bottom:0">
+              <label style="font-size:.75rem">Confirmar senha</label>
+              <input type="password" id="myProfilePwd2" placeholder="Repita a senha"
+                     autocomplete="new-password"
+                     onkeydown="if(event.key==='Enter')saveMyProfile()">
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:14px">
-            <label>Confirmar senha</label>
-            <input type="password" id="myProfilePwd2" placeholder="Repita a nova senha"
-                   autocomplete="new-password"
-                   onkeydown="if(event.key==='Enter')saveMyProfile()">
-          </div>
-          <div id="myProfilePwdNote" style="font-size:.76rem;color:var(--muted);margin-bottom:14px">
+          <div id="myProfilePwdNote" style="font-size:.72rem;color:var(--muted);margin-bottom:12px">
             Deixe em branco para manter a senha atual.
           </div>
         </div>
 
         <!-- Família preferida (só aparece se o usuário pertence a mais de uma) -->
         <div id="myProfileFamilyRow" style="display:none;margin-bottom:4px">
-          <div style="font-size:.8rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
+                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
             Família preferida
           </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label style="font-size:.8rem">Carregar ao entrar</label>
-            <select id="myProfilePreferredFamily" style="width:100%"></select>
-            <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
-              Será a família pré-selecionada em qualquer dispositivo ao fazer login.
+          <div class="form-group" style="margin-bottom:4px">
+            <label style="font-size:.75rem">Carregar ao entrar</label>
+            <select id="myProfilePreferredFamily" style="width:100%;font-size:.83rem"></select>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:3px">
+              Pré-selecionada em qualquer dispositivo ao fazer login.
             </div>
           </div>
         </div>
 
         <!-- Gerenciar família (só para owners) -->
-        <div id="myProfileFamilyMgmtBtn" style="display:none;margin-bottom:16px;padding-top:16px;border-top:1px solid var(--border)">
-          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;gap:8px;font-size:.82rem"
+        <div id="myProfileFamilyMgmtBtn" style="display:none;margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;gap:8px;font-size:.8rem"
                   onclick="closeModal('myProfileModal');openMyFamilyMgmt()">
             🏠 Gerenciar minha família
           </button>
         </div>
 
-        <div id="myProfileError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;
-          padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
+        <div id="myProfileError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;
+          padding:7px 11px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button class="btn btn-ghost btn-sm" onclick="closeModal('myProfileModal')">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="myProfileSaveBtn" onclick="saveMyProfile()">💾 Salvar</button>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: Excluir Usuário ══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="deleteUserModal">
+    <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">🗑️ Excluir Usuário</span>
+        <button class="modal-close" onclick="closeModal('deleteUserModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="duUserId">
+
+        <!-- Warning block -->
+        <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:1.5rem;flex-shrink:0;line-height:1">⚠️</div>
+          <div>
+            <div style="font-weight:700;font-size:.9rem;color:#991b1b;margin-bottom:4px">Ação irreversível</div>
+            <div style="font-size:.8rem;color:#7f1d1d;line-height:1.55">
+              O usuário <strong id="duUserName"></strong> será removido permanentemente do sistema,
+              incluindo todas as suas associações de família.<br><br>
+              <span style="color:#991b1b">Os dados financeiros da família <u>não</u> serão apagados.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirm email -->
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="font-size:.82rem;font-weight:600">
+            Digite o e-mail do usuário para confirmar:
+            <span id="duUserEmail" style="color:var(--accent);font-family:monospace"></span>
+          </label>
+          <input type="email" id="duConfirmEmail" placeholder="e-mail do usuário"
+                 autocomplete="off"
+                 onkeydown="if(event.key==='Enter')confirmDeleteUser()"
+                 style="margin-top:6px">
+        </div>
+
+        <div id="duError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;
+          padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('deleteUserModal')">Cancelar</button>
+          <button class="btn btn-sm" id="duConfirmBtn"
+                  style="background:var(--red);color:#fff;border:none;cursor:pointer;font-family:var(--font-sans)"
+                  onclick="confirmDeleteUser()">🗑️ Excluir permanentemente</button>
+        </div>
       </div>
     </div>
   </div>
