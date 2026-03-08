@@ -114,7 +114,7 @@ async function _loadCurrentUserContext() {
   // app_users: fonte de verdade para dados pessoais e role global
   const { data: appUserRow } = await sb
     .from('app_users')
-    .select('id, family_id, avatar_url, role, name, preferred_family_id')
+    .select('id, family_id, avatar_url, role, name, preferred_family_id, show_school_link')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -176,6 +176,7 @@ async function _loadCurrentUserContext() {
     families:             userFamilies,
     avatar_url:           appUserRow?.avatar_url || null,
     preferred_family_id:  appUserRow?.preferred_family_id || null,
+    show_school_link:     appUserRow?.show_school_link !== false, // default true
     ...caps
   };
 
@@ -1860,6 +1861,11 @@ function showNewUserForm() {
   document.getElementById('pExport').checked = true;
   document.getElementById('pImport').checked = false;
   document.getElementById('pwdHint').textContent = '(mín. 8 chars)';
+  const pSchoolNew = document.getElementById('pSchoolLink');
+  if (pSchoolNew) pSchoolNew.checked = true;
+  const schoolCfgN = _getSchoolLinkConfig?.();
+  const schoolRowN = document.getElementById('schoolLinkPermRow');
+  if (schoolRowN) schoolRowN.style.display = (schoolCfgN?.enabled && schoolCfgN?.url) ? '' : 'none';
   document.getElementById('userFormArea').style.display = '';
 }
 
@@ -1886,6 +1892,13 @@ async function editUser(userId) {
   document.getElementById('pExport').checked = u.can_export;
   document.getElementById('pImport').checked = u.can_import;
   document.getElementById('pwdHint').textContent = '(deixe em branco para manter)';
+
+  // Ícone da escola
+  const schoolCfg = _getSchoolLinkConfig?.();
+  const schoolRow = document.getElementById('schoolLinkPermRow');
+  if (schoolRow) schoolRow.style.display = (schoolCfg?.enabled && schoolCfg?.url) ? '' : 'none';
+  const pSchool = document.getElementById('pSchoolLink');
+  if (pSchool) pSchool.checked = u.show_school_link !== false; // default true
 
   // Show current avatar in form
   const avatarPreview = document.getElementById('uAvatarPreview');
@@ -1973,13 +1986,14 @@ async function saveUser() {
   // app_users record — sem family_id (gerenciado por family_members)
   const record = {
     name, email, role,
-    can_view:   document.getElementById('pView').checked,
-    can_create: document.getElementById('pCreate').checked,
-    can_edit:   document.getElementById('pEdit').checked,
-    can_delete: document.getElementById('pDelete').checked,
-    can_export: document.getElementById('pExport').checked,
-    can_import: document.getElementById('pImport').checked,
-    can_admin:  role === 'admin' || role === 'owner',
+    can_view:        document.getElementById('pView').checked,
+    can_create:      document.getElementById('pCreate').checked,
+    can_edit:        document.getElementById('pEdit').checked,
+    can_delete:      document.getElementById('pDelete').checked,
+    can_export:      document.getElementById('pExport').checked,
+    can_import:      document.getElementById('pImport').checked,
+    can_admin:       role === 'admin' || role === 'owner',
+    show_school_link: document.getElementById('pSchoolLink')?.checked ?? true,
   };
   if (avatarUrl !== undefined) record.avatar_url = avatarUrl;
   if (pwd) record.password_hash = await sha256(pwd);

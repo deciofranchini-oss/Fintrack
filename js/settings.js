@@ -900,7 +900,13 @@ function applySchoolLink(cfg) {
   cfg = cfg || _getSchoolLinkConfig();
   const btn = document.getElementById('schoolPaymentsBtn');
   if (!btn) return;
-  if (!cfg.enabled || !cfg.url) {
+
+  // Verificar permissão do usuário logado (show_school_link, default true)
+  const userAllowed = typeof currentUser === 'undefined' || currentUser === null
+    ? true
+    : currentUser.show_school_link !== false;
+
+  if (!cfg.enabled || !cfg.url || !userAllowed) {
     btn.style.display = 'none';
     return;
   }
