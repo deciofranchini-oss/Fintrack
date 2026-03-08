@@ -3317,3 +3317,19 @@ html, body{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   FAMILY MANAGEMENT — invite row + wipe button
+══════════════════════════════════════════════════════════════════ */
+.fm-invite-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 0 4px;
+  border-top: 1px dashed var(--border);
+  margin-top: 8px;
+}
+.fm-invite-row input[type="email"] {
+  min-width: 0;
+}
