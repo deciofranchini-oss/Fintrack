@@ -1092,29 +1092,52 @@ async function doRegister() {
 let _families = []; // cached families list
 
 async function openUserAdmin() {
-  if (!(currentUser?.can_admin || currentUser?.role === 'owner' || currentUser?.role === 'admin')) { toast('Acesso restrito a administradores','error'); return; }
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
+  const isFamilyOwner = _currentUserIsFamilyOwner();
+  if (!isGlobalAdmin && !isFamilyOwner) { toast('Acesso restrito','error'); return; }
+
   await loadFamiliesList();
   openModal('userAdminModal');
 
-  // Verificar se há pendentes para abrir direto na aba certa
-  let pending = null;
-  try { const { data: _p } = await sb.rpc('get_pending_users'); pending = _p; } catch {}
-  const hasPending = (pending?.length || 0) > 0;
+  // Abas visíveis conforme perfil
+  const tabPending  = document.getElementById('uaTabPending');
+  const tabUsers    = document.getElementById('uaTabUsers');
+  if (tabPending) tabPending.style.display = isGlobalAdmin ? '' : 'none';
+  if (tabUsers)   tabUsers.style.display   = isGlobalAdmin ? '' : 'none';
 
-  if (hasPending) {
-    switchUATab('pending');
-    // Carregar lista de usuários em background para quando o admin trocar de aba
-    loadUsersList().catch(e => console.warn('loadUsersList bg:', e));
+  if (isGlobalAdmin) {
+    let pending = null;
+    try { const { data: _p } = await sb.rpc('get_pending_users'); pending = _p; } catch {}
+    const hasPending = (pending?.length || 0) > 0;
+    if (hasPending) {
+      switchUATab('pending');
+      loadUsersList().catch(()=>{});
+    } else {
+      switchUATab('users');
+    }
+    const badge = document.getElementById('uaPendingBadge');
+    if (badge) {
+      badge.textContent = pending?.length || 0;
+      badge.style.display = (pending?.length || 0) > 0 ? 'inline-block' : 'none';
+    }
   } else {
-    switchUATab('users');
+    // Family owner: abre direto na aba de famílias
+    switchUATab('families');
   }
+}
 
-  // Atualizar badge na aba pendentes
-  const badge = document.getElementById('uaPendingBadge');
-  if (badge) {
-    badge.textContent = pending?.length || 0;
-    badge.style.display = (pending?.length || 0) > 0 ? 'inline-block' : 'none';
-  }
+/** Retorna true se o usuário logado é owner em pelo menos uma família */
+function _currentUserIsFamilyOwner() {
+  return (currentUser?.families || []).some(f => f.role === 'owner');
+}
+
+/** Retorna as famílias onde o usuário logado é owner */
+function _ownedFamilies() {
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  if (isGlobalAdmin) return _families; // admin global pode gerenciar todas
+  return (currentUser?.families || [])
+    .filter(f => f.role === 'owner')
+    .map(f => _families.find(ff => ff.id === f.id) || f);
 }
 
 function switchUATab(tab) {
@@ -1344,7 +1367,23 @@ async function loadFamiliesList() {
   const roleIcon = r => ({ owner:'👑', admin:'🔧', user:'👤', viewer:'👁' })[r] || '👤';
   const roleLabel = r => ({ owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' })[r] || r;
 
-  el.innerHTML = _families.map(f => {
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
+
+  // If not global admin, show only families where user is owner
+  const visibleFamilies = isGlobalAdmin
+    ? _families
+    : _families.filter(f => (currentUser?.families||[]).some(uf => uf.id === f.id && uf.role === 'owner'));
+
+  if (!visibleFamilies.length && !isGlobalAdmin) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.83rem">Você não é owner de nenhuma família.<br>Apenas owners podem gerenciar famílias.</div>';
+    return;
+  }
+
+  // Show "+ Nova Família" button only to global admins and family owners
+  const newFamBtn = document.querySelector('#uaFamilies .btn-primary');
+  if (newFamBtn) newFamBtn.style.display = '';
+
+  el.innerHTML = visibleFamilies.map(f => {
     const members = membersByFamily[f.id] || [];
 
     const membersHtml = members.length
@@ -1382,9 +1421,12 @@ async function loadFamiliesList() {
             <div style="font-size:.74rem;color:var(--muted)">${members.length} membro${members.length!==1?'s':''} ${f.description ? '· ' + esc(f.description) : ''}</div>
           </div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="editFamily('${f.id}')" style="padding:3px 10px;font-size:.73rem">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="deleteFamily('${f.id}','${esc(f.name)}')" style="padding:3px 10px;font-size:.73rem;color:var(--red)">🗑️</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${(isGlobalAdmin || membersByFamily[f.id]?.some(m => m.user_email === currentUser?.email && m.member_role === 'owner')) ? `
+            <button class="btn btn-ghost btn-sm" onclick="editFamily('${f.id}')" style="padding:3px 10px;font-size:.73rem">✏️ Editar</button>
+            <button class="btn btn-ghost btn-sm" id="wipeFamBtn-${f.id}" onclick="wipeFamilyData('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')" style="padding:3px 10px;font-size:.73rem;color:var(--amber,#f59e0b)" title="Apagar todos os dados desta família">🗑️ Dados</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteFamily('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')" style="padding:3px 10px;font-size:.73rem;color:var(--red)" title="Excluir família">✕ Excluir</button>
+          ` : ''}
         </div>
       </div>
       <div style="padding:4px 0">
@@ -1392,7 +1434,7 @@ async function loadFamiliesList() {
         ${available.length ? `
         <div class="fm-add-row">
           <select id="addMemberSel-${f.id}" style="font-size:.8rem;flex:1">
-            <option value="">— Adicionar usuário —</option>
+            <option value="">— Adicionar usuário existente —</option>
             ${available.map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('')}
           </select>
           <select id="addMemberRole-${f.id}" style="font-size:.8rem;width:130px">
@@ -1403,7 +1445,23 @@ async function loadFamiliesList() {
           </select>
           <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${f.id}')"
                   style="font-size:.78rem;white-space:nowrap">+ Adicionar</button>
-        </div>` : '<div style="font-size:.75rem;color:var(--muted);text-align:center;padding:6px 0">Todos os usuários já são membros desta família</div>'}
+        </div>` : ''}
+        <!-- Convidar novo usuário por e-mail -->
+        <div class="fm-invite-row">
+          <span style="font-size:.73rem;color:var(--muted);font-weight:600;white-space:nowrap">📨 Convidar por e-mail:</span>
+          <input type="email" id="inviteEmail-${f.id}" placeholder="email@exemplo.com"
+                 style="font-size:.8rem;flex:1;min-width:140px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"
+                 onkeydown="if(event.key==='Enter')inviteToFamily('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')" />
+          <select id="inviteRole-${f.id}" style="font-size:.8rem;width:120px">
+            <option value="user">👤 Usuário</option>
+            <option value="admin">🔧 Admin</option>
+            <option value="viewer">👁 Visualizador</option>
+            <option value="owner">👑 Owner</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="inviteBtn-${f.id}"
+                  onclick="inviteToFamily('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')"
+                  style="font-size:.78rem;white-space:nowrap">📨 Convidar</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -1428,22 +1486,174 @@ async function saveFamily() {
   const name = document.getElementById('fName').value.trim();
   const desc = document.getElementById('fDesc').value.trim();
   if (!name) { toast('Informe o nome da família','error'); return; }
-  const data = { name, description: desc||null }; // updated_at omitido — coluna não existe no schema
-  let error;
-  if (id) { ({ error } = await sb.from('families').update(data).eq('id', id)); }
-  else    { ({ error } = await sb.from('families').insert(data)); }
+
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  const isFamOwner    = !id || (currentUser?.families||[]).some(f => f.id === id && f.role === 'owner');
+  if (!isGlobalAdmin && !isFamOwner) { toast('Sem permissão para editar esta família','error'); return; }
+
+  const data = { name, description: desc||null };
+  let error, newFam;
+  if (id) {
+    ({ error } = await sb.from('families').update(data).eq('id', id));
+  } else {
+    const res = await sb.from('families').insert(data).select().single();
+    error  = res.error;
+    newFam = res.data;
+  }
   if (error) { toast('Erro: '+error.message,'error'); return; }
-  toast(id ? '✓ Família atualizada!' : '✓ Família criada!','success');
+
+  // Quando um owner cria uma nova família: adicioná-lo como owner nela
+  if (!id && newFam?.id && currentUser?.id) {
+    // Buscar app_users.id do usuário logado (currentUser.id é auth.uid)
+    const { data: appRow } = await sb.from('app_users').select('id').eq('email', currentUser.email).maybeSingle();
+    if (appRow?.id) {
+      await sb.from('family_members').insert({ user_id: appRow.id, family_id: newFam.id, role: 'owner' }).catch(()=>{});
+    }
+  }
+
+  toast(id ? '✓ Família atualizada!' : '✓ Família criada! Você é o owner.','success');
   document.getElementById('familyFormArea').style.display = 'none';
   await loadFamiliesList();
+  // Recarregar famílias do usuário no contexto
+  if (!id && newFam?.id) {
+    await _loadCurrentUserContext().catch(()=>{});
+    updateUserUI();
+    _renderFamilySwitcher();
+  }
 }
 
 async function deleteFamily(id, name) {
-  if (!confirm(`Excluir a família "${name}"?\n\nOs usuários vinculados ficarão sem família, mas seus dados não serão apagados.`)) return;
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
+  const isFamOwner    = (currentUser?.families || []).some(f => f.id === id && f.role === 'owner');
+
+  if (!isGlobalAdmin && !isFamOwner) { toast('Apenas admins ou o owner da família podem excluir','error'); return; }
+
+  // Owner de família: não pode excluir se for a única que possui
+  if (!isGlobalAdmin && isFamOwner) {
+    const ownedCount = (currentUser?.families || []).filter(f => f.role === 'owner').length;
+    if (ownedCount <= 1) {
+      toast('Você não pode excluir sua única família. Crie outra primeiro.','warning');
+      return;
+    }
+  }
+
+  if (!confirm(`Excluir a família "${name}"?\n\nOs usuários vinculados ficarão sem família, mas seus dados (transações, contas, etc.) NÃO serão apagados.\n\nEsta ação não pode ser desfeita.`)) return;
   const { error } = await sb.from('families').delete().eq('id', id);
   if (error) { toast('Erro: '+error.message,'error'); return; }
   toast('Família removida','success');
   await loadFamiliesList();
+}
+
+async function wipeFamilyData(id, name) {
+  // Apaga TODOS os dados da família (transações, contas, etc.) mas mantém a família e membros
+  const isFamOwner = (currentUser?.families || []).some(f => f.id === id && f.role === 'owner');
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  if (!isGlobalAdmin && !isFamOwner) { toast('Apenas o owner da família pode limpar os dados','error'); return; }
+
+  // Confirmação dupla
+  const conf1 = confirm(`⚠️ ATENÇÃO: Você está prestes a APAGAR TODOS OS DADOS da família "${name}".\n\nIsso inclui: transações, contas, categorias, beneficiários, orçamentos, transações programadas e anexos.\n\nOs membros e a família em si serão mantidos.\n\nDeseja continuar?`);
+  if (!conf1) return;
+  const typed = window.prompt(`Para confirmar, digite exatamente o nome da família:\n"${name}"`);
+  if (typed !== name) { toast('Nome incorreto — operação cancelada','warning'); return; }
+
+  const btn = document.getElementById(`wipeFamBtn-${id}`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Limpando...'; }
+
+  try {
+    // Apagar na ordem correta (FK constraints)
+    const tables = ['attachments','scheduled_transactions','budgets','transactions','accounts','payees','categories'];
+    for (const table of tables) {
+      const { error } = await sb.from(table).delete().eq('family_id', id);
+      if (error) console.warn(`wipe ${table}:`, error.message);
+    }
+    toast(`✓ Dados da família "${name}" removidos com sucesso`, 'success');
+    await loadFamiliesList();
+  } catch(e) {
+    toast('Erro ao limpar dados: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🗑️ Limpar Dados'; }
+  }
+}
+
+async function inviteToFamily(familyId, familyName) {
+  const emailEl = document.getElementById(`inviteEmail-${familyId}`);
+  const roleEl  = document.getElementById(`inviteRole-${familyId}`);
+  const email   = emailEl?.value.trim().toLowerCase();
+  const role    = roleEl?.value || 'user';
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Informe um e-mail válido','error'); return;
+  }
+
+  const isFamOwner = (currentUser?.families || []).some(f => f.id === familyId && f.role === 'owner');
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  if (!isGlobalAdmin && !isFamOwner) { toast('Apenas o owner pode convidar','error'); return; }
+
+  const btn = document.getElementById(`inviteBtn-${familyId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+
+  try {
+    // Verificar se já é usuário cadastrado
+    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
+
+    if (existing) {
+      // Usuário já existe: adicionar diretamente à família
+      const { error } = await sb.from('family_members').upsert(
+        { user_id: existing.id, family_id: familyId, role },
+        { onConflict: 'user_id,family_id' }
+      );
+      if (error) throw new Error(error.message);
+      toast(`✓ ${email} adicionado à família como ${role}`, 'success');
+    } else {
+      // Usuário novo: criar registro pendente com vínculo à família
+      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
+        email,
+        name:       email.split('@')[0],
+        role:       'user',
+        approved:   false,
+        active:     false,
+        family_id:  familyId,
+        must_change_pwd: true,
+      }).select().single();
+      if (insErr) throw new Error(insErr.message);
+
+      // Adicionar em family_members com role escolhido
+      await sb.from('family_members').insert({ user_id: newUser.id, family_id: familyId, role });
+
+      // Enviar e-mail de convite via EmailJS
+      await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email);
+      toast(`✓ Convite enviado para ${email}`, 'success');
+    }
+
+    if (emailEl) emailEl.value = '';
+    await loadFamiliesList();
+  } catch(e) {
+    toast('Erro ao convidar: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
+  }
+}
+
+async function _sendInviteEmail(toEmail, familyName, inviterName) {
+  try {
+    const { autoCheckConfig } = await _getAutoCheckConfig();
+    const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
+    const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
+    const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
+    const appUrl     = window.location.origin + window.location.pathname;
+
+    await emailjs.send(serviceId, templateId, {
+      to_email:    toEmail,
+      subject:     `Convite para a família "${familyName}" no FinTrack`,
+      message:     `Você foi convidado por ${inviterName} para participar da família "${familyName}" no FinTrack.\n\nAcesse ${appUrl} e solicite acesso com este e-mail (${toEmail}).\n\nSeu acesso será aprovado automaticamente após o login.`,
+      family_name: familyName,
+      inviter:     inviterName,
+      app_url:     appUrl,
+    }, publicKey);
+  } catch(e) {
+    console.warn('[InviteEmail]', e.message);
+    // Não falhar o fluxo por erro de e-mail
+  }
 }
 
 async function addUserToFamily(familyId) {
@@ -2389,7 +2599,15 @@ function _renderUserMenuFamilies() {
   const list     = document.getElementById('userMenuFamilyList');
   if (!section || !list) return;
 
-  // Ocultar se só tiver 0 ou 1 família
+  // Botão "Gerenciar Família" para owners (mesmo que tenha só 1 família)
+  const isFamOwner    = families.some(f => f.role === 'owner');
+  const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
+  const manageFamBtn  = document.getElementById('umManageFamilyBtn');
+  if (manageFamBtn) {
+    manageFamBtn.style.display = (isFamOwner && !isGlobalAdmin) ? '' : 'none';
+  }
+
+  // Ocultar switcher se só tiver 0 ou 1 família
   if (families.length <= 1) { section.style.display = 'none'; return; }
   section.style.display = '';
 
