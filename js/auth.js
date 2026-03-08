@@ -735,6 +735,11 @@ function openMyProfile() {
     document.getElementById('myProfileFamilyRow')?.style.setProperty('display', 'none');
   }
 
+  // Gerenciar Família — visível só para owners (e não para admins globais que já têm o painel completo)
+  const isFamOwnerOnly = _currentUserIsFamilyOwner() && !(currentUser?.role === 'admin' || currentUser?.role === 'owner');
+  const famMgmtBtn = document.getElementById('myProfileFamilyMgmtBtn');
+  if (famMgmtBtn) famMgmtBtn.style.display = isFamOwnerOnly ? '' : 'none';
+
   openModal('myProfileModal');
   setTimeout(() => document.getElementById('myProfilePwd1')?.focus(), 200);
 }
@@ -2769,4 +2774,243 @@ async function _checkPendingApprovals() {
       }
     }
   } catch(e) { console.warn('[_checkPendingApprovals]', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FAMILY MANAGEMENT PANEL (owner) — openMyFamilyMgmt + helpers
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _mfmActiveFamilyId = null;
+
+async function openMyFamilyMgmt() {
+  // Famílias onde o usuário é owner (pega do cache _families ou busca do banco)
+  let ownedFams = (currentUser?.families || []).filter(f => f.role === 'owner');
+  if (!ownedFams.length) { toast('Você não é owner de nenhuma família','warning'); return; }
+
+  // Garantir que _families está populado (pode estar vazio se veio direto do perfil)
+  if (!_families?.length) {
+    try {
+      const { data } = await sb.from('families').select('*').order('name');
+      _families = data || [];
+    } catch(_) {}
+  }
+
+  _mfmActiveFamilyId = ownedFams[0].id;
+
+  // Tabs de família (se owner de mais de uma)
+  const tabsEl = document.getElementById('mfmFamilyTabs');
+  if (tabsEl) {
+    if (ownedFams.length > 1) {
+      tabsEl.style.display = '';
+      tabsEl.innerHTML = ownedFams.map(f =>
+        `<button class="tab${f.id === _mfmActiveFamilyId ? ' active' : ''}"
+                 id="mfmTab-${f.id}"
+                 onclick="mfmSwitchFamily('${f.id}')"
+                 style="padding:10px 14px;font-size:.82rem;white-space:nowrap">${esc(f.name)}</button>`
+      ).join('');
+    } else {
+      tabsEl.style.display = 'none';
+    }
+  }
+
+  openModal('myFamilyMgmtModal');
+  await _mfmRender();
+}
+
+function mfmSwitchFamily(famId) {
+  _mfmActiveFamilyId = famId;
+  // Update tab highlight
+  document.querySelectorAll('[id^="mfmTab-"]').forEach(b => {
+    b.classList.toggle('active', b.id === `mfmTab-${famId}`);
+  });
+  _mfmRender();
+}
+
+async function _mfmRender() {
+  const famId = _mfmActiveFamilyId;
+  if (!famId) return;
+
+  const fam = _families.find(f => f.id === famId) ||
+              (currentUser?.families || []).find(f => f.id === famId);
+
+  const nameEl = document.getElementById('mfmFamilyName');
+  const descEl = document.getElementById('mfmFamilyDesc');
+  if (nameEl) nameEl.textContent = fam?.name || '';
+  if (descEl) descEl.textContent = fam?.description || '';
+
+  const listEl = document.getElementById('mfmMembersList');
+  if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px">⏳ Carregando...</div>';
+
+  // Buscar membros desta família
+  let members = [];
+  try {
+    const { data: rpcData } = await sb.rpc('get_all_family_members');
+    if (rpcData) members = rpcData.filter(m => m.family_id === famId);
+  } catch(_) {}
+
+  if (!members.length) {
+    // Fallback direto
+    try {
+      const { data: fmData } = await sb
+        .from('family_members')
+        .select('user_id, role, app_users(id,name,email,avatar_url,role,active)')
+        .eq('family_id', famId);
+      members = (fmData || []).map(r => ({
+        user_id:    r.user_id,
+        member_role: r.role,
+        user_name:  r.app_users?.name  || '—',
+        user_email: r.app_users?.email || '—',
+        user_avatar: r.app_users?.avatar_url || null,
+        user_role:  r.app_users?.role  || 'user',
+        user_active: r.app_users?.active ?? true,
+        family_id:  famId,
+      }));
+    } catch(_) {}
+  }
+
+  const roleIcon  = r => ({ owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[r] || '👤');
+  const roleLabel = r => ({ owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[r] || r);
+
+  if (listEl) {
+    if (!members.length) {
+      listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Nenhum membro ainda.</div>';
+    } else {
+      listEl.innerHTML = members.map(m => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+          <div style="flex-shrink:0">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 32)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.user_name)}</div>
+            <div style="font-size:.71rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.user_email)}</div>
+          </div>
+          <select style="font-size:.78rem;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);width:118px"
+                  onchange="mfmChangeRole(this,'${m.user_id}','${famId}')">
+            <option value="owner"  ${m.member_role==='owner'  ?'selected':''}>👑 Owner</option>
+            <option value="admin"  ${m.member_role==='admin'  ?'selected':''}>🔧 Admin</option>
+            <option value="user"   ${m.member_role==='user'   ?'selected':''}>👤 Usuário</option>
+            <option value="viewer" ${m.member_role==='viewer' ?'selected':''}>👁 Visualizador</option>
+          </select>
+          <button class="btn-icon" title="Remover da família" style="color:var(--red);flex-shrink:0"
+                  onclick="mfmRemoveMember('${m.user_id}','${esc(m.user_name)}','${famId}')">✕</button>
+        </div>`).join('');
+    }
+  }
+
+  // Populate "add existing user" dropdown — users not already in this family
+  const memberIds = new Set(members.map(m => m.user_id));
+  const addSel = document.getElementById('mfmAddUserSel');
+  if (addSel) {
+    try {
+      const { data: allUsers } = await sb.from('app_users').select('id,name,email').eq('approved', true).order('name');
+      const available = (allUsers || []).filter(u => !memberIds.has(u.id));
+      addSel.innerHTML = '<option value="">— Selecionar usuário —</option>' +
+        available.map(u => `<option value="${u.id}">${esc(u.name || u.email)}</option>`).join('');
+      document.getElementById('mfmAddExistingRow').style.display = available.length ? '' : 'none';
+    } catch(_) {}
+  }
+
+  // Clear invite field and message
+  const inviteEl = document.getElementById('mfmInviteEmail');
+  if (inviteEl) inviteEl.value = '';
+  _mfmMsg('', '');
+}
+
+async function mfmChangeRole(sel, userId, famId) {
+  const newRole = sel.value;
+  const { error } = await sb.from('family_members')
+    .update({ role: newRole }).eq('user_id', userId).eq('family_id', famId);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('✓ Perfil atualizado', 'success');
+}
+
+async function mfmRemoveMember(userId, userName, famId) {
+  if (!confirm(`Remover "${userName}" desta família?\n\nO usuário perderá acesso a esta família.`)) return;
+  const { error } = await sb.from('family_members')
+    .delete().eq('user_id', userId).eq('family_id', famId);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('✓ Membro removido', 'success');
+  await _mfmRender();
+}
+
+async function mfmAddExisting() {
+  const sel    = document.getElementById('mfmAddUserSel');
+  const roleSel = document.getElementById('mfmAddUserRole');
+  const userId = sel?.value;
+  const role   = roleSel?.value || 'user';
+  const famId  = _mfmActiveFamilyId;
+  if (!userId) { toast('Selecione um usuário', 'error'); return; }
+
+  const { error } = await sb.from('family_members').upsert(
+    { user_id: userId, family_id: famId, role },
+    { onConflict: 'user_id,family_id' }
+  );
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  await sb.from('app_users').update({ family_id: famId }).eq('id', userId).catch(()=>{});
+  toast('✓ Usuário adicionado', 'success');
+  await _mfmRender();
+}
+
+async function mfmInvite() {
+  const famId    = _mfmActiveFamilyId;
+  const fam      = _families.find(f => f.id === famId) || { name: famId };
+  const emailEl  = document.getElementById('mfmInviteEmail');
+  const roleEl   = document.getElementById('mfmInviteRole');
+  const btn      = document.getElementById('mfmInviteBtn');
+  const email    = emailEl?.value.trim().toLowerCase();
+  const role     = roleEl?.value || 'user';
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    _mfmMsg('Informe um e-mail válido.', 'error'); return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  _mfmMsg('', '');
+
+  try {
+    // Check if user already exists
+    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
+
+    if (existing) {
+      // Already registered — add directly to family
+      const { error } = await sb.from('family_members').upsert(
+        { user_id: existing.id, family_id: famId, role },
+        { onConflict: 'user_id,family_id' }
+      );
+      if (error) throw new Error(error.message);
+      _mfmMsg(`✓ ${email} já estava cadastrado e foi adicionado à família.`, 'success');
+    } else {
+      // New user — create pending record
+      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
+        email,
+        name:            email.split('@')[0],
+        role:            'user',
+        approved:        false,
+        active:          false,
+        family_id:       famId,
+        must_change_pwd: true,
+      }).select().single();
+      if (insErr) throw new Error(insErr.message);
+
+      await sb.from('family_members').insert({ user_id: newUser.id, family_id: famId, role }).catch(()=>{});
+      await _sendInviteEmail(email, fam.name, currentUser.name || currentUser.email);
+      _mfmMsg(`✓ Convite enviado para ${email}. O acesso será liberado após aprovação.`, 'success');
+    }
+
+    if (emailEl) emailEl.value = '';
+    await _mfmRender();
+  } catch(e) {
+    _mfmMsg('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
+  }
+}
+
+function _mfmMsg(text, type) {
+  const el = document.getElementById('mfmMsg');
+  if (!el) return;
+  if (!text) { el.style.display = 'none'; return; }
+  el.textContent = text;
+  el.style.display = '';
+  el.style.background = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#fffbeb';
+  el.style.color      = type === 'error' ? '#991b1b' : type === 'success' ? '#166534' : '#92400e';
+  el.style.border     = '1px solid ' + (type === 'error' ? '#fecaca' : type === 'success' ? '#bbf7d0' : '#fde68a');
 }
