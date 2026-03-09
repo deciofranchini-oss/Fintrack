@@ -429,6 +429,24 @@ function openScheduledModal(id='') {
 
   document.getElementById('scheduledModalTitle').textContent = id ? 'Editar Programação' : 'Programar Transação';
 
+  // Currency badge + panel — restore after type/account are settled
+  setTimeout(() => {
+    const type  = document.getElementById('scTypeField')?.value;
+    const accId = document.getElementById('scAccountId')?.value;
+    if (type !== 'transfer' && type !== 'card_payment' && accId) {
+      _updateScCurrencyPanel(accId);
+      // Se estava editando e tinha brl_amount, recalcula a taxa implícita
+      if (sc?.currency && sc.currency !== 'BRL' && sc.brl_amount && sc.amount) {
+        const impliedRate = Math.abs(sc.brl_amount / sc.amount);
+        const rateInput = document.getElementById('scCurrencyRate');
+        if (rateInput && impliedRate > 0) {
+          rateInput.value = impliedRate.toFixed(6);
+          updateScCurrencyPreview();
+        }
+      }
+    }
+  }, 80);
+
   // Auto-register & notify fields
   const arEl = document.getElementById('scAutoRegister');
   const neEl = document.getElementById('scNotifyEmail');
@@ -496,6 +514,116 @@ function _getScTransferCurrencies() {
 function _hideScFxPanel() {
   const panel = document.getElementById('scFxPanel');
   if (panel) panel.style.display = 'none';
+}
+
+/** Dispatcher — chamado quando conta de origem muda */
+function onScAccountChange() {
+  const type = document.getElementById('scTypeField')?.value;
+  if (type === 'transfer' || type === 'card_payment') {
+    onScTransferAccountChange();
+  } else {
+    _updateScCurrencyPanel(document.getElementById('scAccountId')?.value);
+  }
+}
+
+// ── Currency helpers para despesa/receita em moeda estrangeira ────────────
+
+function _getScAccountCurrency() {
+  const acc = (state.accounts || []).find(a => a.id === document.getElementById('scAccountId')?.value);
+  return acc?.currency || 'BRL';
+}
+
+function _hideScCurrencyPanel() {
+  const p = document.getElementById('scCurrencyPanel');
+  if (p) p.style.display = 'none';
+  const badge = document.getElementById('scCurrencyBadge');
+  if (badge) badge.textContent = 'BRL';
+}
+
+function _updateScCurrencyPanel(accountId) {
+  const acc = (state.accounts || []).find(a => a.id === accountId);
+  const cur = acc?.currency || 'BRL';
+  const badge = document.getElementById('scCurrencyBadge');
+  if (badge) badge.textContent = cur;
+
+  const panel = document.getElementById('scCurrencyPanel');
+  if (!panel) return;
+
+  if (cur === 'BRL' || !accountId) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  const title = document.getElementById('scCurrencyPanelTitle');
+  const fromLabel = document.getElementById('scCurrencyRateFromLabel');
+  if (title) title.textContent = `Conversão: ${cur} → BRL`;
+  if (fromLabel) fromLabel.textContent = cur;
+
+  const sugg = document.getElementById('scCurrencySuggestion');
+  if (sugg) sugg.style.display = 'none';
+  const preview = document.getElementById('scCurrencyPreview');
+  if (preview) preview.textContent = '';
+  fetchScCurrencyRate();
+}
+
+function updateScCurrencyPreview() {
+  const type = document.getElementById('scTypeField')?.value;
+  if (type === 'transfer' || type === 'card_payment') return;
+  const panel = document.getElementById('scCurrencyPanel');
+  if (!panel || panel.style.display === 'none') return;
+  const rateVal = parseFloat(document.getElementById('scCurrencyRate')?.value?.replace(',', '.'));
+  const amtVal  = Math.abs(getAmtField('scAmount') || 0);
+  const preview = document.getElementById('scCurrencyPreview');
+  const hint    = document.getElementById('scCurrencyBrlHint');
+  if (!rateVal || isNaN(rateVal) || !amtVal) {
+    if (preview) preview.textContent = '';
+    if (hint)    hint.textContent = '—';
+    return;
+  }
+  const brl = amtVal * rateVal;
+  if (preview) preview.textContent = `= ${fmt(brl, 'BRL')}`;
+  if (hint)    hint.textContent = fmt(brl, 'BRL');
+}
+
+async function fetchScCurrencyRate() {
+  const cur = _getScAccountCurrency();
+  if (cur === 'BRL') return;
+  const btn  = document.getElementById('scCurrencyFetchBtn');
+  const icon = document.getElementById('scCurrencyFetchIcon');
+  const sugg = document.getElementById('scCurrencySuggestion');
+  if (btn)  btn.disabled = true;
+  if (icon) icon.textContent = '⏳';
+  if (sugg) sugg.style.display = 'none';
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const fxBase = (typeof FX_API_BASE !== 'undefined') ? FX_API_BASE : 'https://api.frankfurter.app';
+    const url = `${fxBase}/${today}?base=${cur}&to=BRL`;
+    const res  = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const rate = json?.rates?.BRL;
+    if (!rate) throw new Error('Taxa não encontrada');
+    const rateStr = Number(rate).toFixed(6);
+    const rateInput = document.getElementById('scCurrencyRate');
+    if (rateInput) rateInput.value = rateStr;
+    if (sugg) {
+      sugg.textContent = `📡 Cotação de ${json.date} (BCE): 1 ${cur} = ${rateStr} BRL`;
+      sugg.style.display = '';
+      sugg.style.background = '';
+      sugg.style.color = '';
+    }
+    updateScCurrencyPreview();
+  } catch (e) {
+    if (sugg) {
+      sugg.textContent = `⚠️ Não foi possível buscar: ${e.message}. Informe manualmente.`;
+      sugg.style.display = '';
+      sugg.style.background = '#fef9c3';
+      sugg.style.color = '#92400e';
+    }
+  } finally {
+    if (btn)  btn.disabled = false;
+    if (icon) icon.textContent = '🔄';
+  }
 }
 
 function onScTransferAccountChange() {
@@ -665,10 +793,21 @@ async function saveScheduled() {
   const fxRateRaw = parseFloat(document.getElementById('scFxRate')?.value?.replace(',', '.'));
   const fxRate    = (fxMode === 'fixed' && fxRateRaw > 0) ? fxRateRaw : null;
 
+  // Moeda da conta de origem
+  const _scAcc     = (state.accounts || []).find(a => a.id === document.getElementById('scAccountId').value);
+  const scCurrency = _scAcc?.currency || 'BRL';
+  let scBrlAmount  = null;
+  if (!isScTransfer && scCurrency !== 'BRL') {
+    const fxRate = parseFloat(document.getElementById('scCurrencyRate')?.value?.replace(',', '.'));
+    if (fxRate > 0) scBrlAmount = Math.abs(amount) * fxRate;
+  }
+
   const data = {
     description: document.getElementById('scDesc').value.trim(),
     type,
     amount: (type==='expense'||isScTransfer) ? -Math.abs(amount) : Math.abs(amount),
+    currency:   scCurrency,
+    brl_amount: scBrlAmount,
     account_id: document.getElementById('scAccountId').value || null,
     transfer_to_account_id: isScTransfer ? (document.getElementById('scTransferToAccountId')?.value || null) : null,
     payee_id: isScTransfer ? null : (document.getElementById('scPayeeId').value || null),
