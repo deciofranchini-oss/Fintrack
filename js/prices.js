@@ -57,7 +57,7 @@ async function initPricesPage() {
   }
   _px.search    = '';
   _px.catFilter = '';
-  const searchEl = document.getElementById('pricesSearchInput');
+  const searchEl = document.getElementById('pricesSearch');
   const catEl    = document.getElementById('pricesCatFilter');
   if (searchEl) searchEl.value = '';
   _populatePricesCatFilter();
@@ -176,15 +176,17 @@ async function openPriceItemDetail(itemId) {
   const item = _px.items.find(i => i.id === itemId);
   if (!item) return;
 
-  document.getElementById('pidItemName').textContent  = item.name;
-  document.getElementById('pidItemCat').textContent   = item.categories?.name || '—';
-  document.getElementById('pidItemDesc').textContent  = item.description || '';
-  document.getElementById('pidItemUnit').textContent  = item.unit ? '/' + item.unit : '';
-  document.getElementById('pidAvg').textContent   = item.avg_price  != null ? fmt(item.avg_price)  : '—';
-  document.getElementById('pidLast').textContent  = item.last_price != null ? fmt(item.last_price) : '—';
+  // Update modal title with item name
+  const _pidTitle = document.getElementById('pidModalTitle');
+  if (_pidTitle) _pidTitle.textContent = '📦 ' + item.name;
+  const _pidCat  = document.getElementById('pidItemCat');  if (_pidCat)  _pidCat.textContent  = item.categories?.name || '';
+  const _pidDesc = document.getElementById('pidItemDesc'); if (_pidDesc) { _pidDesc.textContent = item.description || ''; _pidDesc.style.display = item.description ? '' : 'none'; }
+  const _pidUnit = document.getElementById('pidItemUnit'); if (_pidUnit) _pidUnit.textContent  = item.unit ? '(' + item.unit + ')' : '';
+  document.getElementById('pidAvgPrice').textContent   = item.avg_price  != null ? fmt(item.avg_price)  : '—';
+  document.getElementById('pidLastPrice').textContent  = item.last_price != null ? fmt(item.last_price) : '—';
   document.getElementById('pidCount').textContent = item.record_count || '0';
 
-  const histEl = document.getElementById('pidHistory');
+  const histEl = document.getElementById('pidHistoryList');
   histEl.innerHTML = '<div class="pid-loading">⏳ Carregando histórico...</div>';
   openModal('priceItemDetailModal');
 
@@ -236,6 +238,9 @@ async function openEditPriceItem() {
   _openItemForm(item);
 }
 
+// Alias called by HTML onclick
+function deletePriceItemCurrent() { deletePriceItem(); }
+
 async function deletePriceItem() {
   const item = _px.items.find(i => i.id === _px.activeItemId);
   if (!item) return;
@@ -255,11 +260,11 @@ async function deletePriceItem() {
 function openNewPriceItem() { _openItemForm(null); }
 
 function _openItemForm(item) {
-  document.getElementById('pifId').value          = item?.id || '';
+  document.getElementById('pifItemId').value          = item?.id || '';
   document.getElementById('pifName').value        = item?.name || '';
-  document.getElementById('pifDescription').value = item?.description || '';
+  document.getElementById('pifDesc').value = item?.description || '';
   document.getElementById('pifUnit').value        = item?.unit || 'un';
-  document.getElementById('pifFormTitle').textContent = item ? '✏️ Editar Item' : '🏷️ Novo Item';
+  document.getElementById('pifModalTitle').textContent = item ? '✏️ Editar Item' : '🏷️ Novo Item';
 
   const catSel = document.getElementById('pifCategory');
   catSel.innerHTML = '<option value="">— Sem categoria —</option>' +
@@ -274,9 +279,9 @@ function _openItemForm(item) {
 }
 
 async function savePriceItem() {
-  const id    = document.getElementById('pifId').value;
+  const id    = document.getElementById('pifItemId').value;
   const name  = document.getElementById('pifName').value.trim();
-  const desc  = document.getElementById('pifDescription').value.trim();
+  const desc  = document.getElementById('pifDesc').value.trim();
   const unit  = document.getElementById('pifUnit').value.trim() || 'un';
   const catId = document.getElementById('pifCategory').value || null;
   const errEl = document.getElementById('pifError');
@@ -686,8 +691,9 @@ async function readPricesReceiptWithAI() {
     // Close scan zone
     closePricesReceiptZone();
 
-    // Open register prices modal with extracted data
-    await _openRegisterPricesModal(result);
+    // Refresh stores/items then open register modal
+    await _loadPricesData();
+    _openRegisterModal(result);
 
   } catch(e) {
     if (status) { status.textContent = '❌ ' + e.message; }

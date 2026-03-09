@@ -1704,7 +1704,7 @@ async function addUserToFamily(familyId) {
 // ── Preços: toggle por família (admin only) ───────────────────────────────
 async function toggleFamilyPrices(familyId, enabled) {
   try {
-    await setAppSetting('prices_enabled_' + familyId, enabled);
+    await saveAppSetting('prices_enabled_' + familyId, enabled);
     toast(enabled ? '✓ Gestão de Preços ativada' : 'Gestão de Preços desativada', 'success');
     try { if (typeof applyPricesFeature === 'function') await applyPricesFeature(); } catch {}
   } catch (e) {
