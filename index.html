@@ -1498,12 +1498,17 @@
         </div>
         <input type="file" id="pricesReceiptInput" accept="image/*,application/pdf"
                style="display:none" onchange="onPricesReceiptSelected(this)">
-        <button class="btn btn-ghost btn-sm" style="margin-top:12px"
-                onclick="event.stopPropagation();closePricesReceiptZone()">✕ Cancelar</button>
+        <div id="pricesReceiptFileName" style="display:block;margin-top:10px;font-size:.78rem;color:var(--text2);word-break:break-word"></div>
+        <div id="pricesAiStatus" style="display:none;margin-top:8px;font-size:.78rem;color:var(--text2)"></div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-primary btn-sm" id="pricesReadAiBtn" style="display:none"
+                  onclick="event.stopPropagation();readPricesReceiptWithAI()">🤖 Analisar com IA</button>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();closePricesReceiptZone()">✕ Cancelar</button>
+        </div>
       </div>
 
       <!-- Filters -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
         <input type="text" id="pricesSearch" placeholder="🔍 Buscar item…"
                oninput="pricesSearch(this.value)"
                style="flex:1;min-width:180px;font-size:.85rem">
@@ -1512,6 +1517,8 @@
           <option value="">Todas as categorias</option>
         </select>
       </div>
+
+      <div id="pricesCount" style="font-size:.78rem;color:var(--muted);margin-bottom:10px"></div>
 
       <div id="pricesItemList">
         <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">
@@ -3370,6 +3377,7 @@
         <div style="font-size:.75rem;color:var(--muted);margin-top:10px">
           Nenhuma alteração é feita até clicar em <strong>Executar agora</strong>.
         </div>
+        <div id="pifError" style="display:none;color:var(--red);font-size:.8rem;margin-top:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
           <button class="btn btn-ghost btn-sm" onclick="closeModal('normalizeNamesPreviewModal')">Fechar</button>
           <button class="btn btn-primary btn-sm"
@@ -3443,6 +3451,7 @@
             <select id="pifCategory"><option value="">— Nenhuma —</option></select>
           </div>
         </div>
+        <div id="pifError" style="display:none;color:var(--red);font-size:.8rem;margin-top:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
           <button class="btn btn-ghost" onclick="closeModal('priceItemFormModal')">Cancelar</button>
           <button class="btn btn-primary" onclick="savePriceItem()">Salvar</button>
@@ -3468,11 +3477,20 @@
             <label>Data da Compra</label>
             <input type="date" id="rpmDate">
           </div>
+          <div class="form-group full">
+            <label>Endereço do Local</label>
+            <input type="text" id="rpmStoreAddress" placeholder="Rua, número, bairro…">
+          </div>
         </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="rpmNormalizeAllAI()">🤖 Normalizar todos</button>
+          <button class="btn btn-ghost btn-sm" onclick="rpmAddRow()">＋ Adicionar linha</button>
+        </div>
+        <div id="rpmError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px"></div>
         <div id="rpmItemList" style="max-height:380px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-ghost" onclick="closeModal('registerPricesModal')">Cancelar</button>
-          <button class="btn btn-primary" onclick="saveRegisterPrices()">💾 Salvar Preços</button>
+          <button class="btn btn-primary" id="rpmSaveBtn" onclick="saveRegisterPrices()">💾 Salvar Preços</button>
         </div>
       </div>
     </div>
