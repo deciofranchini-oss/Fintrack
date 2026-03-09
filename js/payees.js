@@ -151,7 +151,7 @@ async function applyNormalizePayees() {
   window._normPayeeChanges = [];
 }
 
-async function loadPayees(){const{data,error}=await famQ(sb.from('payees').select('*, categories(name)')).order('name');if(error){toast(error.message,'error');return;}state.payees=data||[];}
+async function loadPayees(){const{data,error}=await famQ(sb.from('payees').select('id,name,type,notes,default_category_id,address,city,state_uf,zip_code,phone,whatsapp,website,cnpj_cpf,family_id, categories(name)')).order('name');if(error){toast(error.message,'error');return;}state.payees=data||[];}
 
 // ── Contagem de transações por payee ──────────────────────────────────────
 let _payeeTxCounts = {};
@@ -177,12 +177,23 @@ function payeeRow(p) {
   const txBadge = txCount > 0
     ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.72rem;font-weight:600;color:var(--accent);background:var(--accent-lt);border:1px solid var(--accent)30;border-radius:20px;padding:1px 7px">${txCount} tx</span>`
     : `<span style="font-size:.72rem;color:var(--muted)">—</span>`;
+  // Build contact chips
+  const locParts = [p.address, p.city, p.state_uf].filter(Boolean);
+  const locLine  = locParts.length ? locParts.join(', ') : '';
+  const contactChips = [
+    locLine   ? `<span title="Endereço" style="font-size:.7rem;color:var(--muted)">📍 ${esc(locLine)}</span>` : '',
+    p.phone   ? `<span title="Telefone" style="font-size:.7rem;color:var(--muted)">📞 ${esc(p.phone)}</span>` : '',
+    p.whatsapp? `<span title="WhatsApp" style="font-size:.7rem;color:var(--muted)">💬 ${esc(p.whatsapp)}</span>` : '',
+    p.website ? `<a href="${esc(p.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Site" style="font-size:.7rem;color:var(--accent)">🌐 ${esc(p.website.replace(/^https?:\/\//, ''))}</a>` : '',
+    p.cnpj_cpf? `<span title="CNPJ/CPF" style="font-size:.7rem;color:var(--muted)">🪪 ${esc(p.cnpj_cpf)}</span>` : '',
+  ].filter(Boolean);
   return `<tr class="payee-row">
     <td>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="payee-row-avatar" style="background:${avatarColor}18;border:1.5px solid ${avatarColor}40;color:${avatarColor}">${initials}</div>
-        <div>
+        <div style="min-width:0">
           <div style="font-weight:600;font-size:.875rem">${esc(p.name)}</div>
+          ${contactChips.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;max-width:320px">${contactChips.join('')}</div>` : ''}
           ${p.notes ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(p.notes)}</div>` : ''}
         </div>
       </div>
@@ -282,11 +293,20 @@ function filterPayees(){renderPayees(document.getElementById('payeeSearch').valu
 function openPayeeModal(id=''){
   const form={id:'',name:'',type:'beneficiario',default_category_id:'',notes:''};
   if(id){const p=state.payees.find(x=>x.id===id);if(p)Object.assign(form,p);}
-  document.getElementById('payeeId').value   = form.id;
-  document.getElementById('payeeName').value = form.name;
-  document.getElementById('payeeType').value = form.type;
+  document.getElementById('payeeId').value    = form.id;
+  document.getElementById('payeeName').value  = form.name;
+  document.getElementById('payeeType').value  = form.type;
   document.getElementById('payeeNotes').value = form.notes || '';
   document.getElementById('payeeModalTitle').textContent = id ? 'Editar Beneficiário' : 'Novo Beneficiário';
+  // Campos de contato/localização
+  document.getElementById('payeeAddress').value  = form.address  || '';
+  document.getElementById('payeeCity').value     = form.city     || '';
+  document.getElementById('payeeStateUf').value  = form.state_uf || '';
+  document.getElementById('payeeZip').value      = form.zip_code || '';
+  document.getElementById('payeePhone').value    = form.phone    || '';
+  document.getElementById('payeeWhatsapp').value = form.whatsapp || '';
+  document.getElementById('payeeWebsite').value  = form.website  || '';
+  document.getElementById('payeeCnpj').value     = form.cnpj_cpf || '';
   _buildPayeeCatPicker(form.type, form.default_category_id || '');
   // Rebuild picker when type changes
   const typeEl = document.getElementById('payeeType');
@@ -389,7 +409,20 @@ function setPayeeCatValue(catId, closeDropdown) {
 }
 async function savePayee(){
   const id=document.getElementById('payeeId').value;
-  const data={name:normalizePayeeName(document.getElementById('payeeName').value),type:document.getElementById('payeeType').value,default_category_id:document.getElementById('payeeCategory').value||null,notes:document.getElementById('payeeNotes').value};
+  const data={
+    name:              normalizePayeeName(document.getElementById('payeeName').value),
+    type:              document.getElementById('payeeType').value,
+    default_category_id: document.getElementById('payeeCategory').value||null,
+    notes:             document.getElementById('payeeNotes').value,
+    address:           document.getElementById('payeeAddress').value.trim()  || null,
+    city:              document.getElementById('payeeCity').value.trim()     || null,
+    state_uf:          document.getElementById('payeeStateUf').value.trim()  || null,
+    zip_code:          document.getElementById('payeeZip').value.trim()      || null,
+    phone:             document.getElementById('payeePhone').value.trim()    || null,
+    whatsapp:          document.getElementById('payeeWhatsapp').value.trim() || null,
+    website:           document.getElementById('payeeWebsite').value.trim()  || null,
+    cnpj_cpf:          document.getElementById('payeeCnpj').value.trim()     || null,
+  };
   if(!data.name){toast('Informe o nome','error');return;}
   if(!id) data.family_id=famId(); let err;if(id){({error:err}=await sb.from('payees').update(data).eq('id',id));}else{({error:err}=await sb.from('payees').insert(data));}
   if(err){toast(err.message,'error');return;}toast('Salvo!','success');closeModal('payeeModal');await loadPayees();populateSelects();renderPayees();
