@@ -75,6 +75,37 @@ function _applyCurrentUserAvatar() {
   // --- Settings: avatar no wrap clicável ---
   const settingsWrap = document.getElementById('settingsUserAvatarWrap');
   if (settingsWrap) settingsWrap.innerHTML = _userAvatarHtml(currentUser, 52);
+
+  // --- Sidebar user card: refresh avatar when photo changes ---
+  _updateSidebarUserCard();
+}
+
+// ── Sidebar: populate user card ──────────────────────────────────────────────
+function _updateSidebarUserCard() {
+  const card    = document.getElementById('sbUserCard');
+  const avatarEl = document.getElementById('sbUserAvatar');
+  const nameEl  = document.getElementById('sbUserName');
+  const roleEl  = document.getElementById('sbUserRole');
+  if (!card || !currentUser) return;
+  card.style.display = '';
+  // Name
+  if (nameEl) nameEl.textContent = currentUser.name || currentUser.email?.split('@')[0] || '—';
+  // Role label
+  const roleLabel =
+    currentUser.role === 'owner' ? '👑 Owner' :
+    currentUser.role === 'admin' ? '🛡️ Admin' :
+    currentUser.role === 'viewer' ? '👁 Visualizador' : '👤 Usuário';
+  if (roleEl) roleEl.textContent = roleLabel;
+  // Avatar: photo or initials
+  if (avatarEl) {
+    if (currentUser.avatar_url) {
+      avatarEl.innerHTML = `<img src="${esc(currentUser.avatar_url)}" alt="">`;
+    } else {
+      const initials = (currentUser.name || currentUser.email || '?')
+        .split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase() || '').join('');
+      avatarEl.textContent = initials || '?';
+    }
+  }
 }
 
 // Returns a Supabase query with family_id filter applied.
@@ -562,6 +593,9 @@ function updateUserUI() {
     emailEl.textContent = currentUser.email + ' · ' + roleLabel + famLabel;
   }
 
+  // ── Sidebar user card ──────────────────────────────────────────────────
+  _updateSidebarUserCard();
+
   // Painel de gerenciamento: admin e owner vêem; label diferente por papel
   const _canManage = currentUser.can_admin || currentUser.can_manage_family;
   const _mgmtSec   = document.getElementById('userMgmtSection');
@@ -573,17 +607,17 @@ function updateUserUI() {
       : 'Gerenciar minha família · Owner';
   }
 
-  // Configurações e Auditoria: APENAS admin
-  const auditNav    = document.getElementById('auditNav');
-  const settingsNav = document.getElementById('settingsNav');
-  if (auditNav)    auditNav.style.display    = currentUser.can_admin ? 'flex' : 'none';
-  if (settingsNav) settingsNav.style.display = currentUser.can_admin ? 'flex' : 'none';
+  // Configurações e Auditoria: APENAS admin (sidebar + topbar)
+  const auditNavEls    = document.querySelectorAll('#auditNav, #auditNavTopbar');
+  const settingsNavEls = document.querySelectorAll('#settingsNav, #settingsNavTopbar');
+  auditNavEls.forEach(el    => el.style.display = currentUser.can_admin ? 'flex' : 'none');
+  settingsNavEls.forEach(el => el.style.display = currentUser.can_admin ? 'flex' : 'none');
   if (currentUser.can_admin) _checkPendingApprovals();
 
   // Family switcher (only when user has 2+ families)
   _renderFamilySwitcher();
 
-  // Avatar in topbar and settings
+  // Avatar in topbar, settings and sidebar
   setTimeout(_applyCurrentUserAvatar, 50);
 
   // Apply permission restrictions
