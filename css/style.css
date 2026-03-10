@@ -3488,3 +3488,133 @@ html, body{
   font-weight: 400;
   line-height: 1.2;
 }
+/* ── Prices module: store-row in manager modal ──────────────────────────── */
+.store-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border2);
+  transition: background .1s;
+}
+.store-row:last-child { border-bottom: none; }
+.store-row:hover      { background: var(--bg2); }
+
+/* ── price-stat updated for 4-col strip ─────────────────────────────────── */
+.price-stat-col { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
+.price-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.price-stat-val { font-size: .88rem; font-weight: 700; color: var(--text); }
+.price-stat-val.accent { color: var(--accent); }
+
+/* ── Store suggest dropdown z-fix ──────────────────────────────────────── */
+#pifStoreSuggest, #rpmStoreSuggest, #aprStoreSuggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 2px);
+  min-width: 240px; z-index: 300;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FX RATES BAR — barra de cotações abaixo da topbar
+══════════════════════════════════════════════════════════════════════════ */
+.fx-bar {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 99;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+}
+
+.fx-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 24px;
+  overflow-x: auto;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE */
+  white-space: nowrap;
+}
+.fx-bar-inner::-webkit-scrollbar { display: none; }
+
+.fx-bar-label {
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.fx-bar-rates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.fx-bar-rates::-webkit-scrollbar { display: none; }
+
+.fx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: .72rem;
+  flex-shrink: 0;
+  transition: border-color .2s;
+}
+.fx-chip:hover { border-color: var(--accent); }
+.fx-chip-stale { border-color: rgba(217,119,6,.35); background: rgba(254,243,199,.4); }
+
+.fx-chip-cur {
+  font-weight: 700;
+  color: var(--text);
+  font-size: .7rem;
+}
+.fx-chip-sep {
+  color: var(--muted);
+  font-size: .65rem;
+}
+.fx-chip-val {
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-size: .72rem;
+}
+
+.fx-bar-refresh {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .8rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: .6;
+  transition: opacity .15s;
+  line-height: 1;
+}
+.fx-bar-refresh:hover { opacity: 1; }
+.fx-bar-refresh.fx-bar-stale { opacity: 1; animation: fx-pulse 2s infinite; }
+
+.fx-bar-age {
+  font-size: .65rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@keyframes fx-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .5; }
+}
+
+/* Mobile: smaller padding, slightly smaller text */
+@media (max-width: 768px) {
+  .fx-bar-inner { padding: 4px 16px; gap: 6px; }
+  .fx-chip      { padding: 2px 6px; font-size: .68rem; }
+  .fx-bar-age   { display: none; }   /* too cramped on small screens */
+}
