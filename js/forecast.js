@@ -30,24 +30,49 @@ async function loadForecast() {
   // ── 2. Scheduled occurrences in period ──────────────────────────────────
   let scheduledItems = [];
   if (includeScheduled && state.scheduled.length) {
+    // Filter: conta origem OU conta destino bate com o filtro
     const schToProcess = accFilter
-      ? state.scheduled.filter(s => s.account_id === accFilter)
+      ? state.scheduled.filter(s => s.account_id === accFilter || s.transfer_to_account_id === accFilter)
       : state.scheduled;
 
     schToProcess.forEach(sc => {
       if (sc.status === 'paused') return;
       const registered = new Set((sc.occurrences || []).map(o => o.scheduled_date));
       const occ = generateOccurrences(sc, 200);
+      const isTransfer = sc.type === 'transfer' || sc.type === 'card_payment';
+
       occ.forEach(date => {
-        if (date >= fromStr && date <= toStr && !registered.has(date)) {
+        if (date < fromStr || date > toStr || registered.has(date)) return;
+
+        // Leg de DÉBITO: conta origem (sempre negativo)
+        if (!accFilter || sc.account_id === accFilter) {
           scheduledItems.push({
             date,
             description: sc.description + ' 📅',
-            amount: sc.amount,
+            amount: -Math.abs(sc.amount),
             account_id: sc.account_id,
             categories: sc.categories,
             payees: sc.payees,
             isScheduled: true,
+            transferLeg: isTransfer ? 'debit' : null,
+            sc_id: sc.id,
+          });
+        }
+
+        // Leg de CRÉDITO: conta destino (sempre positivo) — apenas transferências
+        if (isTransfer && sc.transfer_to_account_id && (!accFilter || sc.transfer_to_account_id === accFilter)) {
+          // Aplicar câmbio se configurado
+          let creditAmt = Math.abs(sc.amount);
+          if (sc.fx_mode === 'fixed' && sc.fx_rate > 0) creditAmt = creditAmt * sc.fx_rate;
+          scheduledItems.push({
+            date,
+            description: sc.description + ' 📅',
+            amount: creditAmt,
+            account_id: sc.transfer_to_account_id,
+            categories: sc.categories,
+            payees: null,
+            isScheduled: true,
+            transferLeg: 'credit',
             sc_id: sc.id,
           });
         }
@@ -180,7 +205,9 @@ function renderForecastTables(allItems, accounts) {
       const rowClass = isPast ? 'forecast-row-past' : isToday ? 'forecast-row-today' : '';
       const balClass = isNeg ? 'forecast-row-negative' : '';
       const scheduledBadge = t.isScheduled
-        ? '<span class="badge" style="background:var(--amber-lt);color:var(--amber);border:1px solid rgba(180,83,9,.2);font-size:.65rem">📅 prog.</span>'
+        ? `<span class="badge" style="background:var(--amber-lt);color:var(--amber);border:1px solid rgba(180,83,9,.2);font-size:.65rem">${
+            t.transferLeg === 'credit' ? '📅 prog.↑' : t.transferLeg === 'debit' ? '📅 prog.↓' : '📅 prog.'
+          }</span>`
         : '';
       const catBadge = t.categories
         ? `<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}28;font-size:.65rem">${esc(t.categories.name)}</span>`
