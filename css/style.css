@@ -3512,109 +3512,183 @@ html, body{
 /* ══════════════════════════════════════════════════════════════════════════
    FX RATES BAR — barra de cotações abaixo da topbar
 ══════════════════════════════════════════════════════════════════════════ */
+/* ── FX bar palette (dark-green, dark-mode-safe) ─── */
+:root {
+  --fx-bg:        #1a3329;   /* deep forest green                   */
+  --fx-bg2:       #1f3d30;   /* slightly lighter for chips          */
+  --fx-border:    rgba(255,255,255,.08);
+  --fx-text:      rgba(255,255,255,.55);   /* muted label/age        */
+  --fx-cur:       rgba(255,255,255,.80);   /* currency code          */
+  --fx-val:       #6ee7b7;   /* mint green — readable on dark bg    */
+  --fx-sep:       rgba(255,255,255,.28);
+  --fx-chip-h:    rgba(255,255,255,.06);   /* chip hover tint        */
+  --fx-stale-bg:  rgba(251,191,36,.12);
+  --fx-stale-brd: rgba(251,191,36,.45);
+  --fx-stale-txt: #fbbf24;
+}
+
+/* ── Container ────────────────────────────────────── */
 .fx-bar {
   position: sticky;
   top: var(--topbar-h);
   z-index: 99;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
+  background: var(--fx-bg);
+  border-bottom: 1px solid var(--fx-border);
   width: 100%;
 }
 
+/* ── Inner row — centred, max-width, no visible scroll ── */
 .fx-bar-inner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 24px;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+  height: 28px;
+  max-width: 900px;
+  margin: 0 auto;
   overflow-x: auto;
-  scrollbar-width: none;          /* Firefox */
-  -ms-overflow-style: none;       /* IE */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   white-space: nowrap;
 }
 .fx-bar-inner::-webkit-scrollbar { display: none; }
 
+/* ── "CÂMBIO" label ─────────────────────────────── */
 .fx-bar-label {
-  font-size: .65rem;
+  font-size: .6rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--muted);
+  letter-spacing: .1em;
+  color: var(--fx-text);
   flex-shrink: 0;
+  opacity: .7;
 }
 
+/* ── Rate chips row ─────────────────────────────── */
 .fx-bar-rates {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
+  gap: 5px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 .fx-bar-rates::-webkit-scrollbar { display: none; }
 
+/* Thin divider between label and chips */
+.fx-bar-label::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  background: var(--fx-border);
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* ── Individual chip ────────────────────────────── */
 .fx-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 3px;
+  padding: 1px 7px;
   border-radius: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: .72rem;
+  background: var(--fx-bg2);
+  border: 1px solid var(--fx-border);
   flex-shrink: 0;
-  transition: border-color .2s;
+  cursor: default;
+  transition: background .15s, border-color .15s;
 }
-.fx-chip:hover { border-color: var(--accent); }
-.fx-chip-stale { border-color: rgba(217,119,6,.35); background: rgba(254,243,199,.4); }
+.fx-chip:hover {
+  background: var(--fx-chip-h);
+  border-color: rgba(110,231,183,.25);
+}
+.fx-chip-stale {
+  background: var(--fx-stale-bg);
+  border-color: var(--fx-stale-brd);
+}
 
 .fx-chip-cur {
+  font-size: .65rem;
   font-weight: 700;
-  color: var(--text);
-  font-size: .7rem;
+  color: var(--fx-cur);
+  letter-spacing: .02em;
 }
 .fx-chip-sep {
-  color: var(--muted);
-  font-size: .65rem;
+  font-size: .6rem;
+  color: var(--fx-sep);
+  margin: 0 1px;
 }
 .fx-chip-val {
+  font-size: .68rem;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--fx-val);
   font-variant-numeric: tabular-nums;
-  font-size: .72rem;
+  letter-spacing: -.01em;
 }
+.fx-chip-stale .fx-chip-val { color: var(--fx-stale-txt); }
 
+/* ── Refresh button ─────────────────────────────── */
 .fx-bar-refresh {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: .8rem;
-  padding: 2px 4px;
-  border-radius: 4px;
+  font-size: .72rem;
+  padding: 1px 3px;
+  border-radius: 3px;
   flex-shrink: 0;
-  opacity: .6;
+  opacity: .45;
   transition: opacity .15s;
   line-height: 1;
+  color: inherit;
 }
-.fx-bar-refresh:hover { opacity: 1; }
-.fx-bar-refresh.fx-bar-stale { opacity: 1; animation: fx-pulse 2s infinite; }
+.fx-bar-refresh:hover   { opacity: .9; }
+.fx-bar-refresh.fx-bar-stale { opacity: 1; animation: fx-pulse 2.5s ease-in-out infinite; }
 
+/* ── Age text ───────────────────────────────────── */
 .fx-bar-age {
-  font-size: .65rem;
-  color: var(--muted);
+  font-size: .6rem;
+  color: var(--fx-text);
   flex-shrink: 0;
   white-space: nowrap;
+  opacity: .6;
 }
 
 @keyframes fx-pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: .5; }
+  50%       { opacity: .3; }
 }
 
-/* Mobile: smaller padding, slightly smaller text */
+/* ── Mobile tweaks ──────────────────────────────── */
 @media (max-width: 768px) {
-  .fx-bar-inner { padding: 4px 16px; gap: 6px; }
-  .fx-chip      { padding: 2px 6px; font-size: .68rem; }
-  .fx-bar-age   { display: none; }   /* too cramped on small screens */
+  .fx-bar-inner  { padding: 0 14px; height: 26px; gap: 6px; }
+  .fx-chip       { padding: 1px 5px; }
+  .fx-chip-cur   { font-size: .62rem; }
+  .fx-chip-val   { font-size: .64rem; }
+  .fx-bar-label  { display: none; }   /* save space; chips speak for themselves */
+  .fx-bar-age    { display: none; }
 }
+
+/* ── Prices module: store autocomplete & list ──────────────────────────────── */
+.store-suggest-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border2);
+  transition: background .12s;
+  font-size: .85rem;
+}
+.store-suggest-item:hover { background: var(--accent-lt); }
+.store-suggest-item:last-child { border-bottom: none; }
+
+.store-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border2);
+  cursor: pointer;
+  transition: background .12s;
+}
+.store-list-row:hover { background: var(--surface2); }
+.store-list-row:last-child { border-bottom: none; }
