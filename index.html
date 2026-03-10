@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="format-detection" content="telephone=no">
-<title>Family Fintrack · Família inteligente, Finanças sob controle</title>
+<title>Family Fintrack · Gerenciador Financeiro da Família</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,203 +21,79 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
 <style>
-/* ═══════════════════════════════════════════════════════════════════════════
-   SIDEBAR — Tema escuro com identidade do logo Family FinTrack
-   Palette do logo:  #0d3d2b (verde escuro texto) · #2a6049 (shield médio)
-                     #3dba78 (verde vibrante/lima) · #7fc96e (claro)
-   ─────────────────────────────────────────────────────────────────────────
-   Conceito: sidebar escura profissional, fundo #122d20, texto branco forte,
-   ativa com realce verde lima, header branco puro com logo natural em tamanho pleno.
-═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Variáveis ── */
-:root {
-  --sb-bg         : #16301f;
-  --sb-bg2        : #1c3d28;
-  --sb-text       : rgba(255,255,255,0.92);
-  --sb-muted      : rgba(255,255,255,0.45);
-  --sb-label      : rgba(255,255,255,0.35);
-  --sb-active-bg  : rgba(61,186,120,0.18);
-  --sb-active-fg  : #ffffff;
-  --sb-active-bar : #3dba78;
-  --sb-hover-bg   : rgba(255,255,255,0.07);
-  --sb-divider    : rgba(255,255,255,0.10);
-  --sb-avatar-bg  : linear-gradient(135deg,#2e7d52,#4caf78);
-  --sb-logout-clr : #f87171;
-}
-
-/* ── Sidebar base ── */
+/* ══ SIDEBAR DARK THEME ════════════════════════════════════════ */
+:root { --sb-bg: #16301f; }
 .sidebar {
   background: var(--sb-bg) !important;
   border-right: none !important;
-  box-shadow: 4px 0 24px rgba(0,0,0,0.35) !important;
+  box-shadow: 4px 0 24px rgba(0,0,0,.35) !important;
+  color: rgba(255,255,255,.92) !important;
 }
-
-/* ── Header: fundo BRANCO puro, logo em tamanho pleno ── */
-.sb-header {
+.sidebar-logo {
   background: var(--sb-bg) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-  padding: 0 !important;
-  min-height: 80px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  overflow: hidden !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  min-height: 72px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  padding: 12px 16px !important;
 }
-
-/* Wrapper do logo: cresce para preencher tudo */
-.sb-logo-wrap {
-  flex: 1 !important;
-  min-width: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 12px 8px 12px 12px !important;
-  overflow: hidden !important;
-}
-
-/* Logo invertido para branco sobre fundo escuro */
 #sidebarLogoImg {
-  width: auto !important;
-  height: 56px !important;
-  max-height: 56px !important;
-  max-width: 100% !important;
-  object-fit: contain !important;
-  object-position: center center !important;
-  display: block !important;
+  height: 52px !important; max-height: 52px !important; width: auto !important;
+  max-width: 100% !important; object-fit: contain !important;
   filter: brightness(0) invert(1) !important;
 }
-
-.sb-close {
-  color: rgba(255,255,255,0.5) !important;
-  background: transparent !important;
-  flex-shrink: 0 !important;
-  align-self: center !important;
-  margin-right: 8px !important;
-}
-.sb-close:hover {
-  color: #fff !important;
-  background: rgba(255,255,255,0.10) !important;
-}
-
-/* ── User card ── */
-.sb-user-card {
-  background: var(--sb-bg2) !important;
-  border-bottom: 1px solid var(--sb-divider) !important;
-}
-.sb-user-avatar {
-  background: var(--sb-avatar-bg) !important;
-  color: #fff !important;
-  font-weight: 700 !important;
-}
-.sb-user-name {
-  color: var(--sb-text) !important;
-  font-weight: 600 !important;
-}
-.sb-user-role {
-  color: var(--sb-muted) !important;
-}
-
-/* ── Labels de seção ── */
-.nav-label {
-  color: var(--sb-label) !important;
-  font-weight: 700 !important;
-  letter-spacing: .10em !important;
-  text-transform: uppercase !important;
-  font-size: .65rem !important;
-}
-
-/* ── Itens de nav ── */
-.nav-item {
-  color: var(--sb-text) !important;
-  background: transparent !important;
-  border-radius: 10px !important;
-  font-weight: 500 !important;
-}
-.nav-item:hover {
-  background: var(--sb-hover-bg) !important;
-  color: #fff !important;
-}
-
-/* ── Item ativo ── */
+.nav-label { color: rgba(255,255,255,.35) !important; }
+.nav-item { color: rgba(255,255,255,.85) !important; }
+.nav-item:hover { background: rgba(255,255,255,.07) !important; }
 .nav-item.active {
-  background: var(--sb-active-bg) !important;
-  color: var(--sb-active-fg) !important;
-  font-weight: 700 !important;
-  box-shadow: inset 3px 0 0 var(--sb-active-bar) !important;
+  background: rgba(61,186,120,.18) !important; color: #7deebc !important;
+  box-shadow: inset 3px 0 0 #3dba78 !important;
 }
-
-/* ── Ícones ── */
-.ni-icon {
-  color: rgba(255,255,255,0.55) !important;
-  opacity: 1 !important;
-}
-.nav-item:hover .ni-icon {
-  color: rgba(255,255,255,0.85) !important;
-}
-.nav-item.active .ni-icon {
-  color: var(--sb-active-bar) !important;
-}
-
-/* ── Divisor ── */
-.sb-divider {
-  background: var(--sb-divider) !important;
-}
-
-/* ── Footer ── */
-.sb-footer {
-  background: var(--sb-bg) !important;
-  border-top: 1px solid var(--sb-divider) !important;
-}
-
-/* ── Botão sair ── */
-.nav-item.sb-logout {
-  color: var(--sb-logout-clr) !important;
-}
-.nav-item.sb-logout .ni-icon {
-  color: var(--sb-logout-clr) !important;
-  opacity: 0.8 !important;
-}
-.nav-item.sb-logout:hover {
-  background: rgba(248,113,113,0.12) !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TOPBAR — Ícones com contorno verde moderno
-═══════════════════════════════════════════════════════════════════════════ */
+.sidebar-footer { border-top: 1px solid rgba(255,255,255,.08) !important; }
+/* ══ TOPBAR ICONS ═══════════════════════════════════════════════ */
 .topbar-icon-btn {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 10px !important;
-  border: 1.5px solid rgba(42,96,73,0.20) !important;
-  background: #f0faf4 !important;
-  cursor: pointer !important;
-  color: #1e6040 !important;
-  text-decoration: none !important;
-  transition: background .15s, border-color .15s, box-shadow .15s !important;
-  font-size: 0 !important; /* esconde emoji fallback se tiver SVG */
-  position: relative !important;
+  width:36px !important; height:36px !important; border-radius:10px !important;
+  background:#f0faf4 !important; border:1.5px solid rgba(42,96,73,.20) !important;
+  color:#1e6040 !important; transition:background .15s,border-color .15s,box-shadow .15s !important;
 }
 .topbar-icon-btn:hover {
-  background: #ddf2e8 !important;
-  border-color: #3dba78 !important;
-  box-shadow: 0 0 0 3px rgba(61,186,120,0.15) !important;
-  color: #0d3d2b !important;
+  background:#ddf2e8 !important; border-color:#3dba78 !important;
+  box-shadow:0 0 0 3px rgba(61,186,120,.15) !important;
 }
-/* Botão sair na topbar mantém vermelho */
-#logoutTopbarBtn {
-  background: #fff5f5 !important;
-  border-color: rgba(220,38,38,0.20) !important;
-  color: #dc2626 !important;
+#logoutTopbarBtn { background:#fff5f5 !important; border-color:rgba(220,38,38,.20) !important; color:#dc2626 !important; }
+#logoutTopbarBtn:hover { background:#fee2e2 !important; border-color:#dc2626 !important; }
+/* ══ SETTINGS ACCORDION ═════════════════════════════════════════ */
+.cfg-group {
+  border:1.5px solid var(--border,#e5e7eb); border-radius:14px; overflow:hidden;
+  margin-bottom:10px; background:var(--surface,#fff);
+  box-shadow:0 1px 4px rgba(0,0,0,.04); transition:box-shadow .15s;
 }
-#logoutTopbarBtn:hover {
-  background: #fee2e2 !important;
-  border-color: #dc2626 !important;
-  box-shadow: 0 0 0 3px rgba(220,38,38,0.12) !important;
+.cfg-header {
+  display:flex; align-items:center; gap:12px; padding:14px 16px;
+  cursor:pointer; user-select:none; transition:background .12s;
 }
+.cfg-header:hover { background:var(--bg2,#f9fafb); }
+.cfg-icon { width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0; }
+.cfg-titles { flex:1;min-width:0; }
+.cfg-label { font-weight:700;font-size:.9rem;color:var(--text); }
+.cfg-sublabel { font-size:.75rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.cfg-arrow { color:var(--muted);font-size:.7rem;transition:transform .22s cubic-bezier(.4,0,.2,1);flex-shrink:0; }
+.cfg-arrow.open { transform:rotate(180deg); }
+.cfg-body { max-height:0;overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1);border-top:0 solid var(--border); }
+.cfg-body.open { max-height:1400px;border-top:1.5px solid var(--border,#e5e7eb); }
+.cfg-body .settings-card { border-radius:0 !important;margin:0 !important;border:none !important; }
+/* ══ UPCOMING GROUPS ═════════════════════════════════════════════ */
+.sc-upcoming-group { margin-bottom:6px;border:1px solid var(--border);border-radius:12px;overflow:hidden; }
+.sc-upcoming-day-hdr {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 14px;cursor:pointer;background:var(--bg2,#f9fafb);transition:background .12s;
+}
+.sc-upcoming-day-hdr:hover { background:var(--surface2,#f3f4f6); }
+.sc-upcoming-day-name { font-size:.82rem;font-weight:700;color:var(--text); }
+.sc-upcoming-day-name.today-lbl { color:var(--accent,#2a6049); }
+.sc-upcoming-day-meta { display:flex;align-items:center;gap:8px; }
+.sc-upcoming-day-arrow { color:var(--muted);font-size:.65rem;transition:transform .2s; }
+.sc-upcoming-day-arrow.open { transform:rotate(180deg); }
+.sc-upcoming-group-rows { background:var(--surface,#fff); }
 </style>
 </head>
 <body>
@@ -228,10 +104,10 @@
 <div class="auth-screen" id="authScreen" style="display:none">
   <div class="auth-card">
     <div class="auth-logo">
-      <img id="authLogoImg" src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="FinTrack" style="max-width:200px;width:100%;height:auto;object-fit:contain" onerror="this.style.display='none'">
+      <img id="authLogoImg" src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="FinTrack" onerror="this.style.display='none'">
     </div>
     <div class="auth-title">Family FinTrack</div>
-    <div class="auth-sub" id="authSubtitle">Família inteligente, Finanças sob controle</div>
+    <div class="auth-sub" id="authSubtitle">O Gerenciador de Finanças da Fanmília</div>
 
     <!-- Change password banner -->
     <div class="auth-change-pw" id="authChangePwBanner" style="display:none">
@@ -269,7 +145,7 @@
     </div>
 
     <div style="text-align:center;margin-top:20px;font-size:.72rem;color:#c0b9b0">
-      Family FinTrack · Família inteligente, Finanças sob controle
+      JF Family FinTrack · Powered by Supabase
     </div>
   </div>
 </div>
@@ -350,7 +226,7 @@
   <div class="pin-card">
     <div style="text-align:center;margin-bottom:20px">
       <div style="font-size:2.2rem;margin-bottom:6px">🔐</div>
-      <div class="pin-title">Family FinTrack</div>
+      <div class="pin-title">JF Family FinTrack</div>
       <div class="pin-subtitle">Digite o Masterpin para acessar</div>
     </div>
     <div class="pin-dots" id="pinDots">
@@ -382,7 +258,7 @@
 <div class="setup-screen" id="setupScreen" style="display:none">
   <div class="setup-box">
     <div style="text-align:center;margin-bottom:16px">
-      <img src="https://deciofranchini-oss.github.io/fintrack/logo.png" style="height:130px;object-fit:contain;mix-blend-mode:normal" alt="Family FinTrack">
+      <img src="https://deciofranchini-oss.github.io/fintrack/logo.png" style="height:130px;object-fit:contain;mix-blend-mode:normal" alt="JF Family FinTrack">
     </div>
     <p style="text-align:center">Configure sua conexão com o Supabase para começar.</p>
     <div class="form-group"><label>Supabase URL</label><input type="url" id="supabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
@@ -397,129 +273,44 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar" id="sidebar">
-
-  <!-- Header: logo + close button -->
-  <div class="sb-header">
-    <div class="sb-logo-wrap">
-      <img id="sidebarLogoImg"
-           src="https://deciofranchini-oss.github.io/fintrack/logo.png"
-           alt="Family FinTrack"
-           class="sb-logo-img"
-           style="width:100%;height:100%;object-fit:contain;display:block;filter:brightness(0) invert(1)">
-    </div>
-    <button class="sb-close" onclick="closeSidebar()" aria-label="Fechar menu">✕</button>
+  <div class="sidebar-logo" style="padding:4px 16px 4px;background:var(--surface)">
+    <img id="sidebarLogoImg" src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="Family FinTrack" style="width:100%;max-width:180px;height:auto;display:block;margin:0 auto;object-fit:contain;mix-blend-mode:normal">
   </div>
-
-  <!-- User card: populated by updateSidebarUser() in auth.js -->
-  <div class="sb-user-card" id="sbUserCard" style="display:none">
-    <div class="sb-user-avatar" id="sbUserAvatar">?</div>
-    <div class="sb-user-info">
-      <div class="sb-user-name" id="sbUserName">—</div>
-      <div class="sb-user-role" id="sbUserRole">—</div>
-    </div>
-  </div>
-
-  <!-- Scrollable nav body -->
   <div class="sidebar-nav">
-
     <div class="nav-section">
       <div class="nav-label">Principal</div>
-      <button class="nav-item active" onclick="navigate('dashboard')" id="dashboardNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        </span>Dashboard
-      </button>
-      <button class="nav-item" onclick="navigate('transactions')" id="transactionsNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        </span>Transações
-      </button>
-      <button class="nav-item" onclick="navigate('accounts')" id="accountsNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        </span>Contas
-      </button>
+      <button class="nav-item active" onclick="navigate('dashboard')" id=\"dashboardNav\"><span class="ni-icon">📊</span>Dashboard</button>
+      <button class="nav-item" onclick="navigate('transactions')" id=\"transactionsNav\"><span class="ni-icon">↕</span>Transações</button>
+      <button class="nav-item" onclick="navigate('accounts')" id=\"accountsNav\"><span class="ni-icon">🏦</span>Contas</button>
     </div>
-
     <div class="nav-section">
       <div class="nav-label">Análise</div>
-      <button class="nav-item" onclick="navigate('reports')" id="reportsNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </span>Relatórios
-      </button>
-      <button class="nav-item" onclick="navigate('budgets')" id="budgetsNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </span>Orçamentos
-      </button>
+      <button class="nav-item" onclick="navigate('reports')" id=\"reportsNav\"><span class="ni-icon">📈</span>Relatórios</button>
+      <button class="nav-item" onclick="navigate('budgets')" id=\"budgetsNav\"><span class="ni-icon">🎯</span>Orçamentos</button>
     </div>
-
     <div class="nav-section">
       <div class="nav-label">Planejamento</div>
-      <button class="nav-item" onclick="navigate('scheduled')" id="scheduledNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </span>Programados
-      </button>
+      <button class="nav-item" onclick="navigate('scheduled')" id=\"scheduledNav\"><span class="ni-icon">📅</span>Programados</button>
     </div>
-
     <div class="nav-section">
       <div class="nav-label">Cadastros</div>
-      <button class="nav-item" onclick="navigate('categories')" id="categoriesNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        </span>Categorias
-      </button>
-      <button class="nav-item" onclick="navigate('payees')" id="payeesNav">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </span>Beneficiários
-      </button>
-      <button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-        </span>Preços
-      </button>
+      <button class="nav-item" onclick="navigate('categories')" id=\"categoriesNav\"><span class="ni-icon">🏷</span>Categorias</button>
+      <button class="nav-item" onclick="navigate('payees')" id=\"payeesNav\"><span class="ni-icon">👥</span>Beneficiários</button>
     </div>
-
-    <!-- Seção Admin: visível apenas quando habilitado em Configurações -->
-    <div class="nav-section" id="adminNavSection" style="display:none">
-      <div class="nav-label">Administração</div>
-      <button class="nav-item" id="settingsNav" onclick="navigate('settings')" title="Configurações">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </span>Configurações
-      </button>
-      <button class="nav-item" id="auditNav" onclick="navigate('audit')" title="Auditoria">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        </span>Auditoria
-      </button>
-    </div>
-
-  </div><!-- /sidebar-nav -->
-
-  <!-- Footer: always visible, pinned to bottom — NEVER clipped -->
-  <div class="sb-footer">
-    <div class="sb-divider"></div>
-    <button class="nav-item sb-logout" onclick="doLogout()">
-      <span class="ni-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </span>Sair
-    </button>
+</div>
+  <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:3px">
+<button class="nav-item" onclick="doLogout()" style="color:var(--red);font-size:.8rem;padding:7px 10px"><span class="ni-icon" style="font-size:.85rem">↩</span>Sair</button>
   </div>
-
 </nav>
 
 <!-- MAIN -->
 <div class="main" id="mainApp">
   <header class="topbar">
     <div class="topbar-left">
-      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <img id="topbarLogoImg" src="" alt="Family FinTrack" style="height:36px;width:auto;object-fit:contain;display:none">
+      <img id="topbarLogoImg" src="" alt="JF Family FinTrack" style="height:36px;width:auto;object-fit:contain;display:none">
       <span class="topbar-title" id="pageTitle">Dashboard</span>
     </div>
     <div class="topbar-actions">
@@ -578,40 +369,30 @@
       
 
       <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
-        <!-- Escola -->
-        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola" style="display:none">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
+           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;text-decoration:none;color:var(--text);">
+          <span aria-hidden="true" style="font-size:16px;line-height:1">🎓</span>
         </a>
-        <!-- Importar -->
-        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar"
+           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
+          <span aria-hidden="true" style="font-size:16px;line-height:1">📥</span>
         </button>
-        <!-- Auditoria -->
-        <button class="topbar-icon-btn" id="auditNavTopbar" onclick="navigate('audit')" title="Auditoria">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <button class="topbar-icon-btn" id="auditNav" onclick="navigate('audit')" title="Auditoria"
+           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
+          <span aria-hidden="true" style="font-size:16px;line-height:1">🧾</span>
         </button>
-        <!-- Configurações -->
-        <button class="topbar-icon-btn" id="settingsNavTopbar" onclick="navigate('settings')" title="Configurações">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <button class="topbar-icon-btn" id="settingsNav" onclick="navigate('settings')" title="Configurações"
+           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
+          <span aria-hidden="true" style="font-size:16px;line-height:1">⚙️</span>
         </button>
-        <!-- Sair -->
-        <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair"
+           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--red,#dc2626);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
 <button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()" title="Nova Transação" aria-label="Nova Transação">+</button>
     </div>
   </header>
-
-  <!-- FX RATES BAR -->
-  <div id="fxRatesBadge" class="fx-bar" style="display:none" aria-label="Cotações de câmbio">
-    <div class="fx-bar-inner">
-      <span class="fx-bar-label">Câmbio</span>
-      <div class="fx-bar-rates" id="fxBarRates"></div>
-      <button class="fx-bar-refresh" onclick="refreshFxRates()" id="fxBarRefreshBtn" title="Atualizar">🔄</button>
-      <span class="fx-bar-age" id="fxBarAge"></span>
-    </div>
-  </div>
 
   <div class="content">
 
@@ -1094,10 +875,10 @@
         </select>
       </div>
 
-      <!-- Upcoming next 30 days -->
+      <!-- Upcoming next 10 days -->
       <div id="scheduledUpcomingCard" style="display:none" class="card mb-6">
         <div class="card-header">
-          <span class="card-title">⏰ Próximos 30 dias</span>
+          <span class="card-title" id="scheduledUpcomingTitle">⏰ Próximos 10 dias</span>
           <span id="scheduledUpcomingTotal" class="badge badge-amber"></span>
         </div>
         <div id="scheduledUpcomingList" class="sc-upcoming-list"></div>
@@ -1317,88 +1098,33 @@
     <div class="page" id="page-settings">
       <div class="section-header mb-6"><span class="section-title">Configurações</span></div>
 
-<div class="settings-section">
-        <div class="settings-card">
-          <div class="settings-row" style="justify-content:center;padding:20px;flex-direction:column;gap:0">
-            <img id="settingsLogoImg" src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="Family FinTrack" style="height:150px;object-fit:contain;mix-blend-mode:normal">
-            <div style="text-align:center">
-              <div style="font-weight:700;font-size:1.15rem;font-family:var(--font-serif);color:var(--text)">Family FinTrack</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:3px">Família inteligente,  Finanças sob controle</div>
+      <!-- ══ PERFIL DO USUÁRIO ══════════════════════════════════════ -->
+      <div id="currentUserSection">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpProfile')">
+            <div class="cfg-icon" style="background:#e0f2fe">👤</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Meu Perfil</div>
+              <div class="cfg-sublabel" id="currentUserName">—</div>
             </div>
+            <svg class="cfg-arrow" id="grpProfile_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-        </div>
-      </div>
-
-
-
-
-      <!-- Current user info -->
-      <div class="settings-section" id="currentUserSection">
-        <div class="settings-card">
-          <div class="settings-row" style="gap:14px">
-            <div id="settingsUserAvatarWrap"
-                 onclick="openMyProfile()"
-                 title="Alterar foto"
-                 style="width:52px;height:52px;border-radius:50%;overflow:hidden;flex-shrink:0;
-                        cursor:pointer;border:2px solid var(--border);transition:opacity .15s;
-                        display:flex;align-items:center;justify-content:center;background:var(--surface2)"
-                 onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
-            </div>
-            <div class="settings-row-info" style="flex:1;min-width:0">
-              <div class="settings-row-label" id="currentUserName">—</div>
-              <div class="settings-row-sub" id="currentUserEmail">—</div>
-            </div>
-            <div class="settings-row-action" style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="openMyProfile()">🖼️ Foto</button>
-              <button class="btn btn-ghost btn-sm" onclick="showChangeMyPwd()">🔑 Senha</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="doLogout()">↩ Sair</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Menu visibility (admin configurable) -->
-      <div class="settings-section" id="menuVisibilitySection" style="display:none">
-        <div class="settings-card">
-          <div class="settings-row" style="align-items:flex-start">
-            <div class="settings-row-icon" style="background:var(--accent-lt)">📋</div>
-            <div class="settings-row-body">
-              <div class="settings-row-title">Itens do menu</div>
-              <div class="settings-row-subtitle">Escolha quais páginas aparecem no menu lateral (configuração global).</div>
-
-              <div id="menuVisibilityForm" style="margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"></div>
-
-              <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="saveMenuVisibility()">Salvar</button>
-                <button class="btn" onclick="resetMenuVisibility()">Restaurar padrão</button>
-              </div>
-              <div id="menuVisibilityHint" class="text-muted" style="margin-top:8px;font-size:.85rem"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- Logo -->
-      
-      <!-- App logo (admin only) -->
-      <div class="settings-section" id="logoSettingsSection" style="display:none">
-        <div class="settings-card">
-          <div class="settings-row" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
-            <div class="settings-row-icon" style="background:var(--amber-lt)">🖼️</div>
-            <div class="settings-row-info" style="min-width:240px;flex:1">
-              <div class="settings-row-label">Logotipo da aplicação (Admin)</div>
-              <div class="settings-row-sub">Faça upload (PNG/JPG/SVG) ou cole uma URL. O logo é aplicado imediatamente.</div>
-
-              <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-                <input id="appLogoUrl" type="text" placeholder="URL ou DataURL do logo" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text2)">
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                  <input id="appLogoFile" type="file" accept="image/*" style="max-width:260px">
-                  <button class="btn btn-primary btn-sm" onclick="saveAppLogo()">💾 Salvar</button>
-                  <button class="btn btn-ghost btn-sm" onclick="resetAppLogo()">↺ Restaurar padrão</button>
+          <div class="cfg-body" id="grpProfile">
+            <div class="settings-card">
+              <div class="settings-row" style="gap:14px">
+                <div id="settingsUserAvatarWrap" onclick="openMyProfile()" title="Alterar foto"
+                     style="width:52px;height:52px;border-radius:50%;overflow:hidden;flex-shrink:0;
+                            cursor:pointer;border:2px solid var(--border);transition:opacity .15s;
+                            display:flex;align-items:center;justify-content:center;background:var(--surface2)"
+                     onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'"></div>
+                <div class="settings-row-info" style="flex:1;min-width:0">
+                  <div class="settings-row-label" id="currentUserEmail">—</div>
+                  <div class="settings-row-sub" id="settingsCurrentUser">Usuário atual</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                  <img id="appLogoPreview" alt="Preview do logo" style="height:44px;max-width:220px;object-fit:contain;border:1px solid var(--border);border-radius:10px;padding:6px;background:var(--surface)">
-                  <span class="text-muted" style="font-size:.75rem">Preview</span>
+                <div class="settings-row-action" style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button class="btn btn-ghost btn-sm" onclick="openMyProfile()">🖼️ Foto</button>
+                  <button class="btn btn-ghost btn-sm" onclick="showChangeMyPwd()">🔑 Senha</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="doLogout()">↩ Sair</button>
                 </div>
               </div>
             </div>
@@ -1406,138 +1132,219 @@
         </div>
       </div>
 
-      <!-- Conexão -->
-      <div class="settings-section">
-        <div class="settings-group-label">🔗 Conexão &amp; Integrações</div>
-        <div class="settings-card">
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--blue-lt)">🗄️</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Supabase</div>
-              <div class="settings-row-sub" id="supabaseStatusLabel">Verificando...</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('setupScreen').style.display='flex'">Reconfigurar</button>
-            </div>
+      <!-- ══ CONEXÃO & INTEGRAÇÕES ══════════════════════════════════ -->
+      <div class="cfg-group">
+        <div class="cfg-header" onclick="cfgToggle('grpConn')">
+          <div class="cfg-icon" style="background:#e8f0fb">🔗</div>
+          <div class="cfg-titles">
+            <div class="cfg-label">Conexão &amp; Integrações</div>
+            <div class="cfg-sublabel">Supabase, EmailJS, IA</div>
           </div>
-          <div class="settings-row" id="serviceRoleRow" style="display:none">
-            <div class="settings-row-icon" style="background:#fef3c7">🔑</div>
-            <div class="settings-row-info" style="flex:1;min-width:0">
-              <div class="settings-row-label">Service Role Key <span style="font-size:.68rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">Admin</span></div>
-              <div class="settings-row-sub">Necessária para redefinir senhas de outros usuários. Guardada só neste browser.</div>
-              <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-                <input type="password" id="serviceRoleKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off"
-                  style="flex:1;font-size:.78rem;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font-family:monospace;min-width:0">
-                <button class="btn btn-ghost btn-sm" onclick="saveServiceRoleKey()" style="white-space:nowrap;flex-shrink:0">Salvar</button>
-                <button class="btn btn-ghost btn-sm" onclick="clearServiceRoleKey()" style="white-space:nowrap;flex-shrink:0;color:var(--muted)">Remover</button>
-              </div>
-              <div id="serviceRoleKeyStatus" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:#fff7ed">🗑️</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Limpar Cache</div>
-              <div class="settings-row-sub">Remove dados temporários do navegador</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" style="color:var(--orange)" onclick="clearAppCache()">Limpar</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--green-lt)">📧</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">EmailJS</div>
-              <div class="settings-row-sub" id="ejSettingsSub">Para envio de relatórios por e-mail</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()">Configurar</button>
-            </div>
-          </div>
-          <!-- IA / Anthropic -->
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:#f5f3ff">🤖</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label" style="display:flex;align-items:center;gap:6px">
-                Leitura de Recibos com IA
-                <span id="aiStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></span>
-              </div>
-              <div class="settings-row-sub" id="aiSettingsSub">Configure para habilitar leitura automática de recibos</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Configurar</button>
-            </div>
-          </div>
-
+          <svg class="cfg-arrow" id="grpConn_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-      </div>
-
-      <!-- User Management (admin only) -->
-      <div class="settings-section" id="userMgmtSection" style="display:none">
-
-        <!-- ── Painel inline de aprovação de usuários ── -->
-        <div id="pendingApprovalsAlert" style="display:none">
-          <div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:14px;padding:0;margin-bottom:12px;overflow:hidden">
-            <!-- Header -->
-            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #fde68a">
-              <span style="font-size:1.3rem">⏳</span>
-              <div style="flex:1">
-                <div style="font-size:.88rem;font-weight:700;color:#92400e" id="pendingApprovalsAlertText">Solicitações aguardando aprovação</div>
-                <div style="font-size:.74rem;color:#b45309">Aprovar ou rejeitar abaixo</div>
+        <div class="cfg-body" id="grpConn">
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:var(--blue-lt)">🗄️</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Supabase</div>
+                <div class="settings-row-sub" id="supabaseStatusLabel">Verificando...</div>
               </div>
-              <button class="btn btn-ghost btn-sm" onclick="openUserAdmin()" style="font-size:.75rem;color:#92400e;border-color:#f59e0b">Ver todos →</button>
+              <div class="settings-row-action">
+                <button class="btn btn-ghost btn-sm" onclick="document.getElementById('setupScreen').style.display='flex'">Reconfigurar</button>
+              </div>
             </div>
-            <!-- Lista inline de pendentes -->
-            <div id="inlinePendingList" style="padding:10px 12px"></div>
-          </div>
-        </div>
-
-        <!-- Card principal de gerenciamento -->
-        <div class="settings-card">
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:#e0f2fe">👥</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Gerenciar Usuários</div>
-              <div class="settings-row-sub" id="userMgmtSub">Controle de acesso e permissões</div>
+            <div class="settings-row" id="serviceRoleRow" style="display:none">
+              <div class="settings-row-icon" style="background:#fef3c7">🔑</div>
+              <div class="settings-row-info" style="flex:1;min-width:0">
+                <div class="settings-row-label">Service Role Key <span style="font-size:.68rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-left:4px">Admin</span></div>
+                <div class="settings-row-sub">Necessária para redefinir senhas de outros usuários. Guardada só neste browser.</div>
+                <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+                  <input type="password" id="serviceRoleKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off"
+                    style="flex:1;font-size:.78rem;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font-family:monospace;min-width:0">
+                  <button class="btn btn-ghost btn-sm" onclick="saveServiceRoleKey()" style="white-space:nowrap;flex-shrink:0">Salvar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="clearServiceRoleKey()" style="white-space:nowrap;flex-shrink:0;color:var(--muted)">Remover</button>
+                </div>
+                <div id="serviceRoleKeyStatus" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
+              </div>
             </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:#fff7ed">🗑️</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Limpar Cache</div>
+                <div class="settings-row-sub">Remove dados temporários do navegador</div>
+              </div>
+              <div class="settings-row-action">
+                <button class="btn btn-ghost btn-sm" style="color:var(--orange)" onclick="clearAppCache()">Limpar</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:var(--green-lt)">📧</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">EmailJS</div>
+                <div class="settings-row-sub" id="ejSettingsSub">Para envio de relatórios por e-mail</div>
+              </div>
+              <div class="settings-row-action">
+                <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()">Configurar</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:#f5f3ff">🤖</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label" style="display:flex;align-items:center;gap:6px">
+                  Leitura de Recibos com IA
+                  <span id="aiStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></span>
+                </div>
+                <div class="settings-row-sub" id="aiSettingsSub">Configure para habilitar leitura automática de recibos</div>
+              </div>
+              <div class="settings-row-action">
+                <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Configurar</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- ══ APARÊNCIA (admin only) ══════════════════════════════════ -->
+      <div id="logoSettingsSection" style="display:none">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpLogo')">
+            <div class="cfg-icon" style="background:var(--amber-lt)">🖼️</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Aparência</div>
+              <div class="cfg-sublabel">Logo e identidade visual <span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;font-size:.68rem;margin-left:4px">Admin</span></div>
+            </div>
+            <svg class="cfg-arrow" id="grpLogo_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-body" id="grpLogo">
+            <div class="settings-card">
+              <div class="settings-row" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
+                <div class="settings-row-info" style="min-width:240px;flex:1">
+                  <div class="settings-row-sub">Faça upload (PNG/JPG/SVG) ou cole uma URL. O logo é aplicado imediatamente.</div>
+                  <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+                    <input id="appLogoUrl" type="text" placeholder="URL ou DataURL do logo"
+                      style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text2)">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                      <input id="appLogoFile" type="file" accept="image/*" style="max-width:260px">
+                      <button class="btn btn-primary btn-sm" onclick="saveAppLogo()">💾 Salvar</button>
+                      <button class="btn btn-ghost btn-sm" onclick="resetAppLogo()">↺ Padrão</button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                      <img id="appLogoPreview" alt="Preview" style="height:44px;max-width:220px;object-fit:contain;border:1px solid var(--border);border-radius:10px;padding:6px;background:var(--surface)">
+                      <span class="text-muted" style="font-size:.75rem">Preview</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <!-- ══ VISIBILIDADE DAS CONFIGURAÇÕES (admin only) ══ -->
-      <div class="settings-section" id="settingsVisibilitySection" style="display:none">
-        <div class="settings-group-label">🔒 Controle de Acesso — Configurações</div>
-        <div class="settings-card">
-          <div class="settings-row" style="align-items:flex-start">
-            <div class="settings-row-icon" style="background:#ede9fe">🔒</div>
-            <div class="settings-row-info" style="flex:1">
-              <div class="settings-row-label">Seções visíveis para usuários comuns</div>
-              <div class="settings-row-sub">Defina quais seções das Configurações aparecem para usuários que não são admin.</div>
-              <div id="settingsVisibilityForm" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
-              <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <!-- ══ USUÁRIOS & ACESSO (admin only) ════════════════════════ -->
+      <div id="userMgmtSection" style="display:none">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpUsers')">
+            <div class="cfg-icon" style="background:#e0f2fe">👥</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Usuários &amp; Acesso</div>
+              <div class="cfg-sublabel" id="userMgmtSub">Gerenciar permissões e aprovações</div>
+            </div>
+            <svg class="cfg-arrow" id="grpUsers_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-body" id="grpUsers">
+            <div class="settings-card">
+              <div id="pendingApprovalsAlert" style="display:none">
+                <div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:12px;padding:0;margin-bottom:12px;overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #fde68a">
+                    <span style="font-size:1.3rem">⏳</span>
+                    <div style="flex:1">
+                      <div style="font-size:.88rem;font-weight:700;color:#92400e" id="pendingApprovalsAlertText">Solicitações aguardando aprovação</div>
+                      <div style="font-size:.74rem;color:#b45309">Aprovar ou rejeitar abaixo</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" onclick="openUserAdmin()" style="font-size:.75rem;color:#92400e;border-color:#f59e0b">Ver todos →</button>
+                  </div>
+                  <div id="inlinePendingList" style="padding:10px 12px"></div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-icon" style="background:#e0f2fe">👥</div>
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Gerenciar Usuários</div>
+                  <div class="settings-row-sub">Criar, aprovar, editar permissões e papéis</div>
+                </div>
+                <div class="settings-row-action">
+                  <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MENU (admin only) ══════════════════════════════════════ -->
+      <div id="menuVisibilitySection" style="display:none">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpMenu')">
+            <div class="cfg-icon" style="background:var(--accent-lt)">📋</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Itens do Menu</div>
+              <div class="cfg-sublabel">Páginas visíveis no menu lateral</div>
+            </div>
+            <svg class="cfg-arrow" id="grpMenu_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-body" id="grpMenu">
+            <div class="settings-card">
+              <div id="menuVisibilityForm" style="padding:4px 0 8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"></div>
+              <div style="padding:0 0 8px;display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="saveMenuVisibility()">Salvar</button>
+                <button class="btn btn-ghost btn-sm" onclick="resetMenuVisibility()">↺ Padrão</button>
+              </div>
+              <div id="menuVisibilityHint" class="text-muted" style="font-size:.82rem;padding-bottom:4px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CONTROLE DE ACESSO DAS CONFIGS (admin only) ══════════ -->
+      <div id="settingsVisibilitySection" style="display:none">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpSVis')">
+            <div class="cfg-icon" style="background:#ede9fe">🔒</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Controle de Acesso</div>
+              <div class="cfg-sublabel">Seções visíveis para usuários comuns</div>
+            </div>
+            <svg class="cfg-arrow" id="grpSVis_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-body" id="grpSVis">
+            <div class="settings-card">
+              <div class="settings-row-sub" style="padding:0 0 10px;color:var(--muted)">Admins e owners sempre veem tudo.</div>
+              <div id="settingsVisibilityForm" style="display:flex;flex-direction:column;gap:8px"></div>
+              <div style="padding:14px 0 4px;display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-primary btn-sm" onclick="saveSettingsVisibility()">💾 Salvar</button>
                 <button class="btn btn-ghost btn-sm" onclick="resetSettingsVisibility()">↺ Padrão</button>
               </div>
-              <div id="settingsVisibilityHint" style="font-size:.75rem;color:var(--muted);margin-top:8px"></div>
+              <div id="settingsVisibilityHint" style="font-size:.75rem;color:var(--muted);padding-bottom:4px"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ══ LINK DA ESCOLA (admin only) ══ -->
-      <div class="settings-section" id="schoolLinkSection" style="display:none">
-        <div class="settings-group-label">🎓 Link da Escola</div>
-        <div class="settings-card">
-          <div class="settings-row" style="align-items:flex-start">
-            <div class="settings-row-icon" style="background:#fef3c7">🎓</div>
-            <div class="settings-row-info" style="flex:1">
-              <div class="settings-row-label">Ícone de atalho para a escola</div>
-              <div class="settings-row-sub">Exibe um ícone 🎓 na barra superior com link para o sistema de gestão escolar.</div>
-              <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">
+      <!-- ══ LINK DA ESCOLA (admin only) ═══════════════════════════ -->
+      <div id="schoolLinkSection" style="display:none">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpSchool')">
+            <div class="cfg-icon" style="background:#fef3c7">🎓</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Link da Escola</div>
+              <div class="cfg-sublabel">Atalho rápido na barra superior</div>
+            </div>
+            <svg class="cfg-arrow" id="grpSchool_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-body" id="grpSchool">
+            <div class="settings-card">
+              <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
                 <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
                   <div style="position:relative;display:inline-block;width:42px;height:22px;flex-shrink:0">
                     <input type="checkbox" id="schoolLinkEnabled" onchange="saveSchoolLinkConfig()" style="opacity:0;width:0;height:0">
@@ -1545,24 +1352,28 @@
                   </div>
                   <span style="font-size:.85rem;font-weight:600">Exibir ícone na topbar</span>
                 </label>
-                <div id="schoolLinkUrlRow" style="display:flex;flex-direction:column;gap:6px">
-                  <label style="font-size:.8rem;font-weight:600;color:var(--text2)">URL do sistema da escola</label>
+                <div id="schoolLinkUrlRow" style="display:flex;flex-direction:column;gap:8px">
+                  <label style="font-size:.8rem;font-weight:600;color:var(--text2)">URL do sistema</label>
                   <div style="display:flex;gap:8px;align-items:center">
-                    <input type="url" id="schoolLinkUrl" placeholder="https://..." 
+                    <input type="url" id="schoolLinkUrl" placeholder="https://..."
                       style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)"
                       oninput="saveSchoolLinkConfig()">
-                    <button class="btn btn-ghost btn-sm" onclick="window.open(document.getElementById('schoolLinkUrl').value,'_blank')" title="Testar link">🔗 Testar</button>
+                    <button class="btn btn-ghost btn-sm" onclick="window.open(document.getElementById('schoolLinkUrl').value,'_blank')">🔗 Testar</button>
                   </div>
-                  <label style="font-size:.8rem;font-weight:600;color:var(--text2);margin-top:4px">Texto do tooltip</label>
+                  <label style="font-size:.8rem;font-weight:600;color:var(--text2)">Tooltip</label>
                   <input type="text" id="schoolLinkTitle" placeholder="Ex: Gerenciamento Escola"
                     style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text)"
                     oninput="saveSchoolLinkConfig()">
-                  <label style="font-size:.8rem;font-weight:600;color:var(--text2);margin-top:4px">Ícone (emoji)</label>
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <input type="text" id="schoolLinkIcon" placeholder="🎓" maxlength="4"
-                      style="width:70px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:1.1rem;background:var(--surface);color:var(--text);text-align:center"
-                      oninput="saveSchoolLinkConfig()">
-                    <span style="font-size:.76rem;color:var(--muted)">Cole um emoji ou deixe em branco para usar 🎓</span>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div>
+                      <label style="font-size:.8rem;font-weight:600;color:var(--text2)">Ícone (emoji)</label>
+                      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+                        <input type="text" id="schoolLinkIcon" placeholder="🎓" maxlength="4"
+                          style="width:70px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:1.1rem;background:var(--surface);color:var(--text);text-align:center"
+                          oninput="saveSchoolLinkConfig()">
+                        <span style="font-size:.76rem;color:var(--muted)">Deixe em branco para usar 🎓</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1571,258 +1382,154 @@
         </div>
       </div>
 
-      <!-- ══ AUTOMAÇÃO ══ -->
-      <div class="settings-section">
-        <div class="settings-group-label">⚙️ Automação de Programados</div>
-        <div class="settings-card">
-          <!-- Enable/disable auto check -->
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--green-lt)">🤖</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Verificação Automática</div>
-              <div class="settings-row-sub">Registra transações programadas automaticamente quando a data chegar</div>
-            </div>
-            <div class="settings-row-action">
-              <label style="position:relative;display:inline-block;width:42px;height:22px">
-                <input type="checkbox" id="autoCheckEnabled" onchange="saveAutoCheckConfig()" style="opacity:0;width:0;height:0">
-                <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:100px;transition:.3s" id="autoCheckToggle"></span>
-              </label>
-            </div>
+      <!-- ══ AUTOMAÇÃO DE PROGRAMADOS ═══════════════════════════════ -->
+      <div class="cfg-group">
+        <div class="cfg-header" onclick="cfgToggle('grpAuto')">
+          <div class="cfg-icon" style="background:var(--green-lt)">⚙️</div>
+          <div class="cfg-titles">
+            <div class="cfg-label">Automação de Programados</div>
+            <div class="cfg-sublabel">Registro automático de transações agendadas</div>
           </div>
-
-          <!-- Frequency -->
-          <div class="settings-row" id="autoCheckFreqRow">
-            <div class="settings-row-icon" style="background:var(--bg2)">⏱️</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Frequência de Verificação</div>
-              <div class="settings-row-sub">Com que frequência verificar transações pendentes</div>
-            </div>
-            <div class="settings-row-action">
-              <select id="autoCheckInterval" onchange="saveAutoCheckConfig()" style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
-                <option value="15">A cada 15 min</option>
-                <option value="30">A cada 30 min</option>
-                <option value="60" selected>A cada 1 hora</option>
-                <option value="360">A cada 6 horas</option>
-                <option value="720">A cada 12 horas</option>
-                <option value="1440">Uma vez ao dia</option>
-              </select>
-            </div>
-          </div>
-          <!-- Days ahead -->
-          <div class="settings-row" id="autoCheckDaysRow">
-            <div class="settings-row-icon" style="background:var(--bg2)">📅</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Antecipar Registro</div>
-              <div class="settings-row-sub">Quantos dias antes da data registrar a transação automática</div>
-            </div>
-            <div class="settings-row-action">
-              <select id="autoCheckDaysAhead" onchange="saveAutoCheckConfig()" style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
-                <option value="0" selected>No dia exato</option>
-                <option value="1">1 dia antes</option>
-                <option value="2">2 dias antes</option>
-                <option value="3">3 dias antes</option>
-                <option value="7">1 semana antes</option>
-              </select>
-            </div>
-          </div>
-          <!-- Email for notifications -->
-          <div class="settings-row" id="autoCheckEmailRow">
-            <div class="settings-row-icon" style="background:var(--bg2)">📧</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">E-mail para Notificações</div>
-              <div class="settings-row-sub">E-mail padrão para avisos de transações programadas</div>
-            </div>
-            <div class="settings-row-action">
-              <input type="email" id="autoCheckEmailDefault" placeholder="email@exemplo.com" oninput="saveAutoCheckConfig()"
-                style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);max-width:220px;background:var(--surface)">
-            </div>
-          </div>
-          <!-- Method: browser vs Supabase -->
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--bg2)">🔧</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Método de Execução</div>
-              <div class="settings-row-sub" id="autoCheckMethodSub">Como a verificação automática é executada</div>
-            </div>
-            <div class="settings-row-action">
-              <select id="autoCheckMethod" onchange="onAutoCheckMethodChange()" style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
-                <option value="browser">Navegador (setInterval)</option>
-                <option value="supabase_cron">Supabase pg_cron</option>
-                <option value="supabase_edge">Supabase Edge Function</option>
-              </select>
-            </div>
-          </div>
-          <!-- Supabase cron info (shown when method=supabase) -->
-          <div id="autoCheckSupabaseInfo" style="display:none;padding:12px 16px;background:var(--accent-lt);border-radius:var(--r-sm);margin:8px 16px 16px;border-left:3px solid var(--accent)">
-            <div style="font-size:.82rem;font-weight:600;color:var(--accent);margin-bottom:8px">📋 SQL para configurar no Supabase</div>
-            <div style="font-size:.75rem;color:var(--text2);margin-bottom:8px">Execute este SQL no Editor SQL do Supabase para registrar transações automaticamente via pg_cron:</div>
-            <pre id="autoCheckSqlCode" style="font-size:.7rem;background:var(--surface);padding:10px;border-radius:6px;overflow-x:auto;color:var(--text1);border:1px solid var(--border);white-space:pre-wrap;word-break:break-all"></pre>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn btn-ghost btn-sm" onclick="copyAutoCheckSql()">📋 Copiar SQL</button>
-              <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Abrir Supabase</button>
-            </div>
-          </div>
-          <!-- Last run info -->
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--bg2)">📊</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Última Verificação</div>
-              <div class="settings-row-sub" id="autoCheckLastRun">Nunca executada</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" onclick="runAutoRegister(true)">▶️ Executar agora</button>
-            </div>
-          </div>
+          <svg class="cfg-arrow" id="grpAuto_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-      </div>
-
-      <!-- Logout -->
-      <div class="settings-section">
-        <div class="settings-card">
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--red-lt)">🚪</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Sair</div>
-              <div class="settings-row-sub" id="settingsCurrentUser">Usuário atual</div>
-            </div>
-            <div class="settings-row-action">
-              <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="doLogout()">Sair</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- ══ NORMALIZAÇÃO DE NOMES (admin only) ══ -->
-      <div class="settings-section" id="normalizeNamesSection" style="display:none">
-        <div class="settings-group-label">🔤 Normalização de Nomes</div>
-        <div class="settings-card">
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:#f0fdf4">🔤</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Padronizar beneficiários e categorias</div>
-              <div class="settings-row-sub" id="normalizeNamesSub">
-                Converte todos os nomes para Title Case (Primeira Letra Maiúscula por Palavra),
-                respeitando preposições e siglas. Executado automaticamente todo domingo às 03:00 UTC via pg_cron.
+        <div class="cfg-body" id="grpAuto">
+          <div class="settings-card">
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:var(--green-lt)">🤖</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Verificação Automática</div>
+                <div class="settings-row-sub">Registra transações programadas automaticamente quando a data chegar</div>
+              </div>
+              <div class="settings-row-action">
+                <label style="position:relative;display:inline-block;width:42px;height:22px">
+                  <input type="checkbox" id="autoCheckEnabled" onchange="saveAutoCheckConfig()" style="opacity:0;width:0;height:0">
+                  <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:100px;transition:.3s" id="autoCheckToggle"></span>
+                </label>
               </div>
             </div>
-            <div class="settings-row-action" style="flex-direction:column;align-items:flex-end;gap:6px">
-              <button class="btn btn-ghost btn-sm" onclick="openNormalizeNamesPreview()">🔍 Prévia</button>
-              <button class="btn btn-primary btn-sm" id="normalizeNamesRunBtn" onclick="runNormalizeNames()">▶ Executar agora</button>
+            <div class="settings-row" id="autoCheckFreqRow">
+              <div class="settings-row-icon" style="background:var(--bg2)">⏱️</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Frequência de Verificação</div>
+                <div class="settings-row-sub">Com que frequência verificar transações pendentes</div>
+              </div>
+              <div class="settings-row-action">
+                <select id="autoCheckInterval" onchange="saveAutoCheckConfig()" style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
+                  <option value="15">A cada 15 min</option>
+                  <option value="30">A cada 30 min</option>
+                  <option value="60" selected>A cada 1 hora</option>
+                  <option value="360">A cada 6 horas</option>
+                  <option value="720">A cada 12 horas</option>
+                  <option value="1440">Uma vez ao dia</option>
+                </select>
+              </div>
             </div>
-          </div>
-          <!-- Last run info -->
-          <div id="normalizeNamesLastRun" style="display:none;margin:0 16px 12px;padding:10px 14px;
-               background:var(--surface2);border-radius:var(--r-sm);font-size:.78rem;color:var(--muted)"></div>
-          <!-- pg_cron hint -->
-          <div id="normalizeNamesCronHint" style="display:none;margin:0 16px 12px;padding:10px 14px;
-               background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);
-               font-size:.78rem;line-height:1.6">
-            ⚠️ <strong>pg_cron não detectado.</strong>
-            Habilite em <em>Supabase → Database → Extensions → pg_cron</em>, depois execute
-            <code>migration_normalize_names.sql</code> novamente.
-            A execução manual pelo botão acima funciona independentemente.
+            <div class="settings-row" id="autoCheckDaysRow">
+              <div class="settings-row-icon" style="background:var(--bg2)">📅</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Antecipar Registro</div>
+                <div class="settings-row-sub">Quantos dias antes da data registrar a transação automática</div>
+              </div>
+              <div class="settings-row-action">
+                <select id="autoCheckDaysAhead" onchange="saveAutoCheckConfig()" style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
+                  <option value="0" selected>No dia exato</option>
+                  <option value="1">1 dia antes</option>
+                  <option value="2">2 dias antes</option>
+                  <option value="3">3 dias antes</option>
+                  <option value="7">1 semana antes</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-row" id="autoCheckEmailRow">
+              <div class="settings-row-icon" style="background:var(--bg2)">📧</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">E-mail para Notificações</div>
+                <div class="settings-row-sub">E-mail padrão para avisos de transações programadas</div>
+              </div>
+              <div class="settings-row-action">
+                <input type="email" id="autoCheckEmailDefault" placeholder="email@exemplo.com" oninput="saveAutoCheckConfig()"
+                  style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);max-width:220px;background:var(--surface)">
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:var(--bg2)">🔧</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Método de Execução</div>
+                <div class="settings-row-sub" id="autoCheckMethodSub">Como a verificação automática é executada</div>
+              </div>
+              <div class="settings-row-action">
+                <select id="autoCheckMethod" onchange="onAutoCheckMethodChange()" style="font-size:.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
+                  <option value="browser">Navegador (setInterval)</option>
+                  <option value="supabase_cron">Supabase pg_cron</option>
+                  <option value="supabase_edge">Supabase Edge Function</option>
+                </select>
+              </div>
+            </div>
+            <div id="autoCheckSupabaseInfo" style="display:none;padding:12px 16px;background:var(--accent-lt);border-radius:var(--r-sm);margin:0 0 8px;border-left:3px solid var(--accent)">
+              <div style="font-size:.82rem;font-weight:600;color:var(--accent);margin-bottom:8px">📋 SQL para configurar no Supabase</div>
+              <div style="font-size:.75rem;color:var(--text2);margin-bottom:8px">Execute no Editor SQL do Supabase para registrar via pg_cron:</div>
+              <pre id="autoCheckSqlCode" style="font-size:.7rem;background:var(--surface);padding:10px;border-radius:6px;overflow-x:auto;color:var(--text1);border:1px solid var(--border);white-space:pre-wrap;word-break:break-all"></pre>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-ghost btn-sm" onclick="copyAutoCheckSql()">📋 Copiar SQL</button>
+                <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Abrir Supabase</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-icon" style="background:var(--bg2)">📊</div>
+              <div class="settings-row-info">
+                <div class="settings-row-label">Última Verificação</div>
+                <div class="settings-row-sub" id="autoCheckLastRun">Nunca executada</div>
+              </div>
+              <div class="settings-row-action">
+                <button class="btn btn-ghost btn-sm" onclick="runAutoRegister(true)">▶️ Executar agora</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- ══ BACKUP NO BANCO (admin only) ══ -->
-      <div class="settings-section" id="dbBackupSection" style="display:none">
-        <div class="settings-group-label">🗄️ Backup no Banco de Dados</div>
-        <div class="settings-card">
-          <!-- Header / create -->
-          <div class="settings-row">
-            <div class="settings-row-icon" style="background:var(--blue-lt,#e8f0fb)">📸</div>
-            <div class="settings-row-info">
-              <div class="settings-row-label">Snapshots no Supabase</div>
-              <div class="settings-row-sub">Salva uma cópia completa dos dados dentro do próprio banco. Até 20 snapshots armazenados.</div>
+      <!-- ══ BACKUP NO BANCO (admin only) ══════════════════════════ -->
+      <div id="dbBackupSection" style="display:none">
+        <div class="cfg-group">
+          <div class="cfg-header" onclick="cfgToggle('grpBackup')">
+            <div class="cfg-icon" style="background:#e8f0fb">📸</div>
+            <div class="cfg-titles">
+              <div class="cfg-label">Backup no Banco de Dados</div>
+              <div class="cfg-sublabel">Snapshots completos dos dados no Supabase</div>
             </div>
-            <div class="settings-row-action">
-              <button class="btn btn-primary btn-sm" id="dbBackupCreateBtn" onclick="openDbBackupCreate()">📸 Criar Snapshot</button>
-            </div>
+            <svg class="cfg-arrow" id="grpBackup_arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-
-          <!-- Migration hint (shown when table doesn't exist) -->
-          <div id="dbBackupMigrationHint" style="display:none;margin:4px 16px 12px;padding:12px 14px;background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.8rem;line-height:1.6">
-            ⚠️ A tabela <code>app_backups</code> ainda não existe no banco.<br>
-            Execute o arquivo <code>migration_db_backup.sql</code> no SQL Editor do Supabase para habilitar esta funcionalidade.
-            <div style="margin-top:8px">
-              <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Abrir Supabase</button>
-            </div>
-          </div>
-
-          <!-- Backup list -->
-          <div style="padding:0 16px 12px">
-            <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Snapshots salvos</div>
-            <div id="dbBackupList">
-              <div style="color:var(--muted);font-size:.83rem;padding:8px 0">Acesse Configurações para ver os backups.</div>
+          <div class="cfg-body" id="grpBackup">
+            <div class="settings-card">
+              <div class="settings-row">
+                <div class="settings-row-icon" style="background:#e8f0fb">📸</div>
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Snapshots no Supabase</div>
+                  <div class="settings-row-sub">Cópia completa dos dados dentro do próprio banco. Até 20 snapshots.</div>
+                </div>
+                <div class="settings-row-action">
+                  <button class="btn btn-primary btn-sm" id="dbBackupCreateBtn" onclick="openDbBackupCreate()">📸 Criar Snapshot</button>
+                </div>
+              </div>
+              <div id="dbBackupMigrationHint" style="display:none;margin:4px 0 12px;padding:12px 14px;background:var(--amber-lt,#fef3e2);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.8rem;line-height:1.6">
+                ⚠️ A tabela <code>app_backups</code> ainda não existe no banco.<br>
+                Execute <code>migration_db_backup.sql</code> no SQL Editor do Supabase.
+                <div style="margin-top:8px">
+                  <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Abrir Supabase</button>
+                </div>
+              </div>
+              <div style="padding:4px 0 8px">
+                <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Snapshots salvos</div>
+                <div id="dbBackupList"><div style="color:var(--muted);font-size:.83rem;padding:8px 0">Acesse Configurações para ver os backups.</div></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
 
     </div>
 
-
-    <!-- ══ PRICES PAGE ══════════════════════════════════════════════════════ -->
-    <div class="page" id="page-prices">
-      <div class="section-header mb-6">
-        <span class="section-title">🏷️ Gestão de Preços</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openPricesStoreManager()">🏪 Estabelecimentos</button>
-          <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn" onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
-          <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()">+ Novo Item</button>
-        </div>
-      </div>
-
-      <!-- Receipt drop zone -->
-      <div id="pricesReceiptZone" style="display:none;margin-bottom:16px;padding:20px;
-           border:2px dashed var(--accent);border-radius:var(--r);background:var(--accent-lt);
-           text-align:center"
-           ondragover="event.preventDefault();this.style.opacity='.75'"
-           ondragleave="this.style.opacity=''"
-           ondrop="this.style.opacity='';onPricesReceiptDrop(event)">
-        <div style="font-size:2rem;margin-bottom:8px;cursor:pointer"
-             onclick="document.getElementById('pricesReceiptInput').click()">📷</div>
-        <div style="font-size:.85rem;font-weight:600;color:var(--accent);cursor:pointer;margin-bottom:4px"
-             onclick="document.getElementById('pricesReceiptInput').click()">
-          Arraste uma foto/PDF do recibo ou clique para selecionar
-        </div>
-        <div style="font-size:.75rem;color:var(--muted)">
-          JPG, PNG, PDF — a imagem <strong>não é armazenada</strong>
-        </div>
-        <input type="file" id="pricesReceiptInput" accept="image/*,application/pdf"
-               style="display:none" onchange="onPricesReceiptSelected(this)">
-        <div id="pricesReceiptFileName" style="margin-top:10px;font-size:.8rem;font-weight:600;color:var(--accent);min-height:1.2em"></div>
-        <div id="pricesAiStatus" style="display:none;font-size:.78rem;color:var(--muted);margin-top:4px"></div>
-        <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="closePricesReceiptZone()">✕ Cancelar</button>
-          <button class="btn btn-primary btn-sm" id="pricesReadAiBtn" style="display:none"
-                  onclick="readPricesReceiptWithAI()">🤖 Analisar com IA</button>
-        </div>
-      </div>
-
-      <!-- Filters -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-        <input type="text" id="pricesSearch" placeholder="🔍 Buscar item…"
-               oninput="pricesSearch(this.value)"
-               style="flex:1;min-width:180px;font-size:.85rem">
-        <select id="pricesCatFilter" onchange="pricesCatFilter(this.value)"
-                style="font-size:.85rem;min-width:160px">
-          <option value="">Todas as categorias</option>
-        </select>
-        <select id="pricesStoreFilter" onchange="pricesStoreFilter(this.value)"
-                style="font-size:.85rem;min-width:160px">
-          <option value="">Todos os estabelecimentos</option>
-        </select>
-        <span id="pricesCount" style="font-size:.78rem;color:var(--muted);white-space:nowrap;align-self:center"></span>
-      </div>
-
-      <div id="pricesItemList">
-        <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">⏳ Carregando…</div>
-      </div>
-    </div>
+    <!-- AUDIT PAGE (admin) -->
     <div class="page" id="page-audit">
       <div class="section-header mb-6">
         <span class="section-title">Auditoria de Auto-registros</span>
@@ -1893,7 +1600,7 @@
     <div style="width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
       <div style="text-align:center;margin-bottom:28px">
         <img id="loginLogoImg" src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="Logo" style="width:120px;height:auto;object-fit:contain;margin-bottom:12px">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af">Família inteligente,  Finanças sob controle</div>
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af">Personal Finance Management</div>
       </div>
       <div id="loginFormArea">
 
@@ -2388,52 +2095,11 @@
       <div class="form-grid">
         <!-- Basic info -->
         <div class="form-group full"><label>Descrição *</label><input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."></div>
-        <div class="form-group">
-          <label>Valor *</label>
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="amt-wrap" style="flex:1">
-              <button type="button" class="amt-sign-btn" id="scAmountSignBtn" onclick="toggleAmtSign('scAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
-                oninput="updateScCurrencyPreview()">
-            </div>
-            <span id="scCurrencyBadge"
-              style="flex-shrink:0;padding:6px 10px;border-radius:var(--r-sm);background:var(--surface2);
-                     border:1px solid var(--border);font-size:.8rem;font-weight:700;
-                     color:var(--accent);letter-spacing:.04em;white-space:nowrap">BRL</span>
-          </div>
-        </div>
-        <div class="form-group"><label>Conta Origem *</label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
+        <div class="form-group"><label>Valor *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="scAmountSignBtn" onclick="toggleAmtSign('scAmount')" aria-label="Alternar sinal">+</button><input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"></div></div>
+        <div class="form-group"><label>Conta Origem *</label><select id="scAccountId" onchange="onScTransferAccountChange()"></select></div>
         <div class="form-group" id="scTransferToGroup" style="display:none">
           <label>Conta Destino *</label>
           <select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select>
-        </div>
-
-        <!-- Currency panel: expense/income on non-BRL account -->
-        <div id="scCurrencyPanel" style="display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:.82rem;font-weight:600;color:var(--accent)">
-              💱 <span id="scCurrencyPanelTitle">Conversão de Moeda</span>
-            </div>
-            <button type="button" onclick="fetchScCurrencyRate()" id="scCurrencyFetchBtn"
-              style="font-size:.75rem;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600">
-              <span id="scCurrencyFetchIcon">🔄</span> Buscar cotação
-            </button>
-          </div>
-          <div id="scCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:.75rem;font-weight:600;display:block;margin-bottom:3px">
-                Taxa (1 <span id="scCurrencyRateFromLabel">USD</span> = ? BRL)
-              </label>
-              <input type="text" id="scCurrencyRate" inputmode="decimal" placeholder="1.00000"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)"
-                oninput="updateScCurrencyPreview()">
-            </div>
-            <div id="scCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
-          </div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:8px">
-            💡 O valor em BRL (<span id="scCurrencyBrlHint">—</span>) será registrado para fins de relatórios.
-          </div>
         </div>
 
         <!-- FX panel for scheduled transfers between different currencies -->
@@ -2716,7 +2382,7 @@
     <button class="bn-item" onclick="navigate('transactions')" data-page="transactions"><span class="bn-icon">↕</span>Lançamentos</button>
     <button class="bn-item" onclick="navigate('accounts')" data-page="accounts"><span class="bn-icon">🏦</span>Contas</button>
     <button class="bn-item" onclick="navigate('scheduled')" data-page="scheduled"><span class="bn-icon">📅</span>Programados</button>
-    <button class="bn-item" onclick="toggleSidebar()" data-page="more"><span class="bn-icon">☰</span>Mais</button>
+    <button class="bn-item" onclick="openSidebar()" data-page="more"><span class="bn-icon">☰</span>Mais</button>
   </div>
 </nav>
 <button class="fab" onclick="openTransactionModal()" aria-label="Nova transação">+</button>
@@ -2779,11 +2445,6 @@
             style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
             🤖 Ler com IA
           </button>
-          <button type="button" id="txRegisterPricesBtn"
-            onclick="openRegisterPricesFromReceipt()"
-            style="display:none;align-items:center;gap:8px;margin-top:6px;width:100%;padding:8px 14px;background:linear-gradient(135deg,#047857,#059669);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
-            🏷️ Registrar Preços
-          </button>
           <input type="file" id="receiptScanInput"
             accept="image/*,application/pdf" capture="environment"
             style="display:none"
@@ -2791,52 +2452,11 @@
           <div id="receiptAiResultPanel" style="display:none;margin-top:10px"></div>
         </div>
         <div class="form-group"><label>Data *</label><input type="date" id="txDate"></div>
-        <div class="form-group">
-          <label>Valor *</label>
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="amt-wrap" style="flex:1">
-              <button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
-                oninput="onTxAmountInput()">
-            </div>
-            <span id="txCurrencyBadge"
-              style="flex-shrink:0;padding:6px 10px;border-radius:var(--r-sm);background:var(--surface2);
-                     border:1px solid var(--border);font-size:.8rem;font-weight:700;
-                     color:var(--accent);letter-spacing:.04em;white-space:nowrap">BRL</span>
-          </div>
-        </div>
+        <div class="form-group"><label>Valor *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button><input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="if(document.getElementById('txIsInternational')?.checked)updateIofMirror()"></div></div>
         <div class="form-group full"><label>Descrição *</label><input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"></div>
 
                 <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
 <div class="form-group"><label>Conta *</label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
-        <!-- Currency conversion panel — expense/income with non-BRL account -->
-        <div id="txCurrencyPanel" style="display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:.82rem;font-weight:600;color:var(--accent)">
-              💱 <span id="txCurrencyPanelTitle">Conversão de Moeda</span>
-            </div>
-            <button type="button" onclick="fetchTxCurrencyRate()" id="txCurrencyFetchBtn"
-              style="font-size:.75rem;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:4px">
-              <span id="txCurrencyFetchIcon">🔄</span> Buscar cotação
-            </button>
-          </div>
-          <div id="txCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:.75rem;font-weight:600;color:var(--text-muted,#374151);display:block;margin-bottom:3px">
-                Taxa (1 <span id="txCurrencyRateFromLabel">USD</span> = ? BRL)
-              </label>
-              <input type="text" id="txCurrencyRate" inputmode="decimal" placeholder="1.00000"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)"
-                oninput="updateTxCurrencyPreview()">
-            </div>
-            <div id="txCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
-          </div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:8px">
-            💡 O valor em BRL (<span id="txCurrencyBrlHint">—</span>) será registrado para fins de relatórios e orçamentos.
-          </div>
-        </div>
-
         <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino *</label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
 
         <!-- FX rate panel — shown only when source and destination accounts have different currencies -->
@@ -3203,74 +2823,9 @@
       <div class="form-grid">
         <div class="form-group full"><label>Nome *</label><input type="text" id="payeeName" placeholder="Ex: Supermercado Extra"></div>
         <div class="form-group"><label>Tipo *</label><select id="payeeType"><option value="beneficiario">Beneficiário</option><option value="fonte_pagadora">Fonte Pagadora</option><option value="ambos">Ambos</option></select></div>
-        <div class="form-group">
-          <label>Categoria Padrão</label>
-          <div id="payeeCatPickerWrap" style="position:relative">
-            <button type="button" id="payeeCatPickerBtn"
-                    onclick="togglePayeeCatPicker()"
-                    style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);
-                           border-radius:var(--r-sm);padding:8px 10px;font-size:.85rem;cursor:pointer;
-                           display:flex;align-items:center;gap:8px;color:var(--text)">
-              <span id="payeeCatPickerDot" style="width:10px;height:10px;border-radius:50%;
-                    background:var(--muted);flex-shrink:0;display:inline-block"></span>
-              <span id="payeeCatPickerLabel" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                — Nenhuma —
-              </span>
-              <span style="color:var(--muted);font-size:.75rem">▾</span>
-            </button>
-            <div id="payeeCatPickerDropdown"
-                 style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
-                        background:var(--surface);border:1px solid var(--border);
-                        border-radius:var(--r-sm);box-shadow:var(--shadow-md);
-                        max-height:240px;overflow-y:auto;z-index:200"></div>
-            <input type="hidden" id="payeeCategory">
-          </div>
-        </div>
+        <div class="form-group"><label>Categoria Padrão</label><select id="payeeCategory"><option value="">— Nenhuma —</option></select></div>
         <div class="form-group full"><label>Notas</label><textarea id="payeeNotes" rows="2" placeholder="Observações..."></textarea></div>
       </div>
-
-      <!-- Seção de contato / localização (colapsável) -->
-      <details style="margin-top:12px;border:1px solid var(--border2);border-radius:var(--r-sm)">
-        <summary style="padding:8px 12px;cursor:pointer;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
-          <span>📍</span> Contato &amp; Localização <span style="margin-left:auto;opacity:.5;font-size:.7rem">▾</span>
-        </summary>
-        <div style="padding:10px 12px 12px">
-          <div class="form-grid">
-            <div class="form-group full">
-              <label>Endereço (rua, número)</label>
-              <input type="text" id="payeeAddress" placeholder="Rua, número, complemento">
-            </div>
-            <div class="form-group">
-              <label>Cidade</label>
-              <input type="text" id="payeeCity" placeholder="São Paulo">
-            </div>
-            <div class="form-group" style="max-width:90px">
-              <label>UF</label>
-              <input type="text" id="payeeStateUf" placeholder="SP" maxlength="2" style="text-transform:uppercase">
-            </div>
-            <div class="form-group">
-              <label>CEP</label>
-              <input type="text" id="payeeZip" placeholder="00000-000" maxlength="9">
-            </div>
-            <div class="form-group">
-              <label>Telefone</label>
-              <input type="tel" id="payeePhone" placeholder="(11) 0000-0000">
-            </div>
-            <div class="form-group">
-              <label>WhatsApp</label>
-              <input type="tel" id="payeeWhatsapp" placeholder="(11) 90000-0000">
-            </div>
-            <div class="form-group full">
-              <label>Site</label>
-              <input type="url" id="payeeWebsite" placeholder="https://...">
-            </div>
-            <div class="form-group full">
-              <label>CNPJ / CPF</label>
-              <input type="text" id="payeeCnpj" placeholder="00.000.000/0001-00">
-            </div>
-          </div>
-        </div>
-      </details>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('payeeModal')">Cancelar</button><button class="btn btn-primary" onclick="savePayee()">Salvar</button></div>
   </div>
@@ -3572,7 +3127,6 @@
   <script src="js/payees.js"></script>
   <script src="js/transactions.js"></script>
   <script src="js/budgets.js"></script>
-  <script src="js/fx_rates.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/reports.js"></script>
   <script src="js/payee_autocomplete.js"></script>
@@ -3588,7 +3142,6 @@
   <script src="js/auto_register.js"></script>
 <script src="js/audit.js"></script>
 <script src="js/receipt_ai.js"></script>
-<script src="js/prices.js"></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -3771,340 +3324,6 @@
   </div>
 
   <!-- ══ Modal: Excluir Usuário ══════════════════════════════════════════════ -->
-
-
-  <!-- ══ Modal: Prévia de Normalização de Nomes ════════════════════════════ -->
-  <div class="modal-overlay" id="normalizeNamesPreviewModal">
-    <div class="modal" style="max-width:620px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🔍 Prévia — Normalização de Nomes</span>
-        <button class="modal-close" onclick="closeModal('normalizeNamesPreviewModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
-                      padding:8px 14px;font-size:.82rem">
-            👥 Beneficiários: <strong id="nnPreviewPayeeCount" style="color:var(--accent)">—</strong>
-          </div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
-                      padding:8px 14px;font-size:.82rem">
-            🏷️ Categorias: <strong id="nnPreviewCatCount" style="color:var(--accent)">—</strong>
-          </div>
-        </div>
-        <div id="nnPreviewList"
-             style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)">
-          <div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando...</div>
-        </div>
-        <div style="font-size:.75rem;color:var(--muted);margin-top:10px">
-          Nenhuma alteração é feita até clicar em <strong>Executar agora</strong>.
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('normalizeNamesPreviewModal')">Fechar</button>
-          <button class="btn btn-primary btn-sm"
-                  onclick="closeModal('normalizeNamesPreviewModal');runNormalizeNames()">▶ Executar agora</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Detalhe do Item de Preço ════════════════════════════════════ -->
-  <div class="modal-overlay" id="priceItemDetailModal">
-    <div class="modal" style="max-width:600px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title" id="pidModalTitle">📦 Detalhe do Item</span>
-        <button class="modal-close" onclick="closeModal('priceItemDetailModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <!-- Item info header -->
-        <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border2)">
-          <div id="pidItemCat" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:3px"></div>
-          <div id="pidItemDesc" style="font-size:.8rem;color:var(--muted);margin-bottom:2px"></div>
-          <div id="pidItemUnit" style="font-size:.75rem;color:var(--muted)"></div>
-        </div>
-        <!-- Stats strip -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Preço Médio</div>
-            <div class="pid-stat-val" id="pidAvgPrice">—</div>
-          </div>
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Menor Preço</div>
-            <div class="pid-stat-val" id="pidMinPrice">—</div>
-          </div>
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Último Preço</div>
-            <div class="pid-stat-val" id="pidLastPrice">—</div>
-          </div>
-          <div class="pid-stat-card">
-            <div class="pid-stat-label">Registros</div>
-            <div class="pid-stat-val" id="pidCount">—</div>
-          </div>
-        </div>
-        <!-- History filter by store -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Histórico</span>
-          <select id="pidStoreFilter" onchange="filterPidHistory()" style="font-size:.78rem;flex:1;min-width:140px">
-            <option value="">Todos os estabelecimentos</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="openAddPriceRecord()" style="font-size:.78rem">+ Registrar Preço</button>
-        </div>
-        <div id="pidHistoryList" style="max-height:300px;overflow-y:auto"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('priceItemDetailModal')">Fechar</button>
-          <button class="btn btn-ghost btn-sm" id="pidEditBtn" onclick="openEditPriceItem()">✏️ Editar Item</button>
-          <button class="btn btn-ghost btn-sm" id="pidDeleteBtn"
-                  style="color:var(--red)" onclick="deletePriceItemCurrent()">🗑️ Excluir</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    <!-- ══ Modal: Cadastro / Edição de Item de Preço ═════════════════════════ -->
-  <div class="modal-overlay" id="priceItemFormModal">
-    <div class="modal" style="max-width:520px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title" id="pifModalTitle">🏷️ Novo Item</span>
-        <button class="modal-close" onclick="closeModal('priceItemFormModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="pifItemId">
-        <div class="form-grid">
-          <div class="form-group full">
-            <label>Nome do Item *</label>
-            <input type="text" id="pifName" placeholder="Ex: Arroz Branco 5kg">
-          </div>
-          <div class="form-group full">
-            <label>Descrição / Marca</label>
-            <input type="text" id="pifDesc" placeholder="Marca, variante, detalhes…">
-          </div>
-          <div class="form-group">
-            <label>Unidade</label>
-            <select id="pifUnit">
-              <option value="un">un — Unidade</option>
-              <option value="kg">kg — Quilo</option>
-              <option value="g">g — Grama</option>
-              <option value="L">L — Litro</option>
-              <option value="ml">ml — Mililitro</option>
-              <option value="cx">cx — Caixa</option>
-              <option value="pct">pct — Pacote</option>
-              <option value="par">par — Par</option>
-              <option value="m">m — Metro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Categoria</label>
-            <select id="pifCategory"><option value="">— Nenhuma —</option></select>
-          </div>
-        </div>
-
-        <!-- Registrar primeiro preço ao criar -->
-        <div id="pifPriceSection" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border2)">
-          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">
-            📌 Registrar preço inicial <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Valor Unitário (R$)</label>
-              <input type="number" id="pifPrice" min="0" step="0.01" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label>Quantidade</label>
-              <input type="number" id="pifQty" min="0.001" step="any" value="1">
-            </div>
-            <div class="form-group full">
-              <label>Estabelecimento</label>
-              <div style="display:flex;gap:6px">
-                <input type="text" id="pifStoreInput" placeholder="Buscar ou criar estabelecimento…"
-                       oninput="_pifStoreSearch(this.value)" autocomplete="off"
-                       style="flex:1">
-                <button class="btn btn-ghost btn-sm" onclick="_pifStoreNew()" title="Novo estabelecimento">+</button>
-              </div>
-              <input type="hidden" id="pifStoreId">
-              <div id="pifStoreSuggest" style="display:none;position:absolute;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-md);max-height:180px;overflow-y:auto;min-width:280px"></div>
-            </div>
-            <div class="form-group">
-              <label>Data da Compra</label>
-              <input type="date" id="pifDate">
-            </div>
-          </div>
-        </div>
-
-        <div id="pifError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('priceItemFormModal')">Cancelar</button>
-          <button class="btn btn-primary" onclick="savePriceItem()">💾 Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    <!-- ══ Modal: Registrar Preços do Recibo ═════════════════════════════════ -->
-  <div class="modal-overlay" id="registerPricesModal">
-    <div class="modal" style="max-width:680px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🏷️ Registrar Preços</span>
-        <button class="modal-close" onclick="closeModal('registerPricesModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <!-- Estabelecimento + data -->
-        <div class="form-grid" style="margin-bottom:14px">
-          <div class="form-group full">
-            <label>Estabelecimento *
-              <span style="font-size:.72rem;font-weight:400;color:var(--muted)"> — busque um cadastrado ou crie novo</span>
-            </label>
-            <div style="display:flex;gap:6px;position:relative">
-              <div style="flex:1;position:relative">
-                <input type="text" id="rpmStoreInput"
-                       placeholder="Ex: Mercado Extra — Av. Paulista"
-                       oninput="_rpmStoreSearch(this.value)" autocomplete="off"
-                       style="width:100%">
-                <div id="rpmStoreSuggest" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-md);max-height:220px;overflow-y:auto"></div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="rpmNewStore()" title="Cadastrar novo estabelecimento">🏪 Novo</button>
-            </div>
-            <input type="hidden" id="rpmStoreId">
-            <!-- store info strip -->
-            <div id="rpmStoreInfo" style="display:none;margin-top:6px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);font-size:.78rem;color:var(--muted)"></div>
-          </div>
-          <div class="form-group" style="grid-column:1">
-            <label>Data da Compra *</label>
-            <input type="date" id="rpmDate">
-          </div>
-        </div>
-        <!-- Items toolbar -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Itens da compra</span>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" onclick="rpmNormalizeAllAI()">🤖 Normalizar todos</button>
-            <button class="btn btn-ghost btn-sm" onclick="rpmAddRow()">+ Item</button>
-          </div>
-        </div>
-        <div id="rpmItemList" style="max-height:340px;overflow-y:auto;border:1px solid var(--border2);border-radius:var(--r-sm)"></div>
-        <div id="rpmError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="closeModal('registerPricesModal')">Cancelar</button>
-          <button class="btn btn-primary" id="rpmSaveBtn" onclick="saveRegisterPrices()">💾 Salvar Preços</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Gerenciar Estabelecimentos ═══════════════════════════════════ -->
-  <div class="modal-overlay" id="pricesStoreModal">
-    <div class="modal" style="max-width:580px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🏪 Estabelecimentos</span>
-        <button class="modal-close" onclick="closeModal('pricesStoreModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <input type="text" id="storeSearch" placeholder="🔍 Buscar…" oninput="_filterStoreList(this.value)"
-                 style="flex:1;max-width:260px;font-size:.85rem">
-          <button class="btn btn-primary btn-sm" onclick="openStoreForm()">+ Novo</button>
-        </div>
-        <div id="storeList" style="max-height:380px;overflow-y:auto"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Formulário de Estabelecimento ══════════════════════════════ -->
-  <div class="modal-overlay" id="storeFormModal">
-    <div class="modal" style="max-width:500px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title" id="storeFormTitle">🏪 Novo Estabelecimento</span>
-        <button class="modal-close" onclick="closeModal('storeFormModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="storeFormId">
-        <div class="form-grid">
-          <div class="form-group full">
-            <label>Nome *</label>
-            <input type="text" id="storeFormName" placeholder="Ex: Mercado Extra — Paulista">
-          </div>
-          <div class="form-group full">
-            <label>Beneficiário vinculado
-              <span style="font-size:.72rem;font-weight:400;color:var(--muted)"> — permite preencher contato automaticamente</span>
-            </label>
-            <select id="storeFormPayee">
-              <option value="">— Nenhum —</option>
-            </select>
-          </div>
-          <div class="form-group full">
-            <label>Endereço</label>
-            <input type="text" id="storeFormAddress" placeholder="Rua, número, bairro">
-          </div>
-          <div class="form-group">
-            <label>Cidade</label>
-            <input type="text" id="storeFormCity" placeholder="São Paulo">
-          </div>
-          <div class="form-group" style="max-width:90px">
-            <label>UF</label>
-            <input type="text" id="storeFormUf" placeholder="SP" maxlength="2" style="text-transform:uppercase">
-          </div>
-          <div class="form-group">
-            <label>Telefone</label>
-            <input type="tel" id="storeFormPhone" placeholder="(11) 0000-0000">
-          </div>
-          <div class="form-group">
-            <label>CNPJ</label>
-            <input type="text" id="storeFormCnpj" placeholder="00.000.000/0001-00">
-          </div>
-        </div>
-        <div id="storeFormError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('storeFormModal')">Cancelar</button>
-          <button class="btn btn-primary" onclick="saveStoreForm()">💾 Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ Modal: Adicionar Registro de Preço (manual) ═══════════════════════ -->
-  <div class="modal-overlay" id="addPriceRecordModal">
-    <div class="modal" style="max-width:460px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title" id="aprModalTitle">📌 Registrar Preço</span>
-        <button class="modal-close" onclick="closeModal('addPriceRecordModal')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="aprItemId">
-        <div class="form-grid">
-          <div class="form-group full">
-            <label>Estabelecimento *</label>
-            <div style="display:flex;gap:6px;position:relative">
-              <div style="flex:1;position:relative">
-                <input type="text" id="aprStoreInput"
-                       placeholder="Buscar estabelecimento…"
-                       oninput="_aprStoreSearch(this.value)" autocomplete="off"
-                       style="width:100%">
-                <div id="aprStoreSuggest" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-md);max-height:200px;overflow-y:auto"></div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="aprNewStore()" title="Novo estabelecimento">+</button>
-            </div>
-            <input type="hidden" id="aprStoreId">
-          </div>
-          <div class="form-group">
-            <label>Valor Unitário (R$) *</label>
-            <input type="number" id="aprPrice" min="0" step="0.01" placeholder="0,00">
-          </div>
-          <div class="form-group">
-            <label>Quantidade</label>
-            <input type="number" id="aprQty" min="0.001" step="any" value="1">
-          </div>
-          <div class="form-group full">
-            <label>Data da Compra *</label>
-            <input type="date" id="aprDate">
-          </div>
-        </div>
-        <div id="aprError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('addPriceRecordModal')">Cancelar</button>
-          <button class="btn btn-primary" id="aprSaveBtn" onclick="saveAddPriceRecord()">💾 Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="modal-overlay" id="deleteUserModal">
     <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
       <div class="modal-header">
@@ -4421,32 +3640,24 @@
 </div>
 
 <script>
-/* ── Bridge: adminNavSection aparece/some junto com settingsNav ou auditNav ── */
-(function() {
-  function syncAdminSection() {
-    const section = document.getElementById('adminNavSection');
-    if (!section) return;
-    const sNav = document.getElementById('settingsNav');
-    const aNav = document.getElementById('auditNav');
-    const sVisible = sNav && sNav.style.display !== 'none';
-    const aVisible = aNav && aNav.style.display !== 'none';
-    section.style.display = (sVisible || aVisible) ? '' : 'none';
-  }
-  // Observa mudanças de display em settingsNav e auditNav
-  const observer = new MutationObserver(syncAdminSection);
-  function attachObserver() {
-    ['settingsNav','auditNav'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
-    });
-    syncAdminSection();
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', attachObserver);
-  } else {
-    attachObserver();
-  }
-})();
+// ── Settings accordion ───────────────────────────────────────────
+function cfgToggle(id) {
+  const body  = document.getElementById(id);
+  const arrow = document.getElementById(id + '_arrow');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  if (arrow) arrow.classList.toggle('open', open);
+}
+
+// ── Upcoming groups (programados) ────────────────────────────────
+function toggleUpcomingGroup(id) {
+  const body  = document.getElementById(id);
+  const arrow = document.getElementById(id + '_arr');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if (arrow) arrow.classList.toggle('open', !isOpen);
+}
 </script>
 </body>
 </html>
