@@ -20,6 +20,130 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
+<style>
+/* ── Sidebar redesign — cores baseadas no logo ──────────────────────────────
+   Logo palette:
+     Verde escuro texto : #0d3d2b
+     Verde médio shield : #2a6049  (era o fundo da sidebar — muito escuro)
+     Verde vibrante     : #3a8f60
+     Verde claro/lima   : #7fc96e  (highlight/barra do logo)
+   Nova sidebar: fundo branco-esverdeado suave com acentos verdes vibrantes
+────────────────────────────────────────────────────────────────────────────── */
+
+/* Variáveis locais da sidebar */
+:root {
+  --sb-bg        : #f4f9f6;          /* branco com leve toque verde */
+  --sb-border    : #d4e8dc;          /* borda sutil verde-acinzentado */
+  --sb-text      : #1a3d2b;          /* verde escuro do logo, legível */
+  --sb-muted     : #5a7d6a;          /* verde médio para labels/muted */
+  --sb-active-bg : #e8f5ee;          /* fundo do item ativo — verde suave */
+  --sb-active-fg : #1e6040;          /* texto do item ativo — verde escuro */
+  --sb-active-bar: #3dba78;          /* barra lateral do item ativo — verde lima */
+  --sb-hover-bg  : #edf7f2;          /* hover suave */
+  --sb-avatar-bg : linear-gradient(135deg, #2e7d52, #4caf78); /* avatar gradiente */
+  --sb-label-clr : #3d7a57;          /* cor das labels de seção */
+  --sb-divider   : #cde4d7;
+  --sb-logout-clr: #c0392b;
+}
+
+/* Fundo da sidebar */
+.sidebar {
+  background: var(--sb-bg) !important;
+  border-right: 1.5px solid var(--sb-border) !important;
+  box-shadow: 2px 0 16px rgba(42, 96, 73, 0.08) !important;
+}
+
+/* Header da sidebar (logo + botão fechar) */
+.sb-header {
+  background: linear-gradient(135deg, #1e5c42 0%, #2e7d52 60%, #3a9460 100%) !important;
+  border-bottom: none !important;
+}
+
+.sb-close {
+  color: rgba(255,255,255,0.75) !important;
+}
+.sb-close:hover {
+  color: #fff !important;
+  background: rgba(255,255,255,0.15) !important;
+}
+
+/* Card de usuário */
+.sb-user-card {
+  background: linear-gradient(135deg, #e8f5ee, #f0faf4) !important;
+  border-bottom: 1.5px solid var(--sb-border) !important;
+}
+
+.sb-user-avatar {
+  background: var(--sb-avatar-bg) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.sb-user-name {
+  color: var(--sb-text) !important;
+  font-weight: 600 !important;
+}
+
+.sb-user-role {
+  color: var(--sb-muted) !important;
+}
+
+/* Labels de seção (Principal, Análise, etc.) */
+.nav-label {
+  color: var(--sb-label-clr) !important;
+  font-weight: 700 !important;
+  letter-spacing: .08em !important;
+}
+
+/* Itens de navegação */
+.nav-item {
+  color: var(--sb-text) !important;
+  background: transparent !important;
+  border-radius: 10px !important;
+}
+
+.nav-item:hover {
+  background: var(--sb-hover-bg) !important;
+  color: var(--sb-active-fg) !important;
+}
+
+/* Item ativo */
+.nav-item.active {
+  background: var(--sb-active-bg) !important;
+  color: var(--sb-active-fg) !important;
+  font-weight: 600 !important;
+  box-shadow: inset 3px 0 0 var(--sb-active-bar) !important;
+}
+
+/* Ícone dos itens */
+.ni-icon {
+  color: inherit !important;
+  opacity: .85;
+}
+.nav-item.active .ni-icon {
+  color: var(--sb-active-bar) !important;
+  opacity: 1;
+}
+
+/* Divisor */
+.sb-divider {
+  background: var(--sb-divider) !important;
+}
+
+/* Botão sair */
+.nav-item.sb-logout {
+  color: var(--sb-logout-clr) !important;
+}
+.nav-item.sb-logout:hover {
+  background: #fef2f2 !important;
+}
+
+/* Footer da sidebar */
+.sb-footer {
+  background: var(--sb-bg) !important;
+  border-top: 1.5px solid var(--sb-border) !important;
+}
+</style>
 </head>
 <body>
 
