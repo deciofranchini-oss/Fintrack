@@ -21,130 +21,201 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
 <style>
-/* ── Sidebar redesign — cores baseadas no logo ──────────────────────────────
-   Logo palette:
-     Verde escuro texto : #0d3d2b
-     Verde médio shield : #2a6049  (era o fundo da sidebar — muito escuro)
-     Verde vibrante     : #3a8f60
-     Verde claro/lima   : #7fc96e  (highlight/barra do logo)
-   Nova sidebar: fundo branco-esverdeado suave com acentos verdes vibrantes
-────────────────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR — Tema escuro com identidade do logo Family FinTrack
+   Palette do logo:  #0d3d2b (verde escuro texto) · #2a6049 (shield médio)
+                     #3dba78 (verde vibrante/lima) · #7fc96e (claro)
+   ─────────────────────────────────────────────────────────────────────────
+   Conceito: sidebar escura profissional, fundo #122d20, texto branco forte,
+   ativa com realce verde lima, header branco puro com logo natural em tamanho pleno.
+═══════════════════════════════════════════════════════════════════════════ */
 
-/* Variáveis locais da sidebar */
+/* ── Variáveis ── */
 :root {
-  --sb-bg        : #f4f9f6;          /* branco com leve toque verde */
-  --sb-border    : #d4e8dc;          /* borda sutil verde-acinzentado */
-  --sb-text      : #1a3d2b;          /* verde escuro do logo, legível */
-  --sb-muted     : #5a7d6a;          /* verde médio para labels/muted */
-  --sb-active-bg : #e8f5ee;          /* fundo do item ativo — verde suave */
-  --sb-active-fg : #1e6040;          /* texto do item ativo — verde escuro */
-  --sb-active-bar: #3dba78;          /* barra lateral do item ativo — verde lima */
-  --sb-hover-bg  : #edf7f2;          /* hover suave */
-  --sb-avatar-bg : linear-gradient(135deg, #2e7d52, #4caf78); /* avatar gradiente */
-  --sb-label-clr : #3d7a57;          /* cor das labels de seção */
-  --sb-divider   : #cde4d7;
-  --sb-logout-clr: #c0392b;
+  --sb-bg         : #16301f;
+  --sb-bg2        : #1c3d28;
+  --sb-text       : rgba(255,255,255,0.92);
+  --sb-muted      : rgba(255,255,255,0.45);
+  --sb-label      : rgba(255,255,255,0.35);
+  --sb-active-bg  : rgba(61,186,120,0.18);
+  --sb-active-fg  : #ffffff;
+  --sb-active-bar : #3dba78;
+  --sb-hover-bg   : rgba(255,255,255,0.07);
+  --sb-divider    : rgba(255,255,255,0.10);
+  --sb-avatar-bg  : linear-gradient(135deg,#2e7d52,#4caf78);
+  --sb-logout-clr : #f87171;
 }
 
-/* Fundo da sidebar */
+/* ── Sidebar base ── */
 .sidebar {
   background: var(--sb-bg) !important;
-  border-right: 1.5px solid var(--sb-border) !important;
-  box-shadow: 2px 0 16px rgba(42, 96, 73, 0.08) !important;
+  border-right: none !important;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.35) !important;
 }
 
-/* Header da sidebar (logo + botão fechar) */
+/* ── Header: fundo BRANCO puro, logo em tamanho pleno ── */
 .sb-header {
-  background: linear-gradient(135deg, #1e5c42 0%, #2e7d52 60%, #3a9460 100%) !important;
-  border-bottom: none !important;
-  padding: 14px 16px !important;
-  min-height: 72px !important;
+  background: #ffffff !important;
+  border-bottom: 2px solid #e8f0eb !important;
+  padding: 0 !important;
+  min-height: 80px !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  overflow: hidden !important;
+}
+
+/* Wrapper do logo: cresce para preencher tudo */
+.sb-logo-wrap {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
   align-items: center !important;
+  padding: 10px 6px 10px 14px !important;
+  overflow: hidden !important;
+}
+
+/* Logo preenche o wrapper inteiro */
+#sidebarLogoImg {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  display: block !important;
+  filter: none !important;
 }
 
 .sb-close {
-  color: rgba(255,255,255,0.75) !important;
+  color: #5a7d6a !important;
+  background: transparent !important;
+  flex-shrink: 0 !important;
+  align-self: center !important;
+  margin-right: 8px !important;
 }
 .sb-close:hover {
-  color: #fff !important;
-  background: rgba(255,255,255,0.15) !important;
+  color: #1e5c42 !important;
+  background: #e8f5ee !important;
 }
 
-/* Card de usuário */
+/* ── User card ── */
 .sb-user-card {
-  background: linear-gradient(135deg, #e8f5ee, #f0faf4) !important;
-  border-bottom: 1.5px solid var(--sb-border) !important;
+  background: var(--sb-bg2) !important;
+  border-bottom: 1px solid var(--sb-divider) !important;
 }
-
 .sb-user-avatar {
   background: var(--sb-avatar-bg) !important;
   color: #fff !important;
   font-weight: 700 !important;
 }
-
 .sb-user-name {
   color: var(--sb-text) !important;
   font-weight: 600 !important;
 }
-
 .sb-user-role {
   color: var(--sb-muted) !important;
 }
 
-/* Labels de seção (Principal, Análise, etc.) */
+/* ── Labels de seção ── */
 .nav-label {
-  color: var(--sb-label-clr) !important;
+  color: var(--sb-label) !important;
   font-weight: 700 !important;
-  letter-spacing: .08em !important;
+  letter-spacing: .10em !important;
+  text-transform: uppercase !important;
+  font-size: .65rem !important;
 }
 
-/* Itens de navegação */
+/* ── Itens de nav ── */
 .nav-item {
   color: var(--sb-text) !important;
   background: transparent !important;
   border-radius: 10px !important;
+  font-weight: 500 !important;
 }
-
 .nav-item:hover {
   background: var(--sb-hover-bg) !important;
-  color: var(--sb-active-fg) !important;
+  color: #fff !important;
 }
 
-/* Item ativo */
+/* ── Item ativo ── */
 .nav-item.active {
   background: var(--sb-active-bg) !important;
   color: var(--sb-active-fg) !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   box-shadow: inset 3px 0 0 var(--sb-active-bar) !important;
 }
 
-/* Ícone dos itens */
+/* ── Ícones ── */
 .ni-icon {
-  color: inherit !important;
-  opacity: .85;
+  color: rgba(255,255,255,0.55) !important;
+  opacity: 1 !important;
+}
+.nav-item:hover .ni-icon {
+  color: rgba(255,255,255,0.85) !important;
 }
 .nav-item.active .ni-icon {
   color: var(--sb-active-bar) !important;
-  opacity: 1;
 }
 
-/* Divisor */
+/* ── Divisor ── */
 .sb-divider {
   background: var(--sb-divider) !important;
 }
 
-/* Botão sair */
+/* ── Footer ── */
+.sb-footer {
+  background: var(--sb-bg) !important;
+  border-top: 1px solid var(--sb-divider) !important;
+}
+
+/* ── Botão sair ── */
 .nav-item.sb-logout {
   color: var(--sb-logout-clr) !important;
 }
+.nav-item.sb-logout .ni-icon {
+  color: var(--sb-logout-clr) !important;
+  opacity: 0.8 !important;
+}
 .nav-item.sb-logout:hover {
-  background: #fef2f2 !important;
+  background: rgba(248,113,113,0.12) !important;
 }
 
-/* Footer da sidebar */
-.sb-footer {
-  background: var(--sb-bg) !important;
-  border-top: 1.5px solid var(--sb-border) !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOPBAR — Ícones com contorno verde moderno
+═══════════════════════════════════════════════════════════════════════════ */
+.topbar-icon-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid rgba(42,96,73,0.20) !important;
+  background: #f0faf4 !important;
+  cursor: pointer !important;
+  color: #1e6040 !important;
+  text-decoration: none !important;
+  transition: background .15s, border-color .15s, box-shadow .15s !important;
+  font-size: 0 !important; /* esconde emoji fallback se tiver SVG */
+  position: relative !important;
+}
+.topbar-icon-btn:hover {
+  background: #ddf2e8 !important;
+  border-color: #3dba78 !important;
+  box-shadow: 0 0 0 3px rgba(61,186,120,0.15) !important;
+  color: #0d3d2b !important;
+}
+/* Botão sair na topbar mantém vermelho */
+#logoutTopbarBtn {
+  background: #fff5f5 !important;
+  border-color: rgba(220,38,38,0.20) !important;
+  color: #dc2626 !important;
+}
+#logoutTopbarBtn:hover {
+  background: #fee2e2 !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.12) !important;
 }
 </style>
 </head>
@@ -328,11 +399,13 @@
 
   <!-- Header: logo + close button -->
   <div class="sb-header">
-    <img id="sidebarLogoImg"
-         src="https://deciofranchini-oss.github.io/fintrack/logo.png"
-         alt="Family FinTrack"
-         class="sb-logo-img"
-         style="height:52px;max-height:52px;width:auto;max-width:210px;object-fit:contain;display:block;flex-shrink:1;min-width:0;filter:brightness(0) invert(1)">
+    <div class="sb-logo-wrap">
+      <img id="sidebarLogoImg"
+           src="https://deciofranchini-oss.github.io/fintrack/logo.png"
+           alt="Family FinTrack"
+           class="sb-logo-img"
+           style="width:100%;height:100%;object-fit:contain;display:block;filter:brightness(0) invert(1)">
+    </div>
     <button class="sb-close" onclick="closeSidebar()" aria-label="Fechar menu">✕</button>
   </div>
 
@@ -402,6 +475,26 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </span>Beneficiários
       </button>
+      <button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+        </span>Preços
+      </button>
+    </div>
+
+    <!-- Seção Admin: visível apenas quando habilitado em Configurações -->
+    <div class="nav-section" id="adminNavSection" style="display:none">
+      <div class="nav-label">Administração</div>
+      <button class="nav-item" id="settingsNav" onclick="navigate('settings')" title="Configurações">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>Configurações
+      </button>
+      <button class="nav-item" id="auditNav" onclick="navigate('audit')" title="Auditoria">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </span>Auditoria
+      </button>
     </div>
 
   </div><!-- /sidebar-nav -->
@@ -409,24 +502,6 @@
   <!-- Footer: always visible, pinned to bottom — NEVER clipped -->
   <div class="sb-footer">
     <div class="sb-divider"></div>
-    <!-- Preços: shown only when feature is enabled for the family -->
-    <button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none">
-      <span class="ni-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-      </span>Preços
-    </button>
-    <!-- Admin-only items -->
-    <button class="nav-item" id="settingsNav" onclick="navigate('settings')" title="Configurações" style="display:none">
-      <span class="ni-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </span>Configurações
-    </button>
-    <button class="nav-item" id="auditNav" onclick="navigate('audit')" title="Auditoria" style="display:none">
-      <span class="ni-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      </span>Auditoria
-    </button>
-    <div class="sb-divider" style="margin-top:6px"></div>
     <button class="nav-item sb-logout" onclick="doLogout()">
       <span class="ni-icon">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -502,25 +577,25 @@
       
 
       <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
-        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;text-decoration:none;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">🎓</span>
+        <!-- Escola -->
+        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola" style="display:none">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         </a>
-        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">📥</span>
+        <!-- Importar -->
+        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
-        <button class="topbar-icon-btn" id="auditNavTopbar" onclick="navigate('audit')" title="Auditoria"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">🧾</span>
+        <!-- Auditoria -->
+        <button class="topbar-icon-btn" id="auditNavTopbar" onclick="navigate('audit')" title="Auditoria">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </button>
-        <button class="topbar-icon-btn" id="settingsNavTopbar" onclick="navigate('settings')" title="Configurações"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--text);">
-          <span aria-hidden="true" style="font-size:16px;line-height:1">⚙️</span>
+        <!-- Configurações -->
+        <button class="topbar-icon-btn" id="settingsNavTopbar" onclick="navigate('settings')" title="Configurações">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
-        <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair"
-           style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);cursor:pointer;color:var(--red,#dc2626);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <!-- Sair -->
+        <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
 <button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()" title="Nova Transação" aria-label="Nova Transação">+</button>
@@ -4344,6 +4419,34 @@
   </div>
 </div>
 
+<script>
+/* ── Bridge: adminNavSection aparece/some junto com settingsNav ou auditNav ── */
+(function() {
+  function syncAdminSection() {
+    const section = document.getElementById('adminNavSection');
+    if (!section) return;
+    const sNav = document.getElementById('settingsNav');
+    const aNav = document.getElementById('auditNav');
+    const sVisible = sNav && sNav.style.display !== 'none';
+    const aVisible = aNav && aNav.style.display !== 'none';
+    section.style.display = (sVisible || aVisible) ? '' : 'none';
+  }
+  // Observa mudanças de display em settingsNav e auditNav
+  const observer = new MutationObserver(syncAdminSection);
+  function attachObserver() {
+    ['settingsNav','auditNav'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
+    });
+    syncAdminSection();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachObserver);
+  } else {
+    attachObserver();
+  }
+})();
+</script>
 </body>
 </html>
 
