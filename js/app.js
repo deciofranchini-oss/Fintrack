@@ -1,48 +1,7 @@
-function setBottomNavCollapsed(collapsed){
-  const nav = document.getElementById('bottomNav');
-  if(!nav) return;
-  nav.classList.toggle('is-collapsed', !!collapsed);
-  try{ localStorage.setItem('bottomNavCollapsed', collapsed ? '1' : '0'); }catch(e){}
-}
-
-function initBottomNav(){
-  const nav = document.getElementById('bottomNav');
-  const toggle = document.getElementById('bottomNavToggle');
-  if(!nav || !toggle || nav.dataset.init === '1') return;
-  nav.dataset.init = '1';
-  try{
-    const saved = localStorage.getItem('bottomNavCollapsed') === '1';
-    nav.classList.toggle('is-collapsed', saved);
-  }catch(e){}
-  toggle.addEventListener('click', (ev)=>{
-    ev.stopPropagation();
-    setBottomNavCollapsed(!nav.classList.contains('is-collapsed'));
-  });
-
-  let startX = 0;
-  let startY = 0;
-  let tracking = false;
-  const start = (x,y)=>{ startX=x; startY=y; tracking=true; };
-  const end = (x,y)=>{
-    if(!tracking) return;
-    tracking=false;
-    const dx = x - startX;
-    const dy = y - startY;
-    if(Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
-    if(dx > 0) setBottomNavCollapsed(true);
-    else if(dx < 0) setBottomNavCollapsed(false);
-  };
-  nav.addEventListener('touchstart', e=>{ const t=e.changedTouches[0]; start(t.clientX, t.clientY); }, {passive:true});
-  nav.addEventListener('touchend', e=>{ const t=e.changedTouches[0]; end(t.clientX, t.clientY); }, {passive:true});
-  nav.addEventListener('pointerdown', e=>{ start(e.clientX, e.clientY); });
-  nav.addEventListener('pointerup', e=>{ end(e.clientX, e.clientY); });
-}
-
 function openSidebar(){
-  setBottomNavCollapsed(true);
-  document.body.classList.add('sidebar-open');
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('sidebarOverlay').classList.add('open');
+  collapseBottomNav(true);
   // iOS-safe: lock scroll without overflow:hidden on body
   const scrollY = window.scrollY;
   document.body.style.position='fixed';
@@ -55,9 +14,10 @@ function toggleSidebar(){
   if (isOpen) closeSidebar(); else openSidebar();
 }
 function closeSidebar(){
-  document.body.classList.remove('sidebar-open');
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('open');
+  const nav = document.getElementById('bottomNav');
+  if(nav) nav.classList.remove('sidebar-open');
   // Restore scroll position after position:fixed unlock
   const scrollY = parseInt(document.body.dataset.scrollY||'0');
   document.body.style.position='';
@@ -66,6 +26,51 @@ function closeSidebar(){
   window.scrollTo(0, scrollY);
 }
 
+
+
+function collapseBottomNav(forceSidebarMode=false){
+  const nav = document.getElementById('bottomNav');
+  if(!nav) return;
+  if(forceSidebarMode) nav.classList.add('sidebar-open');
+  nav.classList.add('collapsed');
+}
+function expandBottomNav(){
+  const nav = document.getElementById('bottomNav');
+  if(!nav) return;
+  if(document.getElementById('sidebar')?.classList.contains('open')) return;
+  nav.classList.remove('collapsed','sidebar-open');
+}
+function toggleBottomNav(){
+  const nav = document.getElementById('bottomNav');
+  if(!nav) return;
+  if(nav.classList.contains('collapsed')) expandBottomNav();
+  else collapseBottomNav();
+}
+function initBottomNavGestures(){
+  const nav = document.getElementById('bottomNav');
+  if(!nav) return;
+  let startX = 0;
+  let startY = 0;
+  nav.addEventListener('touchstart', (e)=>{
+    const t = e.changedTouches && e.changedTouches[0];
+    if(!t) return;
+    startX = t.clientX;
+    startY = t.clientY;
+  }, {passive:true});
+  nav.addEventListener('touchend', (e)=>{
+    const t = e.changedTouches && e.changedTouches[0];
+    if(!t) return;
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if(dy > 40) return;
+    if(dx > 50) collapseBottomNav();
+    if(dx < -50) expandBottomNav();
+  }, {passive:true});
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  initBottomNavGestures();
+});
 let sb=null;
 
 
@@ -367,6 +372,3 @@ if('serviceWorker' in navigator){
   });
 }
 
-
-
-document.addEventListener('DOMContentLoaded', initBottomNav);
