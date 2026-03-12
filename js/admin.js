@@ -12,64 +12,36 @@ function switchUATab(tab) {
   document.getElementById('uaTabFamilies').classList.toggle('active', tab === 'families');
 }
 
-
-async function _fetchManageableFamiliesAdmin() {
-  let families = [];
-  try {
-    const { data, error } = await sb.rpc('get_manageable_families');
-    if (!error && Array.isArray(data)) families = data;
-  } catch (_) {}
-  if (!families.length) {
-    try {
-      const { data, error } = await sb.from('families').select('*').order('name');
-      if (!error && Array.isArray(data)) families = data;
-    } catch (_) {}
-  }
-  const map = new Map();
-  (families || []).forEach(f => { if (f?.id) map.set(String(f.id), f); });
-  return Array.from(map.values()).sort((a,b) => String(a.name||'').localeCompare(String(b.name||''), 'pt-BR', { sensitivity:'base' }));
-}
-
-async function _createFamilyRpcAdmin(name, description) {
-  const { data, error } = await sb.rpc('create_family_with_owner', { p_name: name, p_description: description || null });
-  if (error) throw error;
-  return data;
-}
-
-async function _updateFamilyRpcAdmin(id, name, description) {
-  const { data, error } = await sb.rpc('update_family_as_owner', { p_family_id: id, p_name: name, p_description: description || null });
-  if (error) throw error;
-  return data;
-}
-
-async function _deleteFamilyRpcAdmin(id) {
-  const { data, error } = await sb.rpc('delete_family_cascade', { p_family_id: id });
-  if (error) throw error;
-  return data;
-}
-
 // ── FAMILIES ──────────────────────────────────────────────────────
-
 
 async function loadFamiliesList() {
   let families = [];
   try {
-    families = await _fetchManageableFamiliesAdmin();
+    const { data: rpcData, error: rpcErr } = await sb.rpc('get_manageable_families');
+    if (!rpcErr && Array.isArray(rpcData)) {
+      families = rpcData;
+    } else {
+      const { data, error } = await sb.from('families').select('*').order('name');
+      if (error) throw error;
+      families = data || [];
+    }
   } catch(e) {
     const el = document.getElementById('familiesList');
     if (el) el.innerHTML = `<div style="background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:14px;font-size:.82rem">
       ⚠️ <strong>Não foi possível carregar as famílias.</strong><br>
-      Verifique as funções SQL de gestão de famílias no Supabase.
+      Verifique as RPCs de gestão de família no Supabase.<br><br>
+      <span style="color:var(--muted)">Erro técnico: ${esc(e?.message || 'desconhecido')}</span>
     </div>`;
     return;
   }
-  _families = families;
+  _families = (families || []).map(f => ({ ...f, name: (f?.name && f.name !== f.id) ? f.name : (window._familyDisplayName ? _familyDisplayName(f.id, f.name || '') : (f.name || f.id)) }));
 
+  // Populate family select in user form
   const sel = document.getElementById('uFamilyId');
   if (sel) {
     const cur = sel.value;
     sel.innerHTML = '<option value="">— Nenhuma (admin global) —</option>' +
-      _families.map(f => `<option value="${f.id}">${esc(_familyDisplayName ? _familyDisplayName(f.id, f.name || '') : (f.name || f.id))}</option>`).join('');
+      _families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
     if (cur) sel.value = cur;
   }
 
@@ -81,31 +53,22 @@ async function loadFamiliesList() {
     return;
   }
 
-  const { data: allMembers } = await sb
-    .from('family_members')
-    .select('id,user_id,family_id,role,created_at,app_users(id,name,email,role,active)')
-    .order('created_at');
-
-  const { data: allUsers } = await sb.from('app_users').select('id,name,email,role,active').order('name');
-
+  // family_members é a fonte de verdade para associação usuário-família
+  let allUsers = [];
+  let allMembers = [];
+  try {
+    const usersRes = await sb.from('app_users').select('id,name,email,role,active,approved').order('name');
+    allUsers = usersRes.data || [];
+    const membersRes = await sb.rpc('get_all_family_members');
+    allMembers = membersRes.data || [];
+  } catch(_) {}
+  const userMap = new Map((allUsers || []).map(u => [u.id, u]));
   const usersByFamily = {};
-  const familiesByUser = {};
   (allMembers || []).forEach(m => {
-    const user = m.app_users || {};
-    const row = {
-      id: m.id,
-      user_id: m.user_id,
-      family_id: m.family_id,
-      member_role: m.role,
-      name: user.name,
-      email: user.email,
-      app_role: user.role,
-      active: user.active
-    };
-    if (!usersByFamily[m.family_id]) usersByFamily[m.family_id] = [];
-    usersByFamily[m.family_id].push(row);
-    if (!familiesByUser[m.user_id]) familiesByUser[m.user_id] = new Set();
-    familiesByUser[m.user_id].add(m.family_id);
+    const u = userMap.get(m.user_id) || { id: m.user_id, name: m.user_name || '—', email: m.user_email || '', role: m.user_role || m.member_role || 'user', active: m.user_active ?? true };
+    const fid = m.family_id;
+    if (!usersByFamily[fid]) usersByFamily[fid] = [];
+    usersByFamily[fid].push({ ...u, family_member_role: m.member_role || m.role || 'user' });
   });
 
   el.innerHTML = _families.map(f => {
@@ -113,26 +76,28 @@ async function loadFamiliesList() {
     const membersHtml = members.length
       ? members.map(u => `
           <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:.82rem;flex:1"><strong>${esc(u.name||'—')}</strong> <span style="color:var(--muted);font-size:.75rem">${esc(u.email||'')}</span></span>
-            <span class="badge ${(u.member_role==='admin'||u.member_role==='owner')?'badge-amber':'badge-muted'}" style="font-size:.7rem">${u.member_role}</span>
-            <button class="btn-icon" title="Remover da família" onclick="removeUserFromFamily('${u.user_id}','${esc(u.name||u.email||'')}','${esc(_familyDisplayName ? _familyDisplayName(f.id, f.name || '') : (f.name || f.id))}','${f.id}')">✕</button>
+            <span style="font-size:.82rem;flex:1"><strong>${esc(u.name||'—')}</strong> <span style="color:var(--muted);font-size:.75rem">${esc(u.email)}</span></span>
+            <span class="badge ${(u.role==='admin'||u.role==='owner')?'badge-amber':'badge-muted'}" style="font-size:.7rem">${u.family_member_role || u.role}</span>
+            <button class="btn-icon" title="Remover da família" onclick="removeUserFromFamily('${u.id}','${esc(u.name||u.email)}','${esc(f.name)}')">✕</button>
           </div>`).join('')
       : '<div style="font-size:.78rem;color:var(--muted);padding:8px 0">Nenhum membro</div>';
 
-    const available = (allUsers||[]).filter(u => !familiesByUser[u.id]?.has(f.id));
+    // Users not yet in this family (for adding)
+    const memberIds = new Set((members||[]).map(u => u.id));
+    const available = (allUsers||[]).filter(u => !memberIds.has(u.id));
 
     return `<div class="card" style="margin-bottom:12px">
       <div class="card-header">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:1.3rem">🏠</span>
           <div>
-            <div style="font-weight:700">${esc(_familyDisplayName ? _familyDisplayName(f.id, f.name || '') : (f.name || f.id))}</div>
+            <div style="font-weight:700">${esc(f.name)}</div>
             ${f.description ? `<div style="font-size:.75rem;color:var(--muted)">${esc(f.description)}</div>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="editFamily('${f.id}')" style="padding:3px 10px;font-size:.73rem">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="deleteFamily('${f.id}','${esc(_familyDisplayName ? _familyDisplayName(f.id, f.name || '') : (f.name || f.id))}')" style="padding:3px 10px;font-size:.73rem;color:var(--red)">🗑️</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteFamily('${f.id}','${esc(f.name)}')" style="padding:3px 10px;font-size:.73rem;color:var(--red)">🗑️</button>
         </div>
       </div>
       <div style="padding:4px 0">
@@ -167,68 +132,67 @@ function showFamilyForm(id='') {
 
 function editFamily(id) { showFamilyForm(id); document.getElementById('familyFormArea').scrollIntoView({behavior:'smooth'}); }
 
-
 async function saveFamily() {
   const id   = document.getElementById('editFamilyId').value;
   const name = document.getElementById('fName').value.trim();
   const desc = document.getElementById('fDesc').value.trim();
   if (!name) { toast('Informe o nome da família','error'); return; }
+  let error = null;
   try {
-    if (id) await _updateFamilyRpcAdmin(id, name, desc || null);
-    else    await _createFamilyRpcAdmin(name, desc || null);
-    toast(id ? '✓ Família atualizada!' : '✓ Família criada!','success');
-    document.getElementById('familyFormArea').style.display = 'none';
-    await loadFamiliesList();
-  } catch (error) {
-    toast('Erro: ' + error.message,'error');
+    if (id) {
+      const rpc = await sb.rpc('update_family_as_owner', {
+        p_family_id: id,
+        p_name: name,
+        p_description: desc || null
+      });
+      if (rpc.error) throw rpc.error;
+    } else {
+      const rpc = await sb.rpc('create_family_with_owner', {
+        p_name: name,
+        p_description: desc || null
+      });
+      if (rpc.error) throw rpc.error;
+    }
+  } catch (e) {
+    error = e;
   }
+  if (error) { toast('Erro: '+error.message,'error'); return; }
+  toast(id ? '✓ Família atualizada!' : '✓ Família criada!','success');
+  document.getElementById('familyFormArea').style.display = 'none';
+  await loadFamiliesList();
 }
-
 
 async function deleteFamily(id, name) {
-  if (!confirm(`Excluir COMPLETAMENTE a família "${name}"?
+  if (!confirm(`Excluir a família "${name}"?
 
-Todos os registros relacionados a ela serão apagados do banco.
+Todos os registros relacionados a esta família serão excluídos do banco de dados.
 
 Esta ação não pode ser desfeita.`)) return;
-  try {
-    await _deleteFamilyRpcAdmin(id);
-    toast('Família removida','success');
-    await loadFamiliesList();
-    await loadUsersList().catch(()=>{});
-  } catch (error) {
-    toast('Erro: ' + error.message,'error');
-  }
+  const { error } = await sb.rpc('delete_family_cascade', { p_family_id: id });
+  if (error) { toast('Erro: '+error.message,'error'); return; }
+  toast('Família removida','success');
+  await loadFamiliesList();
 }
-
 
 async function addUserToFamily(familyId) {
   const sel = document.getElementById(`addMemberSel-${familyId}`);
   const userId = sel?.value;
   if (!userId) { toast('Selecione um usuário','error'); return; }
-  try {
-    const { error } = await sb.from('family_members').upsert({ user_id: userId, family_id: familyId, role: 'user' }, { onConflict: 'user_id,family_id' });
-    if (error) throw error;
-    toast('✓ Usuário adicionado à família','success');
-    await loadFamiliesList();
-  } catch (error) {
-    toast('Erro: ' + error.message,'error');
-  }
+  const { error } = await sb.from('family_members').upsert({ user_id: userId, family_id: familyId, role: 'user' }, { onConflict: 'user_id,family_id' });
+  if (error) { toast('Erro: '+error.message,'error'); return; }
+  await sb.from('app_users').update({ family_id: familyId, preferred_family_id: familyId }).eq('id', userId).catch(()=>{});
+  toast('✓ Usuário adicionado à família','success');
+  await loadFamiliesList();
 }
 
-
-async function removeUserFromFamily(userId, userName, familyName, familyId) {
+async function removeUserFromFamily(userId, userName, familyName) {
   if (!confirm(`Remover "${userName}" da família "${familyName}"?`)) return;
-  try {
-    let q = sb.from('family_members').delete().eq('user_id', userId);
-    if (familyId) q = q.eq('family_id', familyId);
-    const { error } = await q;
-    if (error) throw error;
-    toast('Usuário removido da família','success');
-    await loadFamiliesList();
-  } catch (error) {
-    toast('Erro: ' + error.message,'error');
-  }
+  const fam = _families.find(f => f.name === familyName || f.id === familyName);
+  const familyId = fam?.id || familyName;
+  const { error } = await sb.from('family_members').delete().eq('user_id', userId).eq('family_id', familyId);
+  if (error) { toast('Erro: '+error.message,'error'); return; }
+  toast('Usuário removido da família','success');
+  await loadFamiliesList();
 }
 
 // ── USERS ─────────────────────────────────────────────────────────
