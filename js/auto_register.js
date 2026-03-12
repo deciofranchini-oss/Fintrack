@@ -251,199 +251,27 @@ async function runAutoRegister(manual=false) {
   const cfg = getAutoCheckConfig();
   if(!manual && !cfg.enabled) return;
 
-  const today = new Date();
-  const cutoffDate = new Date(today);
-  cutoffDate.setDate(cutoffDate.getDate() + (cfg.daysAhead||0));
-  const cutoff = cutoffDate.toISOString().slice(0,10);
-
   if(manual) toast('🔄 Verificando transações programadas...', 'info');
 
   try {
-    // Load active scheduled transactions with auto_register=true
-    const { data: schedList, error } = await sb.from('scheduled_transactions')
-      .select('*, accounts(id,name,currency,balance), categories(id,name), payees(id,name)')
-      .eq('status', 'active')
-      .eq('auto_register', true);
-
-    if(error) { if(manual) toast('Erro: ' + error.message, 'error'); return; }
-    if(!schedList?.length) {
-      if(manual) toast('Nenhuma transação com registro automático ativo', 'info');
-      updateLastRunConfig(0);
-      return;
+    if (typeof runScheduledAutoRegister === 'function') {
+      const totalRegistered = await runScheduledAutoRegister();
+      updateLastRunConfig(totalRegistered || 0);
+      if(manual) {
+        if(totalRegistered) toast(`✓ ${totalRegistered} transação(ões) programada(s) registrada(s)`, 'success');
+        else toast('Nenhuma transação pendente para registrar', 'info');
+      }
+      return totalRegistered || 0;
     }
 
-
-    // Preload destination account info for transfers (name, currency needed for FX)
-    try {
-      const toIds = [...new Set((schedList||[]).map(s => s.transfer_to_account_id).filter(Boolean))];
-      if(toIds.length) {
-        const { data: toAccs } = await sb.from('accounts').select('id,name,currency').in('id', toIds);
-        const map = {};
-        (toAccs||[]).forEach(a => { map[a.id] = a; });
-        (schedList||[]).forEach(s => {
-          if(s.transfer_to_account_id && map[s.transfer_to_account_id]) {
-            s.transfer_to_account_name     = map[s.transfer_to_account_id].name || '-';
-            s.transfer_to_account_currency = map[s.transfer_to_account_id].currency || null;
-          }
-        });
-      }
-    } catch(e) { /* ignore */ }
-
-    let totalRegistered = 0;
-    let totalNotified = 0;
-
-    for(const sc of schedList) {
-      const dates = getScheduledDates(sc, cutoff);
-      for(const date of dates) {
-        // Check if already registered
-        const { data: existing } = await sb.from('scheduled_occurrences')
-          .select('id')
-          .eq('scheduled_id', sc.id)
-          .eq('scheduled_date', date)
-          .not('transaction_id', 'is', null)
-          .maybeSingle();
-
-        if(existing) continue; // already done
-
-        // ── Build amounts ──────────────────────────────────────────────────────
-        const isAutoTransfer   = sc.type === 'transfer' || sc.type === 'card_payment';
-        const isAutoCurrencyFx = isAutoTransfer && sc.fx_mode && sc.transfer_to_account_currency &&
-                                 sc.accounts?.currency !== sc.transfer_to_account_currency;
-        const txAmt = (sc.type === 'expense' || isAutoTransfer) ? -Math.abs(sc.amount) : Math.abs(sc.amount);
-
-        // Compute paired (destination) amount with FX when currencies differ
-        let pairedAmt = Math.abs(sc.amount); // default 1:1
-        if (isAutoCurrencyFx) {
-          if (sc.fx_mode === 'fixed' && sc.fx_rate > 0) {
-            // Use stored fixed rate
-            pairedAmt = Math.abs(sc.amount) * parseFloat(sc.fx_rate);
-          } else if (sc.fx_mode === 'api') {
-            // Fetch live rate from Frankfurter API for the registration date
-            try {
-              const srcCur = sc.accounts.currency;
-              const dstCur = sc.transfer_to_account_currency;
-              const apiDate = date <= new Date().toISOString().slice(0,10) ? date : new Date().toISOString().slice(0,10);
-              const fxRes = await fetch(`https://api.frankfurter.app/${apiDate}?base=${srcCur}&to=${dstCur}`);
-              if (fxRes.ok) {
-                const fxJson = await fxRes.json();
-                const rate = fxJson?.rates?.[dstCur];
-                if (rate > 0) pairedAmt = Math.abs(sc.amount) * rate;
-              }
-            } catch(fxErr) {
-              console.warn('[AutoReg] FX API failed, using 1:1:', fxErr.message);
-            }
-          }
-        }
-
-        // ── Insert debit leg (origin account) ──────────────────────────────
-        const { data: newTx, error: txErr } = await sb.from('transactions').insert({
-          family_id:   famId(),
-          account_id:  sc.account_id,
-          description: sc.description,
-          amount:      txAmt,
-          date,
-          category_id: sc.category_id || null,
-          payee_id:    isAutoTransfer ? null : (sc.payee_id || null),
-          memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
-          is_transfer: isAutoTransfer,
-          is_card_payment: sc.type === 'card_payment',
-          transfer_to_account_id: isAutoTransfer ? sc.transfer_to_account_id : null,
-        }).select().single();
-
-        if(txErr) { console.error('[AutoReg] Tx error:', txErr.message); continue; }
-
-        // ── Insert credit leg (destination account) for transfers ───────────
-        if (isAutoTransfer && sc.transfer_to_account_id) {
-          let pairedResult, pairedErr;
-          ({data: pairedResult, error: pairedErr} = await sb.from('transactions').insert({
-            family_id:   famId(),
-            account_id:  sc.transfer_to_account_id,
-            description: sc.description,
-            amount:      pairedAmt,  // positive credit, FX-converted if needed
-            date,
-            category_id: sc.category_id || null,
-            payee_id:    null,
-            memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
-            is_transfer: true,
-            is_card_payment: sc.type === 'card_payment',
-            transfer_to_account_id: sc.account_id,
-            linked_transfer_id: newTx.id,
-          }).select().single());
-
-          if (pairedErr && pairedErr.message?.includes('linked_transfer_id')) {
-            // Fallback: insert without linked_transfer_id if column not migrated yet
-            await sb.from('transactions').insert({
-              family_id:   famId(),
-              account_id:  sc.transfer_to_account_id,
-              description: sc.description,
-              amount:      pairedAmt,
-              date,
-              category_id: sc.category_id || null,
-              payee_id:    null,
-              memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
-              is_transfer: true,
-              is_card_payment: sc.type === 'card_payment',
-              transfer_to_account_id: sc.account_id,
-            });
-          } else if (pairedResult?.id) {
-            // Back-link origin to paired
-            await sb.from('transactions').update({ linked_transfer_id: pairedResult.id }).eq('id', newTx.id);
-          }
-        }
-
-        // Mark occurrence as registered
-        await sb.from('scheduled_occurrences').upsert({
-          scheduled_id:   sc.id,
-          scheduled_date: date,
-          actual_date:    new Date().toISOString().slice(0,10),
-          amount:         txAmt,
-          transaction_id: newTx.id,
-        }, { onConflict: 'scheduled_id,scheduled_date' });
-
-        totalRegistered++;
-
-        // Send email notification if configured
-        if(sc.notify_email && (sc.notify_email_addr || cfg.emailDefault)) {
-          const emailTo = sc.notify_email_addr || cfg.emailDefault;
-          await sendScheduledNotification(sc, date, txAmt, emailTo);
-          totalNotified++;
-        }
-      }
-
-      // Send UPCOMING notifications (notify_days_before)
-      if(sc.notify_email) {
-        const daysBefore = sc.notify_days_before || 1;
-        const upcoming = getScheduledDates(sc, new Date(Date.now() + daysBefore*86400000).toISOString().slice(0,10));
-        const todayStr = new Date().toISOString().slice(0,10);
-        for(const date of upcoming) {
-          if(date > todayStr) {
-            // Upcoming - send notification if not already sent
-            const emailTo = sc.notify_email_addr || cfg.emailDefault;
-            if(emailTo) await sendUpcomingNotification(sc, date, emailTo, daysBefore);
-          }
-        }
-      }
-    }
-
-    // Update last run
-    updateLastRunConfig(totalRegistered);
-    await loadAccounts(); // refresh balances
-
-    if(manual) {
-      if(totalRegistered > 0) {
-        toast(`✅ ${totalRegistered} transação(ões) registrada(s) automaticamente!`, 'success');
-        if(state.currentPage === 'transactions') loadTransactions();
-        if(state.currentPage === 'dashboard') loadDashboard();
-      } else {
-        toast('✅ Verificação concluída — nenhuma transação pendente', 'info');
-      }
-    } else if(totalRegistered > 0) {
-      toast(`🤖 ${totalRegistered} transação(ões) registrada(s) automaticamente`, 'success');
-    }
-
-  } catch(e) {
-    console.error('[AutoReg] Error:', e);
-    if(manual) toast('Erro na verificação: ' + e.message, 'error');
+    if(manual) toast('Motor de programados não disponível no momento.', 'warning');
+    updateLastRunConfig(0);
+    return 0;
+  } catch(err) {
+    console.error('[AutoReg] Error:', err);
+    if(manual) toast('Erro ao verificar programados: ' + (err.message || err), 'error');
+    updateLastRunConfig(0);
+    return 0;
   }
 }
 

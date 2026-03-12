@@ -36,6 +36,151 @@ async function _createPairedTransferLeg(originTx, sc, actualDate, memoOverride=n
   return pairedResult;
 }
 
+
+function _isScheduledOccurrenceAlreadyProcessed(err) {
+  const msg = String(err?.message || '').toLowerCase();
+  return msg.includes('duplicate key') || msg.includes('unique constraint') || msg.includes('conflict');
+}
+
+async function _reserveScheduledOccurrence(sc, scheduledDate, actualDate, amount, memo) {
+  const executionToken = (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  const { data: existingBefore } = await sb.from('scheduled_occurrences')
+    .select('id,scheduled_id,scheduled_date,transaction_id,execution_status,execution_token')
+    .eq('scheduled_id', sc.id)
+    .eq('scheduled_date', scheduledDate)
+    .maybeSingle();
+
+  if (existingBefore?.transaction_id || existingBefore?.execution_status === 'executed') {
+    return { status: 'already_executed', occurrence: existingBefore };
+  }
+
+  try {
+    const { error: reserveErr } = await sb.from('scheduled_occurrences').upsert({
+      scheduled_id: sc.id,
+      scheduled_date: scheduledDate,
+      actual_date: actualDate,
+      amount,
+      memo: memo ?? null,
+      execution_status: 'processing',
+      execution_token: executionToken,
+      executed_at: null,
+      transaction_id: null,
+    }, { onConflict: 'scheduled_id,scheduled_date' });
+    if (reserveErr && !_isScheduledOccurrenceAlreadyProcessed(reserveErr)) throw reserveErr;
+  } catch (err) {
+    return { status: 'error', error: err };
+  }
+
+  const { data: reserved, error: readErr } = await sb.from('scheduled_occurrences')
+    .select('id,scheduled_id,scheduled_date,transaction_id,execution_status,execution_token')
+    .eq('scheduled_id', sc.id)
+    .eq('scheduled_date', scheduledDate)
+    .maybeSingle();
+
+  if (readErr) return { status: 'error', error: readErr };
+  if (!reserved) return { status: 'error', error: new Error('Não foi possível reservar a ocorrência programada.') };
+  if (reserved.transaction_id || reserved.execution_status === 'executed') {
+    return { status: 'already_executed', occurrence: reserved };
+  }
+  if (reserved.execution_token !== executionToken) {
+    return { status: 'locked_by_other', occurrence: reserved };
+  }
+  return { status: 'reserved', occurrence: reserved, executionToken };
+}
+
+async function _markScheduledOccurrenceFailure(scId, scheduledDate, executionToken, actualDate, amount, memo, errorMessage) {
+  const payload = {
+    actual_date: actualDate,
+    amount,
+    memo: memo ?? null,
+    execution_status: 'failed',
+  };
+  if (errorMessage) payload.error_message = String(errorMessage).slice(0, 1000);
+
+  let q = sb.from('scheduled_occurrences').update(payload)
+    .eq('scheduled_id', scId)
+    .eq('scheduled_date', scheduledDate);
+  if (executionToken) q = q.eq('execution_token', executionToken);
+  await q.then(()=>{}).catch(()=>{});
+}
+
+async function _finalizeScheduledOccurrence(scId, scheduledDate, executionToken, actualDate, amount, memo, transactionId) {
+  const payload = {
+    actual_date: actualDate,
+    amount,
+    memo: memo ?? null,
+    transaction_id: transactionId,
+    execution_status: 'executed',
+    executed_at: new Date().toISOString(),
+  };
+  let q = sb.from('scheduled_occurrences').update(payload)
+    .eq('scheduled_id', scId)
+    .eq('scheduled_date', scheduledDate);
+  if (executionToken) q = q.eq('execution_token', executionToken);
+  const { error } = await q;
+  return { error };
+}
+
+async function processScheduledOccurrence(sc, opts = {}) {
+  const scheduledDate = opts.scheduledDate;
+  const actualDate = opts.actualDate || scheduledDate;
+  const memo = opts.memo ?? sc.memo ?? null;
+  const amountInput = Number(opts.amount ?? sc.amount ?? 0);
+  const isScTransfer = sc.type === 'transfer' || sc.type === 'card_payment';
+  const finalAmount = opts.finalAmount ?? ((sc.type === 'expense' || isScTransfer) ? -Math.abs(amountInput) : Math.abs(amountInput));
+  const txStatus = (sc.auto_confirm ?? true) ? 'confirmed' : 'pending';
+
+  const reservation = await _reserveScheduledOccurrence(sc, scheduledDate, actualDate, finalAmount, memo);
+  if (reservation.status === 'already_executed' || reservation.status === 'locked_by_other') {
+    return reservation;
+  }
+  if (reservation.status === 'error') {
+    return reservation;
+  }
+
+  const executionToken = reservation.executionToken;
+
+  const txPayload = {
+    family_id: famId(),
+    date: actualDate,
+    description: sc.description,
+    amount: finalAmount,
+    account_id: sc.account_id,
+    payee_id: isScTransfer ? null : (sc.payee_id || null),
+    category_id: sc.category_id || null,
+    memo,
+    tags: sc.tags,
+    is_transfer: isScTransfer,
+    is_card_payment: sc.type === 'card_payment',
+    transfer_to_account_id: isScTransfer ? sc.transfer_to_account_id : null,
+    updated_at: new Date().toISOString(),
+    status: txStatus,
+  };
+
+  const { data: txData, error: txErr } = await sb.from('transactions').insert(txPayload).select().single();
+  if (txErr) {
+    await _markScheduledOccurrenceFailure(sc.id, scheduledDate, executionToken, actualDate, finalAmount, memo, txErr.message);
+    return { status: 'error', error: txErr };
+  }
+
+  if (isScTransfer) {
+    try {
+      await _createPairedTransferLeg(txData, sc, actualDate, memo);
+    } catch (pairErr) {
+      console.warn('[scheduled paired leg]', pairErr?.message || pairErr);
+    }
+  }
+
+  const { error: occErr } = await _finalizeScheduledOccurrence(sc.id, scheduledDate, executionToken, actualDate, finalAmount, memo, txData.id);
+  if (occErr) {
+    await _markScheduledOccurrenceFailure(sc.id, scheduledDate, executionToken, actualDate, finalAmount, memo, occErr.message);
+    return { status: 'error', error: occErr, transaction: txData };
+  }
+
+  return { status: 'executed', transaction: txData, executionToken, amount: finalAmount, actualDate, txStatus };
+}
+
 // ── Frequency helpers ──────────────────────────────────
 const FREQ_LABELS = {
   once: 'Uma vez', weekly: 'Semanal', biweekly: 'Quinzenal',
@@ -122,7 +267,7 @@ function scStatusLabel(sc) {
 // ── Load & Render ──────────────────────────────────────
 async function loadScheduled() {
   try {
-    const { data, error } = await famQ(sb.from('scheduled_transactions').select('*, accounts!scheduled_transactions_account_id_fkey(name,currency), payees(name), categories(name,color), occurrences:scheduled_occurrences(id,scheduled_date,actual_date,amount,memo,transaction_id)'));
+    const { data, error } = await famQ(sb.from('scheduled_transactions').select('*, accounts!scheduled_transactions_account_id_fkey(name,currency), payees(name), categories(name,color), occurrences:scheduled_occurrences(id,scheduled_date,actual_date,amount,memo,transaction_id,execution_status,executed_at)'));
     if(error) throw error;
     state.scheduled = data || [];
 
@@ -780,74 +925,33 @@ async function confirmRegisterOccurrence() {
   const actualDate = document.getElementById('occDate').value;
   const amount = getAmtField('occAmount') || Math.abs(sc.amount);
   const memo = document.getElementById('occMemo').value;
-  const isScTransfer = sc.type==='transfer' || sc.type==='card_payment';
-  const finalAmount = (sc.type==='expense' || isScTransfer) ? -Math.abs(amount) : Math.abs(amount);
 
-  // 1. Create real transaction (debit / origin leg)
-  const txStatus = (sc.auto_confirm ?? true) ? 'confirmed' : 'pending';
-  const { data: txData, error: txErr } = await sb.from('transactions').insert({ family_id: famId(),
-    date: actualDate,
-    description: sc.description,
-    amount: finalAmount,
-    account_id: sc.account_id,
-    payee_id: sc.payee_id || null,
-    category_id: sc.category_id || null,
-    memo: memo || sc.memo,
-    tags: sc.tags,
-    is_transfer: isScTransfer,
-    is_card_payment: sc.type==='card_payment',
-    transfer_to_account_id: isScTransfer ? sc.transfer_to_account_id : null,
-    updated_at: new Date().toISOString(),
-    status: txStatus,
-  }).select().single();
-  if(txErr) { toast(txErr.message,'error'); return; }
+  const result = await processScheduledOccurrence(sc, {
+    scheduledDate: schedDate,
+    actualDate,
+    amount,
+    memo: memo || sc.memo || null,
+  });
 
-  // 1b. For transfers/card payments, create the paired credit leg
-  if(isScTransfer && sc.transfer_to_account_id && txData?.id) {
-    const pairedTx = {
-      family_id: famId(),
-      date: actualDate,
-      description: sc.description,
-      amount: Math.abs(finalAmount),
-      account_id: sc.transfer_to_account_id,
-      payee_id: null,
-      category_id: sc.category_id || null,
-      memo: memo || sc.memo,
-      tags: sc.tags,
-      is_transfer: true,
-      is_card_payment: sc.type==='card_payment',
-      transfer_to_account_id: sc.account_id,
-      updated_at: new Date().toISOString(),
-    };
-    // Try with linked_transfer_id first; fall back without if column doesn't exist yet
-    let pairedResult, pairedErr;
-    ({data: pairedResult, error: pairedErr} = await sb.from('transactions')
-      .insert({...pairedTx, linked_transfer_id: txData.id}).select().single());
-    if(pairedErr && pairedErr.message?.includes('linked_transfer_id')) {
-      ({data: pairedResult, error: pairedErr} = await sb.from('transactions')
-        .insert(pairedTx).select().single());
-    }
-    if(pairedErr) {
-      toast('Transação salva, mas erro ao criar lançamento de entrada: ' + pairedErr.message, 'warning');
-    } else if(pairedResult?.id) {
-      await sb.from('transactions').update({linked_transfer_id: pairedResult.id}).eq('id', txData.id).then(()=>{}).catch(()=>{});
-    }
+  if(result.status === 'already_executed') {
+    toast('Essa ocorrência já foi registrada anteriormente.', 'warning');
+    closeModal('registerOccModal');
+    await loadScheduled();
+    return;
+  }
+  if(result.status === 'locked_by_other') {
+    toast('Essa ocorrência já está sendo processada em outra execução.', 'warning');
+    await loadScheduled();
+    return;
+  }
+  if(result.status === 'error') {
+    toast(result.error?.message || 'Erro ao registrar ocorrência.', 'error');
+    return;
   }
 
-  // 2. Register occurrence
-  const { error: occErr } = await sb.from('scheduled_occurrences').insert({
-    scheduled_id: scId,
-    scheduled_date: schedDate,
-    actual_date: actualDate,
-    amount: finalAmount,
-    memo,
-    transaction_id: txData.id,
-  });
-  if(occErr) { toast(occErr.message,'error'); return; }
-
-  toast('Transação registrada!','success');
+  toast('Transação registrada!', 'success');
   closeModal('registerOccModal');
-  loadScheduled();
+  await loadScheduled();
 }
 
 // Payee autocomplete for SC modal uses shared onPayeeInput/selectPayee with ctx='sc'
@@ -885,8 +989,15 @@ CREATE TABLE IF NOT EXISTS scheduled_occurrences (
   amount NUMERIC,
   memo TEXT,
   transaction_id UUID REFERENCES transactions(id),
+  execution_status TEXT NOT NULL DEFAULT 'pending' CHECK (execution_status IN ('pending','processing','executed','failed','skipped')),
+  execution_token UUID,
+  executed_at TIMESTAMPTZ,
+  error_message TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_scheduled_occurrence ON scheduled_occurrences (scheduled_id, scheduled_date);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_scheduled_occurrence_tx ON scheduled_occurrences (transaction_id) WHERE transaction_id IS NOT NULL;
 
 -- Enable RLS
 ALTER TABLE scheduled_transactions ENABLE ROW LEVEL SECURITY;
@@ -918,70 +1029,41 @@ async function runScheduledAutoRegister() {
     for(const sc of state.scheduled) {
       if(sc.status !== 'active' || !sc.auto_register) continue;
       const occDates = generateOccurrences(sc, 500);
-      const registered = new Set((sc.occurrences||[]).filter(o=>o.transaction_id).map(o=>o.scheduled_date));
       for(const d of occDates) {
         if(d > toStr) continue;
-        if(registered.has(d)) continue;
 
-        // Reuse manual register flow (but without UI modal)
-        const actualDate = d; // register on scheduled date
-        const isScTransfer = sc.type==='transfer' || sc.type==='card_payment';
-        const amount = sc.amount;
-        const finalAmount = amount; // already signed in DB
-        const txStatus = (sc.auto_confirm ?? true) ? 'confirmed' : 'pending';
-
-        const { data: txData, error: txErr } = await sb.from('transactions').insert({ family_id: famId(),
-          date: actualDate,
-          description: sc.description,
-          amount: finalAmount,
-          account_id: sc.account_id,
-          payee_id: isScTransfer ? null : (sc.payee_id || null),
-          category_id: sc.category_id || null,
+        const result = await processScheduledOccurrence(sc, {
+          scheduledDate: d,
+          actualDate: d,
+          amount: Math.abs(sc.amount),
           memo: sc.memo,
-          tags: sc.tags,
-          is_transfer: isScTransfer,
-          is_card_payment: sc.type==='card_payment',
-          transfer_to_account_id: isScTransfer ? sc.transfer_to_account_id : null,
-          updated_at: new Date().toISOString(),
-          status: txStatus,
-        }).select().single();
-        if(txErr) { console.warn('[auto_register]', txErr.message); continue; }
+          finalAmount: sc.amount,
+        });
 
-        if(isScTransfer) await _createPairedTransferLeg(txData, sc, actualDate, sc.memo);
+        if(result.status === 'already_executed' || result.status === 'locked_by_other') continue;
+        if(result.status === 'error') {
+          console.warn('[auto_register]', result.error?.message || result.error);
+          continue;
+        }
 
-        createdItems.push({ scheduled_id: sc.id, description: sc.description, date: actualDate, amount: finalAmount, status: txStatus, tx_id: txData.id, notify_email: sc.notify_email, notify_email_addr: sc.notify_email_addr });
+        createdItems.push({ scheduled_id: sc.id, description: sc.description, date: d, amount: result.amount, status: result.txStatus, tx_id: result.transaction?.id, notify_email: sc.notify_email, notify_email_addr: sc.notify_email_addr });
 
-        // Optional email notification via EmailJS
         try{
           const cfg2 = getAutoCheckConfig ? getAutoCheckConfig() : null;
           const method = cfg2?.method || 'browser';
           const emailTo = sc.notify_email ? (sc.notify_email_addr || cfg2?.emailDefault || currentUser?.email) : null;
           if(method==='email' && emailTo && typeof sendScheduledNotification==='function') {
-            await sendScheduledNotification(sc, actualDate, finalAmount, emailTo);
+            await sendScheduledNotification(sc, d, result.amount, emailTo);
           }
         }catch(e){ console.warn('[auto_register notify]', e.message); }
 
-
-        // mark occurrence
-        const { error: occErr } = await sb.from('scheduled_occurrences').insert({
-          scheduled_id: sc.id,
-          scheduled_date: d,
-          actual_date: actualDate,
-          amount: finalAmount,
-          memo: sc.memo,
-          transaction_id: txData.id
-        });
-        if(occErr) console.warn('[auto_register occ]', occErr.message);
-
         created++;
 
-        // If this scheduled is one-time, remove it from scheduled list after execution on its due date
         try{
           if((sc.frequency==='once' || sc.frequency==='single' || !sc.frequency) && d===todayStr){
             await sb.from('scheduled_transactions').delete().eq('id', sc.id);
           }
         }catch(e){ console.warn('[auto_register delete]', e.message); }
-
       }
     }
     if(created) {

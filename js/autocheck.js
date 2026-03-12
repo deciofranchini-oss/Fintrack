@@ -237,115 +237,27 @@ async function runAutoRegister(manual=false) {
   const cfg = getAutoCheckConfig();
   if(!manual && !cfg.enabled) return;
 
-  const today = new Date();
-  const cutoffDate = new Date(today);
-  cutoffDate.setDate(cutoffDate.getDate() + (cfg.daysAhead||0));
-  const cutoff = cutoffDate.toISOString().slice(0,10);
-
   if(manual) toast('🔄 Verificando transações programadas...', 'info');
 
   try {
-    // Load active scheduled transactions with auto_register=true
-    const { data: schedList, error } = await sb.from('scheduled_transactions')
-      .select('*, accounts(id,name,currency,balance), categories(id,name), payees(id,name)')
-      .eq('status', 'active')
-      .eq('auto_register', true);
-
-    if(error) { if(manual) toast('Erro: ' + error.message, 'error'); return; }
-    if(!schedList?.length) {
-      if(manual) toast('Nenhuma transação com registro automático ativo', 'info');
-      updateLastRunConfig(0);
-      return;
+    if (typeof runScheduledAutoRegister === 'function') {
+      const totalRegistered = await runScheduledAutoRegister();
+      updateLastRunConfig(totalRegistered || 0);
+      if(manual) {
+        if(totalRegistered) toast(`✓ ${totalRegistered} transação(ões) programada(s) registrada(s)`, 'success');
+        else toast('Nenhuma transação pendente para registrar', 'info');
+      }
+      return totalRegistered || 0;
     }
 
-    let totalRegistered = 0;
-    let totalNotified = 0;
-
-    for(const sc of schedList) {
-      const dates = getScheduledDates(sc, cutoff);
-      for(const date of dates) {
-        // Check if already registered
-        const { data: existing } = await sb.from('scheduled_occurrences')
-          .select('id')
-          .eq('scheduled_id', sc.id)
-          .eq('scheduled_date', date)
-          .not('transaction_id', 'is', null)
-          .maybeSingle();
-
-        if(existing) continue; // already done
-
-        // Create the transaction
-        const txAmt = sc.type === 'expense' ? -Math.abs(sc.amount) : Math.abs(sc.amount);
-        const { data: newTx, error: txErr } = await sb.from('transactions').insert({ family_id: famId(),
-          account_id:  sc.account_id,
-          description: sc.description,
-          amount:      txAmt,
-          date:        date,
-          category_id: sc.category_id || null,
-          payee_id:    sc.payee_id    || null,
-          memo:        sc.memo ? `[Auto] ${sc.memo}` : '[Registro automático]',
-          is_transfer: false,
-        }).select().single();
-
-        if(txErr) { console.error('[AutoReg] Tx error:', txErr.message); continue; }
-
-        // Update account balance
-        const newBal = (parseFloat(sc.accounts?.balance)||0) + txAmt;
-        await sb.from('accounts').update({ balance: newBal }).eq('id', sc.account_id);
-
-        // Mark occurrence as registered
-        await sb.from('scheduled_occurrences').upsert({
-          scheduled_id:  sc.id,
-          scheduled_date: date,
-          actual_date:   new Date().toISOString().slice(0,10),
-          amount:        txAmt,
-          transaction_id: newTx.id,
-        }, { onConflict: 'scheduled_id,scheduled_date' });
-
-        totalRegistered++;
-
-        // Send email notification if configured
-        if(sc.notify_email && (sc.notify_email_addr || cfg.emailDefault)) {
-          const emailTo = sc.notify_email_addr || cfg.emailDefault;
-          await sendScheduledNotification(sc, date, txAmt, emailTo);
-          totalNotified++;
-        }
-      }
-
-      // Send UPCOMING notifications (notify_days_before)
-      if(sc.notify_email) {
-        const daysBefore = sc.notify_days_before || 1;
-        const upcoming = getScheduledDates(sc, new Date(Date.now() + daysBefore*86400000).toISOString().slice(0,10));
-        const todayStr = new Date().toISOString().slice(0,10);
-        for(const date of upcoming) {
-          if(date > todayStr) {
-            // Upcoming - send notification if not already sent
-            const emailTo = sc.notify_email_addr || cfg.emailDefault;
-            if(emailTo) await sendUpcomingNotification(sc, date, emailTo, daysBefore);
-          }
-        }
-      }
-    }
-
-    // Update last run
-    updateLastRunConfig(totalRegistered);
-    await loadAccounts(); // refresh balances
-
-    if(manual) {
-      if(totalRegistered > 0) {
-        toast(`✅ ${totalRegistered} transação(ões) registrada(s) automaticamente!`, 'success');
-        if(state.currentPage === 'transactions') loadTransactions();
-        if(state.currentPage === 'dashboard') loadDashboard();
-      } else {
-        toast('✅ Verificação concluída — nenhuma transação pendente', 'info');
-      }
-    } else if(totalRegistered > 0) {
-      toast(`🤖 ${totalRegistered} transação(ões) registrada(s) automaticamente`, 'success');
-    }
-
-  } catch(e) {
-    console.error('[AutoReg] Error:', e);
-    if(manual) toast('Erro na verificação: ' + e.message, 'error');
+    if(manual) toast('Motor de programados não disponível no momento.', 'warning');
+    updateLastRunConfig(0);
+    return 0;
+  } catch(err) {
+    console.error('[AutoReg] Error:', err);
+    if(manual) toast('Erro ao verificar programados: ' + (err.message || err), 'error');
+    updateLastRunConfig(0);
+    return 0;
   }
 }
 
