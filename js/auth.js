@@ -173,38 +173,20 @@ async function _loadCurrentUserContext() {
   const roleRank = { owner: 4, admin: 3, user: 2, editor: 2, viewer: 1 };
   const byFamily = new Map();
   (fm || []).filter(r => r.family_id).forEach(r => {
-    const item = { id: r.family_id, name: r.families?.name || null, role: r.role || 'user' };
+    const item = { id: r.family_id, name: r.families?.name || r.family_id, role: r.role || 'user' };
     const prev = byFamily.get(item.id);
     if (!prev || (roleRank[item.role] || 0) > (roleRank[prev.role] || 0)) byFamily.set(item.id, item);
   });
-  let userFamilies = Array.from(byFamily.values());
-
-  // Completa nomes faltantes sem depender apenas do nested join family_members -> families.
-  if (_families?.length) {
-    userFamilies = userFamilies.map(f => ({
-      ...f,
-      name: f.name || _families.find(ff => ff.id === f.id)?.name || f.id
-    }));
-  }
-  const missingFamilyNameIds = userFamilies.filter(f => !f.name || f.name === f.id).map(f => f.id);
-  if (missingFamilyNameIds.length) {
-    try {
-      const { data: famRows } = await sb
-        .from('families')
-        .select('id,name')
-        .in('id', missingFamilyNameIds);
-      const famMap = new Map((famRows || []).map(x => [x.id, x.name]));
-      userFamilies = userFamilies.map(f => ({
-        ...f,
-        name: famMap.get(f.id) || f.name || f.id
-      }));
-    } catch (_) {}
-  }
+  let userFamilies = await _enrichFamilyNames(Array.from(byFamily.values()));
 
   // Fallback: se family_members ainda não tem dados, usa app_users.family_id
   // mas tenta buscar o nome real da família para não exibir UUID na UI.
   if (!userFamilies.length && appUserRow?.family_id) {
     let famName = appUserRow.family_id;
+    try {
+      const catalog = await _loadFamiliesCatalog();
+      famName = catalog.find(f => f.id === appUserRow.family_id)?.name || famName;
+    } catch (_) {}
     try {
       const { data: famRow } = await sb
         .from('families')
@@ -218,6 +200,7 @@ async function _loadCurrentUserContext() {
     const fallbackRole = (appRole === 'admin' || appRole === 'owner') ? 'owner' : appRole;
     userFamilies = [{ id: appUserRow.family_id, name: famName, role: fallbackRole }];
   }
+  userFamilies = await _enrichFamilyNames(userFamilies);
 
   // Prioridade: 1) preferência salva no banco, 2) última usada (localStorage), 3) primeira da lista
   const preferredFamId = appUserRow?.preferred_family_id || null;
@@ -1226,6 +1209,79 @@ function _ownedFamilies() {
     .map(f => _families.find(ff => ff.id === f.id) || f);
 }
 
+
+function _looksLikeUuid(v) {
+  return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
+}
+
+function _normalizeFamilyRow(row = {}) {
+  const id = row.id || row.family_id || null;
+  const rawName = row.name || row.family_name || row.label || null;
+  const name = rawName || id || '';
+  return {
+    id,
+    name,
+    description: row.description || null,
+    active: row.active !== false,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null,
+    role: row.role || row.user_role || 'user'
+  };
+}
+
+async function _fetchManageableFamiliesRpc() {
+  try {
+    const { data, error } = await sb.rpc('get_manageable_families');
+    if (error) throw error;
+    return (data || []).map(_normalizeFamilyRow).filter(f => f.id);
+  } catch (_) {
+    return [];
+  }
+}
+
+async function _enrichFamilyNames(items = []) {
+  let out = (items || []).map(_normalizeFamilyRow).filter(f => f.id);
+  const missingIds = out.filter(f => !f.name || _looksLikeUuid(f.name)).map(f => f.id);
+  if (!missingIds.length) return out;
+
+  const byId = new Map();
+  (_families || []).forEach(f => {
+    const ff = _normalizeFamilyRow(f);
+    if (ff.id && ff.name && !_looksLikeUuid(ff.name)) byId.set(ff.id, ff.name);
+  });
+
+  if (missingIds.some(id => !byId.has(id))) {
+    const rpcFamilies = await _fetchManageableFamiliesRpc();
+    rpcFamilies.forEach(f => { if (f.id && f.name && !_looksLikeUuid(f.name)) byId.set(f.id, f.name); });
+  }
+
+  const stillMissing = missingIds.filter(id => !byId.has(id));
+  if (stillMissing.length) {
+    try {
+      const { data } = await sb.from('families').select('id,name,description,active,created_at,updated_at').in('id', stillMissing);
+      (data || []).forEach(f => { if (f.id && f.name) byId.set(f.id, f.name); });
+    } catch (_) {}
+  }
+
+  return out.map(f => ({ ...f, name: byId.get(f.id) || f.name || f.id }));
+}
+
+async function _loadFamiliesCatalog() {
+  let families = await _fetchManageableFamiliesRpc();
+  if (!families.length) {
+    try {
+      const { data, error } = await sb.from('families').select('id,name,description,active,created_at,updated_at').order('name');
+      if (!error) families = (data || []).map(_normalizeFamilyRow);
+    } catch (_) {}
+  }
+  if (!families.length && currentUser?.families?.length) {
+    families = await _enrichFamilyNames(currentUser.families);
+  }
+  _families = (families || []).map(_normalizeFamilyRow);
+  return _families;
+}
+
+
 function switchUATab(tab) {
   ['pending','users','families'].forEach(t => {
     const panel = document.getElementById('uaTab' + t[0].toUpperCase() + t.slice(1));
@@ -1378,48 +1434,16 @@ async function _inlineReject(userId, userName) {
 async function loadFamiliesList() {
   // ── Carregar famílias ──────────────────────────────────────────────────────
   let families = [];
-  let lastErr = null;
   try {
-    const { data, error } = await sb.rpc('get_manageable_families');
-    if (error) throw error;
-    families = data || [];
+    families = await _loadFamiliesCatalog();
   } catch (e) {
-    lastErr = e;
-    try {
-      const { data, error } = await sb.from('families').select('*').order('name');
-      if (error) throw error;
-      families = data || [];
-    } catch (e2) {
-      lastErr = e2;
-      families = [];
-    }
+    families = [];
+  }
+  if (!families.length && currentUser?.families?.length) {
+    families = await _enrichFamilyNames(currentUser.families);
+    _families = families;
   }
 
-  // Garante que owners continuem vendo suas famílias mesmo se a leitura direta de families falhar.
-  const merged = new Map();
-  (families || []).forEach(f => { if (f?.id) merged.set(f.id, f); });
-  (currentUser?.families || []).forEach(f => {
-    if (!f?.id) return;
-    const prev = merged.get(f.id) || {};
-    merged.set(f.id, {
-      ...prev,
-      id: f.id,
-      name: prev.name || f.name || f.id,
-      description: prev.description || null,
-      active: prev.active ?? true,
-      my_role: prev.my_role || f.role || 'user'
-    });
-  });
-  _families = Array.from(merged.values()).sort((a,b) => String(a.name||'').localeCompare(String(b.name||''), 'pt-BR'));
-
-  if (!_families.length && lastErr) {
-    const el = document.getElementById('familiesList');
-    if (el) el.innerHTML = `<div style="background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:14px;font-size:.82rem">
-      ⚠️ <strong>Não foi possível carregar as famílias.</strong><br>
-      ${esc(lastErr.message || 'Verifique a configuração de RLS/RPC no Supabase.')}
-    </div>`;
-    return;
-  }
 
   const el = document.getElementById('familiesList');
   if (!el) return;
@@ -1484,8 +1508,10 @@ async function loadFamiliesList() {
 
   const isGlobalAdmin = currentUser?.role === 'admin'; // owner vê só as suas famílias
 
-  // Usa a lista owned + enrich em _families, evitando sumiço por interseção frágil.
-  const visibleFamilies = isGlobalAdmin ? _families : _ownedFamilies();
+  // If not global admin, show only families where user is owner
+  const visibleFamilies = isGlobalAdmin
+    ? _families
+    : _families.filter(f => (currentUser?.families||[]).some(uf => uf.id === f.id && uf.role === 'owner'));
 
   if (!visibleFamilies.length && !isGlobalAdmin) {
     el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:.83rem">Você não é owner de nenhuma família.<br>Apenas owners podem gerenciar famílias.</div>';
@@ -1605,12 +1631,14 @@ function showFamilyForm(id='') {
   document.getElementById('familyFormTitle').textContent = id ? 'Editar Família' : 'Nova Família';
   document.getElementById('familyFormArea').style.display = '';
   if (id) {
-    const f = _families.find(x => x.id === id);
-    if (f) { document.getElementById('fName').value = f.name; document.getElementById('fDesc').value = f.description||''; }
+    const f = _normalizeFamilyRow(_families.find(x => x.id === id) || (currentUser?.families || []).find(x => x.id === id) || { id, name: id });
+    document.getElementById('fName').value = (!_looksLikeUuid(f.name) ? f.name : (_families.find(x => x.id === id)?.name || '')) || '';
+    document.getElementById('fDesc').value = f.description||'';
   }
 }
 
 function editFamily(id) { showFamilyForm(id); document.getElementById('familyFormArea').scrollIntoView({behavior:'smooth'}); }
+
 
 async function saveFamily() {
   const id   = document.getElementById('editFamilyId').value;
@@ -1622,70 +1650,35 @@ async function saveFamily() {
   const isFamOwner    = !id || (currentUser?.families||[]).some(f => f.id === id && f.role === 'owner');
   if (!isGlobalAdmin && !isFamOwner) { toast('Sem permissão para editar esta família','error'); return; }
 
-  const data = { name, description: desc||null };
   let error, newFam;
-  if (id) {
-    try {
-      const res = await sb.rpc('update_family_as_owner', {
-        p_family_id: id,
-        p_name: data.name,
-        p_description: data.description
-      });
-      error = res.error;
-      newFam = Array.isArray(res.data) ? res.data[0] : res.data;
-      if (error) throw error;
-    } catch (e) {
-      const res = await sb.from('families').update(data).eq('id', id).select().single();
-      error = res.error;
-      newFam = res.data;
+  try {
+    if (id) {
+      const rpc = await sb.rpc('update_family_as_owner', { p_family_id: id, p_name: name, p_description: desc || null });
+      if (rpc.error) throw rpc.error;
+      newFam = _normalizeFamilyRow(rpc.data || { id, name, description: desc || null });
+    } else {
+      const rpc = await sb.rpc('create_family_with_owner', { p_name: name, p_description: desc || null });
+      if (rpc.error) throw rpc.error;
+      newFam = _normalizeFamilyRow(rpc.data || {});
+      if (!newFam?.id) {
+        const fallback = await sb.from('families').insert({ name, description: desc || null }).select().single();
+        if (fallback.error) throw fallback.error;
+        newFam = _normalizeFamilyRow(fallback.data || {});
+      }
     }
-  } else {
-    try {
-      const res = await sb.rpc('create_family_with_owner', {
-        p_name: data.name,
-        p_description: data.description
-      });
-      error = res.error;
-      newFam = Array.isArray(res.data) ? res.data[0] : res.data;
-      if (error) throw error;
-    } catch (e) {
-      const res = await sb.from('families').insert(data).select().single();
-      error = res.error;
-      newFam = res.data;
-    }
+  } catch (e) {
+    error = e;
   }
   if (error) { toast('Erro: '+error.message,'error'); return; }
 
-  // Quando uma nova família é criada: vincular o usuário logado como owner
-  if (!id && newFam?.id && currentUser?.id) {
-    // Buscar app_users.id do usuário logado (currentUser.id é auth.uid)
-    const { data: appRow } = await sb.from('app_users').select('id, family_id, preferred_family_id').eq('email', currentUser.email).maybeSingle();
-    if (appRow?.id) {
-      await sb.from('family_members').upsert(
-        { user_id: appRow.id, family_id: newFam.id, role: 'owner' },
-        { onConflict: 'user_id,family_id' }
-      ).catch(()=>{});
-
-      // Em bases legadas, manter a primeira família também em app_users para compatibilidade
-      if (!appRow.family_id) {
-        await sb.from('app_users').update({ family_id: newFam.id }).eq('id', appRow.id).catch(()=>{});
-      }
-      if (!appRow.preferred_family_id) {
-        await sb.from('app_users').update({ preferred_family_id: newFam.id }).eq('id', appRow.id).catch(()=>{});
-      }
-    }
-  }
-
   toast(id ? '✓ Família atualizada!' : '✓ Família criada! Você é o owner.','success');
   document.getElementById('familyFormArea').style.display = 'none';
+  await _loadCurrentUserContext().catch(()=>{});
   await loadFamiliesList();
-  // Recarregar famílias do usuário no contexto
-  if (!id && newFam?.id) {
-    await _loadCurrentUserContext().catch(()=>{});
-    updateUserUI();
-    _renderFamilySwitcher();
-  }
+  updateUserUI();
+  _renderFamilySwitcher();
 }
+
 
 async function deleteFamily(id, name) {
   const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
@@ -1693,20 +1686,30 @@ async function deleteFamily(id, name) {
 
   if (!isGlobalAdmin && !isFamOwner) { toast('Apenas admins ou o owner da família podem excluir','error'); return; }
 
-  // Owner de família: não pode excluir se for a única que possui
-  if (!isGlobalAdmin && isFamOwner) {
-    const ownedCount = (currentUser?.families || []).filter(f => f.role === 'owner').length;
-    if (ownedCount <= 1) {
-      toast('Você não pode excluir sua única família. Crie outra primeiro.','warning');
-      return;
-    }
-  }
+  const familyLabel = (!_looksLikeUuid(name) && name) ? name : ((_families.find(f => f.id === id)?.name) || name || id);
+  const typed = window.prompt(
+    `⚠️ EXCLUSÃO TOTAL
 
-  if (!confirm(`Excluir a família "${name}"?\n\nOs usuários vinculados ficarão sem família, mas seus dados (transações, contas, etc.) NÃO serão apagados.\n\nEsta ação não pode ser desfeita.`)) return;
-  const { error } = await sb.from('families').delete().eq('id', id);
+Isto irá apagar definitivamente a família "${familyLabel}" e TODOS os registros relacionados no banco de dados.
+
+Essa ação remove membros, contas, transações, categorias, beneficiários, orçamentos, preços, programados e backups.
+
+Para confirmar, digite exatamente o nome da família:`
+  );
+  if (typed !== familyLabel) { toast('Nome incorreto — exclusão cancelada','warning'); return; }
+
+  const { error } = await sb.rpc('delete_family_cascade', { p_family_id: id });
   if (error) { toast('Erro: '+error.message,'error'); return; }
-  toast('Família removida','success');
+
+  if (String(currentUser?.family_id || '') === String(id)) {
+    currentUser.family_id = null;
+    currentUser.preferred_family_id = null;
+  }
+  await _loadCurrentUserContext().catch(()=>{});
   await loadFamiliesList();
+  updateUserUI();
+  _renderFamilySwitcher();
+  toast('Família excluída definitivamente','success');
 }
 
 async function wipeFamilyData(id, name) {
