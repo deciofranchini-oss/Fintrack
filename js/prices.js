@@ -26,7 +26,11 @@ const _px = {
 async function isPricesEnabled() {
   const famId = currentUser?.family_id;
   if (!famId) return false;
-  const val = await getAppSetting('prices_enabled_' + famId, false);
+  const cacheKey = 'prices_enabled_' + famId;
+  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache) {
+    return !!window._familyFeaturesCache[cacheKey];
+  }
+  const val = await getAppSetting(cacheKey, false);
   return val === true || val === 'true';
 }
 
@@ -59,7 +63,12 @@ async function applyGroceryFeature() {
 async function isGroceryEnabled() {
   const famId = currentUser?.family_id;
   if (!famId) return false;
-  const val = await getAppSetting('grocery_enabled_' + famId, false);
+  // Check admin panel cache first (set by toggleFamilyFeature)
+  const cacheKey = 'grocery_enabled_' + famId;
+  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache) {
+    return !!window._familyFeaturesCache[cacheKey];
+  }
+  const val = await getAppSetting(cacheKey, false);
   return val === true || val === 'true';
 }
 

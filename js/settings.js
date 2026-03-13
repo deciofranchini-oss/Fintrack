@@ -839,6 +839,7 @@ async function resetSettingsVisibility() {
 // Aplica a visibilidade das seções para usuário não-admin
 function applySettingsVisibility(vis) {
   const isAdmin = (currentUser?.role === 'admin');
+  initFamModulesRow();
   if (isAdmin) return; // admins veem tudo — não aplica restrição
 
   vis = vis || _getSettingsVisibility();
@@ -892,6 +893,74 @@ async function applyUserFeatureFlags() {
 // LINK DA ESCOLA — configuração e aplicação
 // ═══════════════════════════════════════════════════════════════════
 
+
+// ── Módulos da família na página de Configurações ──────────────────
+function initFamModulesRow() {
+  const row = document.getElementById('famModulesRow');
+  const pills = document.getElementById('famModulesPills');
+  if (!row || !pills) return;
+
+  const isOwnerOrAdmin = currentUser?.can_admin || currentUser?.can_manage_family ||
+                         currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  if (!isOwnerOrAdmin) { row.style.display = 'none'; return; }
+
+  const famId = currentUser?.family_id;
+  if (!famId) { row.style.display = 'none'; return; }
+
+  row.style.display = '';
+
+  const keys = [
+    { key: 'prices_enabled_'  + famId, label: 'Preços',   emoji: '🏷️', applyFn: 'applyPricesFeature'  },
+    { key: 'grocery_enabled_' + famId, label: 'Mercado',  emoji: '🛒', applyFn: 'applyGroceryFeature' },
+    { key: 'backup_enabled_'  + famId, label: 'Backup',   emoji: '☁️', applyFn: null },
+    { key: 'snapshot_enabled_'+ famId, label: 'Snapshot', emoji: '📸', applyFn: null },
+  ];
+
+  function renderPills() {
+    const fc = window._familyFeaturesCache || {};
+    pills.innerHTML = keys.map(({ key, label, emoji, applyFn }) => {
+      const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup')||key.includes('snapshot'));
+      return `<button class="fam-mod-pill ${on?'on':''}"
+        onclick="_cfgToggleModule('${key}','${famId}','${label}','${applyFn||''}')"
+        title="${on?'Desativar':'Ativar'} ${label}">
+        ${emoji} ${label}
+        <span class="fam-mod-dot">${on?'●':'○'}</span>
+      </button>`;
+    }).join('');
+  }
+
+  // Ensure cache loaded
+  (async () => {
+    if (!window._familyFeaturesCache || !Object.keys(window._familyFeaturesCache).length) {
+      try {
+        const { data } = await sb.from('app_settings')
+          .select('key,value')
+          .in('key', keys.map(k => k.key));
+        if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+        (data||[]).forEach(row => {
+          window._familyFeaturesCache[row.key] = (row.value === true || row.value === 'true');
+        });
+      } catch {}
+    }
+    renderPills();
+  })();
+}
+
+async function _cfgToggleModule(key, famId, label, applyFn) {
+  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+  const wasOn = !!window._familyFeaturesCache[key];
+  const nowOn = !wasOn;
+  window._familyFeaturesCache[key] = nowOn;
+  try {
+    await saveAppSetting(key, nowOn);
+    if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
+    toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
+  } catch (e) {
+    window._familyFeaturesCache[key] = wasOn; // revert
+    toast('Erro: ' + e.message, 'error');
+  }
+  initFamModulesRow(); // re-render pills
+}
 /* ══════════════════════════════════════════════════════════════════
    SERVICE ROLE KEY — armazenada só em localStorage, nunca no banco
    Usada para criar sbAdmin client com auth.admin.updateUserById

@@ -110,90 +110,84 @@ async function loadFamiliesList() {
 
   el.innerHTML = _families.map(f => {
     const members = usersByFamily[f.id] || [];
-    const membersHtml = members.length
-      ? members.map(u => `
-          <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:.82rem;flex:1"><strong>${esc(u.name||'—')}</strong> <span style="color:var(--muted);font-size:.75rem">${esc(u.email)}</span></span>
-            <span class="badge ${(u.role==='admin'||u.role==='owner')?'badge-amber':'badge-muted'}" style="font-size:.7rem">${u.family_member_role || u.role}</span>
-            <button class="btn-icon" title="Remover da família" onclick="removeUserFromFamily('${u.id}','${esc(u.name||u.email)}','${esc(f.name)}')">✕</button>
-          </div>`).join('')
-      : '<div style="font-size:.78rem;color:var(--muted);padding:8px 0">Nenhum membro</div>';
-
-    // Users not yet in this family (for adding)
     const memberIds = new Set((members||[]).map(u => u.id));
     const available = (allUsers||[]).filter(u => !memberIds.has(u.id));
 
-    // Feature 3: compute feature states for this family
+    // Feature flags
     const fid = f.id;
-    // We read from app_settings synchronously from cache; async toggle updates via toggleFamilyFeature
-    const pricesKey  = 'prices_enabled_'  + fid;
-    const groceryKey = 'grocery_enabled_' + fid;
-    const backupKey  = 'backup_enabled_'  + fid;
-    const snapshotKey= 'snapshot_enabled_'+ fid;
-    // Features read from _familyFeaturesCache (populated by loadFamiliesList)
+    const pricesKey   = 'prices_enabled_'   + fid;
+    const groceryKey  = 'grocery_enabled_'  + fid;
+    const backupKey   = 'backup_enabled_'   + fid;
+    const snapshotKey = 'snapshot_enabled_' + fid;
     const fc = window._familyFeaturesCache || {};
     const pricesOn   = !!(fc[pricesKey]);
     const groceryOn  = !!(fc[groceryKey]);
-    const backupOn   = fc[backupKey]  !== undefined ? !!fc[backupKey]  : true; // default on
-    const snapshotOn = fc[snapshotKey]!== undefined ? !!fc[snapshotKey]: true;
+    const backupOn   = fc[backupKey]   !== undefined ? !!fc[backupKey]   : true;
+    const snapshotOn = fc[snapshotKey] !== undefined ? !!fc[snapshotKey] : true;
 
-    function featureToggleHtml(key, familyId, label, icon, enabled, tip) {
-      return `<div class="fam-feature-item" title="${esc(tip)}">
-        <span class="fam-feature-icon">${icon}</span>
-        <span class="fam-feature-label">${label}</span>
-        <span class="fam-feature-tip" title="${esc(tip)}">ℹ</span>
-        <button class="fam-feature-toggle ${enabled?'on':''}"
-          onclick="toggleFamilyFeature('${familyId}','${key}',${!enabled})"
-          title="${enabled?'Desativar':'Ativar'} ${label}">
-          ${enabled?'Ativo':'Inativo'}
-        </button>
-      </div>`;
+    // Compact module toggle pill
+    function modPill(key, famId, label, emoji, on) {
+      return `<button class="fam-mod-pill ${on?'on':''}"
+        onclick="toggleFamilyFeature('${famId}','${key}',${!on})"
+        title="${on?'Desativar':'Ativar'} ${label}">
+        ${emoji} ${label}
+        <span class="fam-mod-dot">${on?'●':'○'}</span>
+      </button>`;
     }
 
-    const featuresHtml = `
-    <div class="fam-features-grid">
-      ${featureToggleHtml(pricesKey,  fid, 'Preços',         '🏷️', pricesOn,   'Habilita o módulo de histórico de preços por item e estabelecimento')}
-      ${featureToggleHtml(groceryKey, fid, 'Lista de Mercado','🛒', groceryOn,  'Habilita listas de compras baseadas no histórico de preços')}
-      ${featureToggleHtml(backupKey,  fid, 'Backup',          '☁️', backupOn,   'Permite exportar e importar backup completo dos dados da família')}
-      ${featureToggleHtml(snapshotKey,fid, 'Snapshot',        '📸', snapshotOn, 'Registra snapshots periódicos de saldo para histórico patrimonial')}
-    </div>`;
-
-    return `<div class="card fam-card" style="margin-bottom:14px">
-      <div class="card-header" style="padding-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:40px;height:40px;border-radius:12px;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">🏠</div>
-          <div>
-            <div style="font-weight:700;font-size:.95rem">${esc(f.name)}</div>
-            ${f.description ? `<div style="font-size:.75rem;color:var(--muted)">${esc(f.description)}</div>` : ''}
-            <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${members.length} membro${members.length!==1?'s':''}</div>
+    // Member row
+    const membersHtml = members.length
+      ? members.map(u => `
+        <div class="fam-member-row">
+          <div class="fam-member-info">
+            <span class="fam-member-name">${esc(u.name||'—')}</span>
+            <span class="fam-member-email">${esc(u.email)}</span>
           </div>
+          <span class="fam-role-badge ${(u.role==='admin'||u.role==='owner'||u.family_member_role==='owner')?'owner':''}">
+            ${u.family_member_role==='owner'?'👑':u.role==='admin'?'⚙️':'👤'} ${u.family_member_role||u.role}
+          </span>
+          <button class="fam-remove-btn" onclick="removeUserFromFamily('${u.id}','${esc(u.name||u.email)}','${f.id}')" title="Remover">✕</button>
+        </div>`).join('')
+      : '<div class="fam-empty-members">Nenhum membro nesta família</div>';
+
+    return `<div class="fam-card2">
+      <!-- Header -->
+      <div class="fam-card2-header">
+        <div class="fam-card2-avatar">🏠</div>
+        <div class="fam-card2-title-block">
+          <div class="fam-card2-name">${esc(f.name)}</div>
+          ${f.description ? `<div class="fam-card2-desc">${esc(f.description)}</div>` : ''}
+          <div class="fam-card2-count">${members.length} membro${members.length!==1?'s':''}</div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn btn-ghost btn-sm" onclick="editFamily('${f.id}')" style="padding:3px 10px;font-size:.73rem" title="Editar nome e descrição">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="deleteFamily('${f.id}','${esc(f.name)}')" style="padding:3px 10px;font-size:.73rem;color:var(--red)" title="Excluir família e todos os dados">🗑️</button>
+        <div class="fam-card2-header-btns">
+          <button class="fam-hdr-btn" onclick="editFamily('${f.id}')" title="Editar">✏️</button>
+          <button class="fam-hdr-btn danger" onclick="deleteFamily('${f.id}','${esc(f.name)}')" title="Excluir">🗑</button>
         </div>
       </div>
 
-      <!-- Feature 3: Módulos habilitados -->
-      <div style="border-top:1px solid var(--border);padding:10px 0 4px">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px">
-          Módulos
-          <span title="Ative ou desative funcionalidades para esta família" style="font-size:.75rem;color:var(--muted);cursor:help">ℹ</span>
+      <!-- Modules -->
+      <div class="fam-section">
+        <div class="fam-section-label">Módulos</div>
+        <div class="fam-mod-pills">
+          ${modPill(pricesKey,   fid, 'Preços',   '🏷️', pricesOn)}
+          ${modPill(groceryKey,  fid, 'Mercado',  '🛒', groceryOn)}
+          ${modPill(backupKey,   fid, 'Backup',   '☁️', backupOn)}
+          ${modPill(snapshotKey, fid, 'Snapshot', '📸', snapshotOn)}
         </div>
-        ${featuresHtml}
       </div>
 
-      <!-- Membros -->
-      <div style="border-top:1px solid var(--border);padding:10px 0 4px">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Membros</div>
-        ${membersHtml}
+      <!-- Members -->
+      <div class="fam-section">
+        <div class="fam-section-label">Membros</div>
+        <div class="fam-members-list">${membersHtml}</div>
+
         ${available.length ? `
-        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
-          <select id="addMemberSel-${f.id}" style="font-size:.8rem;flex:1">
-            <option value="">— Selecionar usuário —</option>
+        <div class="fam-add-member">
+          <select id="addMemberSel-${f.id}" class="fam-add-sel">
+            <option value="">Adicionar usuário existente…</option>
             ${available.map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('')}
           </select>
-          <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${f.id}')" style="font-size:.78rem;white-space:nowrap">+ Adicionar</button>
+          <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${f.id}')">+ Adicionar</button>
         </div>` : ''}
       </div>
     </div>`;

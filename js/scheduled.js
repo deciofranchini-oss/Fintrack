@@ -400,83 +400,102 @@ function renderScheduled(list) {
 }
 
 function _scCardHtml(sc) {
+  const st = scStatusLabel(sc);
+  const next = getNextOccurrence(sc);
+  const today = new Date().toISOString().slice(0,10);
+  const isExpense     = sc.type === 'expense' || sc.type === 'transfer' || sc.type === 'card_payment';
+  const isCardPayment = sc.type === 'card_payment';
+  const isTransferSc  = sc.type === 'transfer' || sc.type === 'card_payment';
+  const acct     = state.accounts.find(a => a.id === sc.account_id);
+  const destAcct = isTransferSc ? state.accounts.find(a => a.id === sc.transfer_to_account_id) : null;
+  const regCount = (sc.occurrences||[]).length;
+  const totalCount = sc.end_count ? `${regCount}/${sc.end_count}` : `${regCount}×`;
+  const occList  = generateOccurrences(sc, 8);
+  const registered = (sc.occurrences||[]).reduce((m,o)=>{m[o.scheduled_date]=o;return m;},{});
 
-    const st = scStatusLabel(sc);
-    const next = getNextOccurrence(sc);
-    const today = new Date().toISOString().slice(0,10);
-    const isExpense = sc.type === 'expense' || sc.type === 'transfer' || sc.type === 'card_payment';
-    const isCardPayment = sc.type === 'card_payment';
-    const isTransferSc = sc.type === 'transfer' || sc.type === 'card_payment';
-    const acct = state.accounts.find(a => a.id === sc.account_id);
-    const destAcct = isTransferSc ? state.accounts.find(a => a.id === sc.transfer_to_account_id) : null;
-    const regCount = (sc.occurrences||[]).length;
-    const totalCount = sc.end_count ? `${regCount}/${sc.end_count}` : `${regCount} reg.`;
-    const occList = generateOccurrences(sc, 8);
-    const registered = (sc.occurrences||[]).reduce((m,o)=>{m[o.scheduled_date]=o;return m;},{});
+  // Compact meta: freq · account · payee
+  const metaParts = [scFreqLabel(sc)];
+  if (acct) metaParts.push(esc(acct.name));
+  if (sc.payees) metaParts.push(esc(sc.payees.name));
+  const meta = metaParts.join(' · ');
 
-    return `<div class="sc-card" id="scCard-${sc.id}">
-      <div class="sc-card-header" onclick="toggleScCard('${sc.id}')">
-        <div class="sc-card-type" style="background:${isCardPayment?'var(--blue-lt,#eff6ff)':isTransferSc?'var(--muted-lt,#f1f5f9)':isExpense?'var(--red-lt)':'var(--green-lt)'}">
-          ${isCardPayment ? '💳' : isTransferSc ? '🔄' : isExpense ? '💸' : '💰'}
-        </div>
-        <div class="sc-card-info">
-          <div class="sc-card-title">${esc(sc.description)}</div>
-          <div class="sc-card-sub">
-            <span>${scFreqLabel(sc)}</span>
-            ${sc.payees ? `<span>· ${esc(sc.payees.name)}</span>` : ''}
-            ${sc.categories ? `<span class="badge" style="background:${sc.categories.color}18;color:${sc.categories.color};border:1px solid ${sc.categories.color}30;font-size:.65rem">${esc(sc.categories.name)}</span>` : ''}
-            <span class="sc-status-badge ${st.cls}">${st.label}</span>
-            ${next ? `<span class="sc-next-badge">próx: ${fmtDate(next)}</span>` : ''}
-          </div>
-        </div>
-        <div class="sc-card-right">
-          <div class="sc-card-amount ${isExpense?'amount-neg':'amount-pos'}">
-            ${isExpense?'−':'+'}${fmt(Math.abs(sc.amount))}
-          </div>
-          ${isTransferSc&&destAcct?`<div class="sc-card-transfer-tag">→ ${esc(destAcct.name)}</div>`:''}
-        </div>
+  // Type icon bg
+  const iconBg = isCardPayment ? 'var(--blue-lt,#eff6ff)'
+               : isTransferSc  ? 'var(--surface2)'
+               : isExpense     ? 'var(--red-lt)'
+               : 'var(--green-lt)';
+  const icon = isCardPayment ? '💳' : isTransferSc ? '🔄' : isExpense ? '💸' : '💰';
+
+  // Next badge
+  const nextBadge = next
+    ? `<span class="sc-next-pill ${next < today ? 'overdue' : next === today ? 'today' : ''}">${next === today ? '📌 Hoje' : next < today ? '⚠ ' + fmtDate(next) : fmtDate(next)}</span>`
+    : '';
+
+  // Category chip
+  const catChip = sc.categories
+    ? `<span class="sc-cat-chip" style="--c:${sc.categories.color}">${esc(sc.categories.name)}</span>`
+    : '';
+
+  return `<div class="sc-card" id="scCard-${sc.id}">
+    <!-- Header row: icon · title+meta · amount+status · actions -->
+    <div class="sc-card-row" onclick="toggleScCard('${sc.id}')">
+      <div class="sc-card-icon" style="background:${iconBg}">${icon}</div>
+      <div class="sc-card-mid">
+        <div class="sc-card-title2">${esc(sc.description)}</div>
+        <div class="sc-card-meta">${meta}${catChip ? ' · ' + catChip : ''}</div>
       </div>
-      <div class="sc-card-footer" onclick="event.stopPropagation()">
-        ${next ? `<button class="sc-action-btn sc-action-register" onclick="openRegisterOcc('${sc.id}','${next}')">✓ Registrar</button>` : `<span></span>`}
-        <div class="sc-footer-actions">
-          <button class="sc-action-icon" onclick="toggleScStatus('${sc.id}')" title="${sc.status==='active'?'Pausar':'Reativar'}">${sc.status==='active'?'⏸':'▶'}</button>
-          <button class="sc-action-icon" onclick="openScheduledModal('${sc.id}')" title="Editar">✏️</button>
-          <button class="sc-action-icon sc-action-delete" onclick="deleteScheduled('${sc.id}')" title="Excluir">🗑️</button>
-        </div>
+      <div class="sc-card-end">
+        <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount))}</div>
+        <div class="sc-card-badges">${nextBadge}<span class="sc-status-badge ${st.cls}">${st.label}</span></div>
       </div>
-      <div class="sc-card-body" id="scBody-${sc.id}">
-        <div class="sc-occurrences">
-          <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">
-            Ocorrências · ${totalCount} registradas
-            ${sc.end_date ? ` · até ${fmtDate(sc.end_date)}` : ''}
-          </div>
-          ${occList.map(date => {
-            const occ = registered[date];
-            const isPast = date < today;
-            const isToday = date === today;
-            return `<div class="sc-occ-row">
-              <span class="sc-occ-date ${isToday?'text-accent':''}">${fmtDate(date)}${isToday?' ·hoje':''}</span>
-              <span class="sc-occ-label">${occ ? esc(occ.memo||sc.description) : '<span style="color:var(--muted2)">—</span>'}</span>
-              <span class="sc-occ-status">
-                ${occ
-                  ? `<span class="sc-status-badge sc-status-finished">✓ ${fmt(occ.amount||sc.amount)}</span>`
-                  : isPast
-                    ? `<span class="sc-status-badge sc-status-overdue">Pendente</span>`
-                    : `<span class="sc-status-badge" style="background:var(--bg2);color:var(--muted);border:1px solid var(--border)">Agendado</span>`
-                }
-              </span>
-              ${!occ ? `<button class="btn-icon" style="font-size:.72rem;padding:3px 7px" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>` : ''}
-            </div>`;
-          }).join('')}
-          ${sc.frequency !== 'once' && occList.length >= 8 ? `<div style="font-size:.75rem;color:var(--muted);text-align:center;padding:6px">... e mais ocorrências futuras</div>` : ''}
-        </div>
-        <div class="sc-body-info">
-          <span>Conta: <strong>${esc(acct?.name||'—')}</strong></span>
-          ${isTransferSc&&destAcct?`<span>→ Destino: <strong>${esc(destAcct.name)}</strong></span>`:''}
-          ${sc.memo ? `<span>· ${esc(sc.memo)}</span>` : ''}
-        </div>
+      <svg class="sc-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="scChev-${sc.id}"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <!-- Quick action bar (always visible) -->
+    <div class="sc-card-actions" onclick="event.stopPropagation()">
+      ${next
+        ? `<button class="sc-reg-btn" onclick="openRegisterOcc('${sc.id}','${next}')">✓ Registrar ${next===today?'hoje':fmtDate(next)}</button>`
+        : `<span class="sc-reg-btn sc-reg-none">${totalCount} registradas</span>`
+      }
+      <div class="sc-icon-btns">
+        <button class="sc-icon-btn" onclick="toggleScStatus('${sc.id}')" title="${sc.status==='active'?'Pausar':'Reativar'}">
+          ${sc.status==='active'
+            ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+            : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>'
+          }
+        </button>
+        <button class="sc-icon-btn" onclick="openScheduledModal('${sc.id}')" title="Editar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="sc-icon-btn sc-icon-del" onclick="deleteScheduled('${sc.id}')" title="Excluir">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
       </div>
-    </div>`;
+    </div>
+    <!-- Expanded body: occurrences -->
+    <div class="sc-card-body" id="scBody-${sc.id}">
+      <div class="sc-occurrences">
+        <div class="sc-occ-header">Ocorrências · ${totalCount}${sc.end_date ? ` · até ${fmtDate(sc.end_date)}` : ''}</div>
+        ${occList.map(date => {
+          const occ = registered[date];
+          const isPast  = date < today;
+          const isToday = date === today;
+          return `<div class="sc-occ-row">
+            <span class="sc-occ-date ${isToday?'text-accent':''}">${fmtDate(date)}${isToday?' ·hoje':''}</span>
+            <span class="sc-occ-label">${occ ? esc(occ.memo||sc.description) : '<span style="color:var(--muted2)">—</span>'}</span>
+            <span class="sc-occ-status">
+              ${occ
+                ? `<span class="sc-status-badge sc-status-finished">✓ ${fmt(occ.amount||sc.amount)}</span>`
+                : isPast
+                  ? `<span class="sc-status-badge sc-status-overdue">Pendente</span>`
+                  : `<span class="sc-status-badge" style="background:var(--bg2);color:var(--muted);border:1px solid var(--border)">Agendado</span>`
+              }
+            </span>
+            ${!occ ? `<button class="btn-icon" style="font-size:.72rem;padding:3px 7px" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
 }
 
 function toggleScFinished() {
