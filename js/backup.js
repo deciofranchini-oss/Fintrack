@@ -1,6 +1,6 @@
 // ── backup.js — Backup local (JSON) + Backup no banco (Supabase) ───────────
 
-const BACKUP_VERSION = '4.2';
+const BACKUP_VERSION = '4.3';
 
 const BACKUP_TABLES = [
   'families',
@@ -423,7 +423,135 @@ async function _validateBackupForRestore(backup, title = 'Pré-validar restore')
   return { report, impact, confirmed, canProceed };
 }
 
-async function _restoreBackupData(d, statusEl) {
+
+function _defaultRestoreSelection() {
+  return {
+    families: true,
+    family_members: true,
+    account_groups: true,
+    accounts: true,
+    categories: true,
+    payees: true,
+    transactions: true,
+    budgets: true,
+    scheduled_transactions: true,
+    scheduled_occurrences: true,
+    scheduled_run_logs: true,
+    price_items: true,
+    price_stores: true,
+    price_history: true,
+  };
+}
+
+function _normalizeRestoreSelection(selection = {}) {
+  return { ..._defaultRestoreSelection(), ...(selection || {}) };
+}
+
+async function _chooseRestoreSelection(backup) {
+  const counts = backup?.counts || {};
+  const groups = [
+    {
+      title: 'Estrutura da família',
+      items: [
+        ['families', 'Família'],
+        ['family_members', 'Membros da família'],
+      ]
+    },
+    {
+      title: 'Estrutura financeira',
+      items: [
+        ['account_groups', 'Grupos de contas'],
+        ['accounts', 'Contas'],
+        ['categories', 'Categorias'],
+        ['payees', 'Beneficiários'],
+        ['budgets', 'Orçamentos'],
+      ]
+    },
+    {
+      title: 'Movimentações',
+      items: [
+        ['transactions', 'Transações'],
+        ['scheduled_transactions', 'Programados'],
+        ['scheduled_occurrences', 'Ocorrências dos programados'],
+        ['scheduled_run_logs', 'Logs dos programados'],
+      ]
+    },
+    {
+      title: 'Gestão de preços',
+      items: [
+        ['price_items', 'Itens de preço'],
+        ['price_stores', 'Lojas'],
+        ['price_history', 'Histórico de preços'],
+      ]
+    }
+  ];
+
+  return new Promise(resolve => {
+    const old = document.getElementById('restoreSelectionModal');
+    old?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'restoreSelectionModal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+    const sections = groups.map(g => `
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);display:grid;gap:8px">
+        <div style="font-weight:800">${esc(g.title)}</div>
+        ${g.items.map(([k, label]) => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:.92rem">
+            <input type="checkbox" data-restore-key="${k}" ${((counts[k] || 0) > 0 ? 'checked' : '')} ${(counts[k] || 0) > 0 ? '' : 'disabled'}>
+            <span>${esc(label)}</span>
+            <span style="margin-left:auto;color:var(--muted)">${counts[k] || 0}</span>
+          </label>
+        `).join('')}
+      </div>
+    `).join('');
+    wrap.innerHTML = `
+      <div style="width:min(760px,96vw);max-height:90vh;overflow:hidden;background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--border,#ddd);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.28);display:flex;flex-direction:column">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div>
+            <div style="font-size:1rem;font-weight:800">Escolher partes do backup para restaurar</div>
+            <div style="font-size:.82rem;color:var(--muted)">Selecione apenas o que deseja reaplicar nesta família</div>
+          </div>
+          <button id="restoreSelectionCloseX" class="btn btn-ghost btn-sm">✕</button>
+        </div>
+        <div style="padding:18px;overflow:auto;display:grid;gap:12px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="restoreSelectionAll" class="btn btn-ghost btn-sm">Marcar tudo</button>
+            <button id="restoreSelectionCore" class="btn btn-ghost btn-sm">Somente estrutura</button>
+            <button id="restoreSelectionNone" class="btn btn-ghost btn-sm">Limpar seleção</button>
+          </div>
+          ${sections}
+        </div>
+        <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">
+          <button id="restoreSelectionCancel" class="btn btn-ghost">Cancelar</button>
+          <button id="restoreSelectionProceed" class="btn btn-primary">Restaurar selecionados</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+
+    const close = (v) => { wrap.remove(); resolve(v); };
+    const boxes = () => [...wrap.querySelectorAll('[data-restore-key]')];
+    const setMany = (predicate) => boxes().forEach(b => { if (!b.disabled) b.checked = !!predicate(b.dataset.restoreKey); });
+
+    wrap.querySelector('#restoreSelectionAll')?.addEventListener('click', () => setMany(() => true));
+    wrap.querySelector('#restoreSelectionNone')?.addEventListener('click', () => setMany(() => false));
+    wrap.querySelector('#restoreSelectionCore')?.addEventListener('click', () => setMany(k => ['account_groups','accounts','categories','payees'].includes(k)));
+    wrap.querySelector('#restoreSelectionCancel')?.addEventListener('click', () => close(null));
+    wrap.querySelector('#restoreSelectionCloseX')?.addEventListener('click', () => close(null));
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(null); });
+    wrap.querySelector('#restoreSelectionProceed')?.addEventListener('click', () => {
+      const out = _defaultRestoreSelection();
+      boxes().forEach(b => { out[b.dataset.restoreKey] = !!b.checked; });
+      if (!Object.values(out).some(Boolean)) {
+        toast?.('Selecione ao menos uma parte do backup para restaurar.', 'error');
+        return;
+      }
+      close(out);
+    });
+  });
+}
+
+async function _restoreBackupData(d, statusEl, selection = {}) {
+  const restore = _normalizeRestoreSelection(selection);
   const rowsByTable = {
     families: _backupTableRows(d, 'families'),
     family_members: _backupTableRows(d, 'family_members'),
@@ -441,16 +569,23 @@ async function _restoreBackupData(d, statusEl) {
     price_history: _backupTableRows(d, 'price_history'),
   };
 
-  const categoriesBase = rowsByTable.categories.map(r => ({ ...r, parent_id: null }));
-  const categoriesParents = rowsByTable.categories.filter(r => _nonnull(r.parent_id)).map(r => ({ id: r.id, parent_id: r.parent_id, updated_at: r.updated_at || new Date().toISOString() }));
+  const categoriesRoots = rowsByTable.categories
+    .filter(r => !_nonnull(r.parent_id) && _nonnull(r.name))
+    .map(r => ({ ...r, parent_id: null }));
+  const categoriesChildren = rowsByTable.categories
+    .filter(r => _nonnull(r.parent_id) && _nonnull(r.name))
+    .map(r => ({ ...r }));
+
   const txBase = rowsByTable.transactions.map(r => ({ ...r, linked_transfer_id: null, transfer_pair_id: null }));
-  const txLinks = rowsByTable.transactions.filter(r => _nonnull(r.linked_transfer_id) || _nonnull(r.transfer_pair_id)).map(r => ({ id: r.id, linked_transfer_id: r.linked_transfer_id || null, transfer_pair_id: r.transfer_pair_id || null, updated_at: r.updated_at || new Date().toISOString() }));
+  const txLinks = rowsByTable.transactions
+    .filter(r => _nonnull(r.linked_transfer_id) || _nonnull(r.transfer_pair_id))
+    .map(r => ({ id: r.id, linked_transfer_id: r.linked_transfer_id || null, transfer_pair_id: r.transfer_pair_id || null, updated_at: r.updated_at || new Date().toISOString() }));
 
   const plan = [
     ['families', rowsByTable.families],
     ['account_groups', rowsByTable.account_groups],
     ['accounts', rowsByTable.accounts],
-    ['categories', categoriesBase],
+    ['categories', categoriesRoots],
     ['payees', rowsByTable.payees],
     ['budgets', rowsByTable.budgets],
     ['scheduled_transactions', rowsByTable.scheduled_transactions],
@@ -463,7 +598,7 @@ async function _restoreBackupData(d, statusEl) {
   ];
 
   for (const [table, rows] of plan) {
-    if (!rows.length) continue;
+    if (!restore[table] || !rows.length) continue;
     for (const chunk of _chunk(rows, 200)) {
       const { error } = await sb.from(table).upsert(chunk, { ignoreDuplicates: false });
       if (error) throw new Error(`${table}: ${error.message}`);
@@ -471,22 +606,28 @@ async function _restoreBackupData(d, statusEl) {
     _backupStatus(statusEl, `✓ ${table} ok...`, 'var(--muted)');
   }
 
-  if (categoriesParents.length) {
-    for (const chunk of _chunk(categoriesParents, 200)) {
-      const { error } = await sb.from('categories').upsert(chunk, { ignoreDuplicates: false });
+  if (restore.categories && categoriesChildren.length) {
+    for (const row of categoriesChildren) {
+      const payload = { ...row };
+      const { error } = await sb.from('categories').update(payload).eq('id', row.id);
       if (error) throw new Error(`categories(parent_id): ${error.message}`);
     }
   }
 
-  if (txLinks.length) {
-    for (const chunk of _chunk(txLinks, 200)) {
-      const { error } = await sb.from('transactions').upsert(chunk, { ignoreDuplicates: false });
+  if (restore.transactions && txLinks.length) {
+    for (const row of txLinks) {
+      const payload = {
+        linked_transfer_id: row.linked_transfer_id || null,
+        transfer_pair_id: row.transfer_pair_id || null,
+        updated_at: row.updated_at || new Date().toISOString(),
+      };
+      const { error } = await sb.from('transactions').update(payload).eq('id', row.id);
       if (error) throw new Error(`transactions(links): ${error.message}`);
     }
   }
 
   const members = rowsByTable.family_members;
-  if (members.length) {
+  if (restore.family_members && members.length) {
     const ids = [...new Set(members.map(r => r.user_id).filter(_nonnull))];
     const existingUserIds = new Set();
     for (const chunk of _chunk(ids, 200)) {
@@ -565,8 +706,13 @@ async function restoreBackup(event) {
       _backupStatus(status, '', 'var(--muted)');
       return;
     }
+    const selection = await _chooseRestoreSelection(backup);
+    if (!selection) {
+      _backupStatus(status, '', 'var(--muted)');
+      return;
+    }
     _backupStatus(status, '⏳ Restaurando...', 'var(--muted)');
-    await _restoreBackupData(backup.data, status);
+    await _restoreBackupData(backup.data, status, selection);
     await _reloadAfterRestore();
     _backupStatus(status, '✓ Restaurado com sucesso!', 'var(--green)');
     toast('Backup restaurado!', 'success');
@@ -874,7 +1020,9 @@ async function restoreDbBackup(id) {
     };
     const review = await _validateBackupForRestore(backup, `Restore do snapshot: ${backupMeta?.label || data.label || id.slice(0,8)}`);
     if (!review.canProceed || !review.confirmed) return;
-    await _restoreBackupData(backup.data);
+    const selection = await _chooseRestoreSelection(backup);
+    if (!selection) return;
+    await _restoreBackupData(backup.data, null, selection);
     await _reloadAfterRestore();
     toast('✅ Snapshot restaurado com sucesso!', 'success');
   } catch (e) {
