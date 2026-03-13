@@ -590,10 +590,6 @@
       
 
       <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
-        <!-- Escola -->
-        <a class="topbar-icon-btn" id="schoolPaymentsBtn" href="https://deciofranchini-oss.github.io/objetivo" target="_blank" rel="noopener noreferrer" title="Gerenciamento Escola" style="display:none">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        </a>
         <!-- Importar -->
         <button class="topbar-icon-btn" id="importNav"       data-nav="import" onclick="navigate('import')" title="Importar">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1488,32 +1484,6 @@
             </div>
             <img id="appLogoPreview" alt="" style="height:36px;max-width:200px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:4px;background:var(--surface)">
           </div>
-          <!-- School link -->
-          <div id="schoolLinkSection" style="display:none">
-            <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px">
-              <div style="display:flex;align-items:center;gap:10px;width:100%">
-                <span class="cfg-row-icon" style="background:#fef3c7">🎓</span>
-                <div class="cfg-row-info">
-                  <span class="cfg-row-label">Link da Escola</span>
-                  <span class="cfg-row-sub">Ícone de atalho na barra superior</span>
-                </div>
-                <label style="position:relative;display:inline-block;width:38px;height:20px;flex-shrink:0">
-                  <input type="checkbox" id="schoolLinkEnabled" onchange="saveSchoolLinkConfig()" style="opacity:0;width:0;height:0">
-                  <span id="schoolLinkToggle" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:100px;transition:.3s"></span>
-                </label>
-              </div>
-              <div id="schoolLinkUrlRow" style="display:flex;flex-direction:column;gap:6px;width:100%">
-                <div style="display:flex;gap:6px">
-                  <input type="url" id="schoolLinkUrl" placeholder="https://..." style="flex:1" oninput="saveSchoolLinkConfig()">
-                  <button class="btn btn-ghost btn-sm" onclick="window.open(document.getElementById('schoolLinkUrl').value,'_blank')">🔗</button>
-                </div>
-                <div style="display:flex;gap:6px">
-                  <input type="text" id="schoolLinkTitle" placeholder="Tooltip" style="flex:1" oninput="saveSchoolLinkConfig()">
-                  <input type="text" id="schoolLinkIcon" placeholder="🎓" maxlength="4" style="width:52px;text-align:center;font-size:1.1rem" oninput="saveSchoolLinkConfig()">
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -2131,13 +2101,7 @@
               <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pExport" checked> Exportar</label>
               <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pImport"> Importar</label>
             </div>
-            <!-- Visibilidade do ícone de escola -->
-            <div id="schoolLinkPermRow" style="display:none;margin-bottom:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
-              <label style="display:flex;align-items:center;gap:8px;font-size:.8rem;cursor:pointer">
-                <input type="checkbox" id="pSchoolLink" checked>
-                <span>🎓 Ver atalho da escola na barra superior</span>
-              </label>
-            </div>
+
             <div style="display:flex;gap:8px">
               <button class="btn btn-primary btn-sm" onclick="saveUser()">💾 Salvar</button>
               <button class="btn btn-ghost btn-sm" onclick="document.getElementById('userFormArea').style.display='none'">Cancelar</button>
