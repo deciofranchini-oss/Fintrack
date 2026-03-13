@@ -475,6 +475,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </span>Beneficiários
       </button>
+      <button class="nav-item" id="groceryNav" onclick="navigate('grocery')" style="display:none">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </span>Mercado
+      </button>
       <button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
@@ -1101,18 +1106,51 @@
         </select>
       </div>
 
-      <!-- Upcoming next 10 days -->
-      <div id="scheduledUpcomingCard" style="display:none" class="card mb-6">
-        <div class="card-header">
-          <span class="card-title" id="scheduledUpcomingTitle">⏰ Próximos 10 dias</span>
-          <span id="scheduledUpcomingTotal" class="badge badge-amber"></span>
+      <!-- Upcoming next 10 days — Feature 1: collapsible, compact -->
+      <div id="scheduledUpcomingCard" style="display:none" class="card mb-6" style="padding:0">
+        <div class="card-header sc-upcoming-header" onclick="toggleUpcomingCard()" style="cursor:pointer;user-select:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="card-title" id="scheduledUpcomingTitle">⏰ Próximos 10 dias</span>
+            <span id="scheduledUpcomingCount" style="font-size:.72rem;color:var(--muted)"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="scheduledUpcomingTotal" class="badge badge-amber"></span>
+            <svg id="upcomingCardArrow" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                 style="color:var(--muted);transition:transform .2s;transform:rotate(-90deg)">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
         </div>
-        <div id="scheduledUpcomingList" class="sc-upcoming-list"></div>
+        <div id="scheduledUpcomingList" class="sc-upcoming-list" style="display:none"></div>
       </div>
 
       <!-- Main list -->
       <div id="scheduledList"></div>
     </div>    <!-- IMPORT / BACKUP PAGE -->
+    <!-- Feature 4: Lista de Mercado -->
+    <div class="page" id="page-grocery">
+      <div class="section-header mb-6">
+        <span class="section-title">🛒 Lista de Mercado</span>
+        <button class="btn btn-primary" onclick="openCreateGroceryList()">+ Nova Lista</button>
+      </div>
+      <div id="groceryListsContainer"></div>
+
+      <!-- Detail panel -->
+      <div id="groceryDetailPanel" style="display:none;margin-top:20px">
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-header" style="padding-bottom:8px">
+            <span class="card-title" id="groceryDetailTitle">Lista</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div id="groceryTotals" style="display:flex;gap:10px"></div>
+              <button class="btn btn-primary btn-sm" onclick="openAddGroceryItem()">+ Item</button>
+            </div>
+          </div>
+          <div id="groceryItemsContainer" style="padding:4px 0"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-import">
 
       <!-- ══ WIZARD STEPS ══ -->
@@ -1776,6 +1814,7 @@
     <div class="page" id="page-prices">
       <div class="section-header mb-6">
         <span class="section-title">🏷️ Gestão de Preços</span>
+        <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openPricesStoreManager()">🏪 Estabelecimentos</button>
           <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn" onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
@@ -2596,9 +2635,10 @@
             </div>
           </label>
           <label class="iof-intl-toggle" style="margin-top:8px;display:block" onclick="event.stopPropagation()">
-            <input type="checkbox" id="scAutoConfirm" />
+            <input type="checkbox" id="scAutoConfirm" onchange="_updateAutoConfirmHint()" />
             ✅ Auto-confirmar ao registrar automaticamente
           </label>
+          <div id="scAutoConfirmHint" style="font-size:.72rem;font-weight:600;margin:-6px 0 6px 4px;color:var(--green,#16a34a)">✅ Lançará como Confirmada</div>
         </div>
 
         <!-- Email notification -->
@@ -2655,8 +2695,14 @@
       </div>
       <input type="hidden" id="occScId">
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-ghost" onclick="closeModal('registerOccModal')">Cancelar</button>
+      <!-- Feature 7: ignore single occurrence -->
+      <button class="btn btn-ghost" style="color:var(--muted);font-size:.82rem"
+        onclick="ignoreOccurrence(document.getElementById('occScId').value, document.getElementById('occDate').value);closeModal('registerOccModal')"
+        title="Ignorar apenas esta data — próximas ocorrências não serão afetadas">
+        🚫 Ignorar esta ocorrência
+      </button>
       <button class="btn btn-primary" onclick="confirmRegisterOccurrence()">Registrar Transação</button>
     </div>
   </div>
@@ -2770,6 +2816,7 @@
     <div class="modal-footer" style="gap:8px">
       <button class="btn btn-ghost" onclick="closeModal('txDetailModal')">Fechar</button>
       <button class="btn btn-ghost" id="txDetailDupBtn" onclick="_txDetailAction('dup')">📋 Duplicar</button>
+      <button class="btn btn-ghost" id="txDetailSchedBtn" onclick="_txDetailAction('makeScheduled')" title="Criar programação com base nesta transação" style="font-size:.78rem">📅 Programar</button>
       <button class="btn btn-ghost" style="color:var(--red)" id="txDetailDelBtn" onclick="_txDetailAction('del')">🗑️ Excluir</button>
       <button class="btn btn-primary" id="txDetailEditBtn" onclick="_txDetailAction('edit')">✏️ Editar</button>
     </div>
@@ -3677,6 +3724,7 @@
 <script src="js/audit.js"></script>
 <script src="js/receipt_ai.js"></script>
 <script src="js/prices.js"></script>
+  <script src="js/grocery.js"></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -4027,6 +4075,78 @@
   </div>
 
     <!-- ══ Modal: Registrar Preços do Recibo ═════════════════════════════════ -->
+<!-- Feature 11: Mapeamento Estabelecimento ↔ Beneficiário -->
+<div class="modal-overlay" id="storePayeeMapModal">
+  <div class="modal" style="max-width:640px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">🔗 Estabelecimentos × Beneficiários</span>
+      <button class="modal-close" onclick="closeModal('storePayeeMapModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div style="padding:10px 16px 8px;font-size:.78rem;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border)">
+        Vincule cada estabelecimento ao seu beneficiário para sugestões automáticas ao ler recibos.
+      </div>
+      <div id="storePayeeMapBody" style="max-height:65vh;overflow-y:auto;padding:8px 16px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('storePayeeMapModal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 5: Converter Transação em Programada -->
+<div class="modal-overlay" id="convertToScheduledModal">
+  <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">📅 Criar Programação</span>
+      <button class="modal-close" onclick="closeModal('convertToScheduledModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="ctsNote" style="font-size:.82rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px"></div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Descrição *</label>
+          <input type="text" id="ctsDesc" placeholder="Descrição da programação">
+        </div>
+        <div class="form-group">
+          <label>Valor *</label>
+          <div class="amt-wrap">
+            <button type="button" class="amt-sign-btn" onclick="toggleAmtSign('ctsAmountInput')">+</button>
+            <input type="text" id="ctsAmountInput" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Conta *</label>
+          <select id="ctsAccountId"></select>
+        </div>
+        <div class="form-group">
+          <label>Data de início *</label>
+          <input type="date" id="ctsDate">
+        </div>
+        <div class="form-group full">
+          <label>Frequência</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer"><input type="radio" name="ctsFreq" value="weekly"> Semanal</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer"><input type="radio" name="ctsFreq" value="biweekly"> Quinzenal</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer"><input type="radio" name="ctsFreq" value="monthly" checked> Mensal</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer"><input type="radio" name="ctsFreq" value="annual"> Anual</label>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Memo</label>
+          <input type="text" id="ctsMemo" placeholder="Observação opcional">
+        </div>
+      </div>
+      <input type="hidden" id="ctsTxId">
+      <input type="hidden" id="ctsType">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('convertToScheduledModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveConvertToScheduled()">📅 Criar Programação</button>
+    </div>
+  </div>
+</div>
+
   <div class="modal-overlay" id="registerPricesModal">
     <div class="modal" style="max-width:680px"><div class="modal-handle"></div>
       <div class="modal-header">
@@ -4536,6 +4656,70 @@
   }
 })();
 </script>
+
+<!-- Feature 4: Grocery modals -->
+<div class="modal-overlay" id="groceryCreateModal">
+  <div class="modal" style="max-width:380px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">🛒 Nova Lista de Compras</span>
+      <button class="modal-close" onclick="closeModal('groceryCreateModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nome da lista *</label>
+        <input type="text" id="groceryNewListName" placeholder="Ex: Compras da semana">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('groceryCreateModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGroceryList()">Criar Lista</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="groceryAddItemModal">
+  <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">+ Adicionar Item</span>
+      <button class="modal-close" onclick="closeModal('groceryAddItemModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Buscar item</label>
+        <div style="position:relative">
+          <input type="text" id="groceryItemSearch" placeholder="Digite para buscar na base de preços…"
+                 oninput="searchGroceryItem(this.value)" autocomplete="off">
+          <div id="groceryItemSuggestions" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-md);max-height:200px;overflow-y:auto"></div>
+        </div>
+      </div>
+      <div id="groceryItemForm" style="display:none">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Descrição *</label>
+            <input type="text" id="groceryNewItemName" placeholder="Nome do item">
+          </div>
+          <div class="form-group">
+            <label>Quantidade</label>
+            <input type="number" id="groceryNewItemQty" value="1" min="0.1" step="any">
+          </div>
+          <div class="form-group">
+            <label>Preço sugerido</label>
+            <input type="number" id="groceryNewItemPrice" min="0" step="0.01" placeholder="0,00">
+          </div>
+          <div class="form-group full">
+            <label>Estabelecimento sugerido</label>
+            <input type="text" id="groceryNewItemStore" placeholder="Onde costuma comprar">
+          </div>
+        </div>
+        <input type="hidden" id="groceryNewItemPriceItemId">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('groceryAddItemModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmAddGroceryItem()">Adicionar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
