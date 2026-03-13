@@ -739,6 +739,78 @@ async function fetchTxCurrencyRate() {
   }
 }
 
+
+function _ensureTxFocusStyles(){
+  if(document.getElementById('txFocusStyles')) return;
+  const st = document.createElement('style');
+  st.id = 'txFocusStyles';
+  st.textContent = `
+    .tx-row-target{
+      outline:2px solid var(--accent);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+      background:color-mix(in srgb, var(--accent) 10%, transparent) !important;
+      transition:box-shadow .25s ease, background .25s ease;
+    }
+  `;
+  document.head.appendChild(st);
+}
+
+async function _goToSavedTransaction(txId, txData = {}) {
+  if (!txId) return;
+  _ensureTxFocusStyles();
+
+  try {
+    if (typeof navigate === 'function') {
+      navigate('transactions');
+    } else {
+      state.currentPage = 'transactions';
+    }
+  } catch (_) {}
+
+  try { setTxView('flat'); } catch (_) {}
+
+  state.txFilter = state.txFilter || {};
+  state.txFilter.search = '';
+  state.txFilter.account = '';
+  state.txFilter.type = '';
+  state.txFilter.month = txData?.date ? String(txData.date).slice(0, 7) : (state.txFilter.month || '');
+  state.txFilter.status = (txData?.status || 'confirmed') === 'pending' ? 'pending' : '';
+
+  const monthEl = document.getElementById('txMonth');
+  const accEl   = document.getElementById('txAccount');
+  const typeEl  = document.getElementById('txType');
+  const statEl  = document.getElementById('txStatusFilter');
+  const searchEl= document.getElementById('txSearch');
+  if (monthEl) monthEl.value = state.txFilter.month || '';
+  if (accEl)   accEl.value   = '';
+  if (typeEl)  typeEl.value  = '';
+  if (statEl)  statEl.value  = state.txFilter.status || '';
+  if (searchEl)searchEl.value= '';
+
+  state.txSortField = 'date';
+  state.txSortAsc = false;
+  state.txPage = 0;
+
+  try {
+    await loadTransactions();
+  } catch (_) {}
+
+  const focusRow = () => {
+    const row = document.querySelector(`[data-tx-id="${txId}"]`);
+    if (!row) return false;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('tx-row-target');
+    setTimeout(() => row.classList.remove('tx-row-target'), 2600);
+    return true;
+  };
+
+  if (focusRow()) return;
+  requestAnimationFrame(() => {
+    if (focusRow()) return;
+    setTimeout(focusRow, 220);
+  });
+}
+
 async function fetchSuggestedFxRate() {
   const { src, dst } = _getTransferCurrencies();
   if (!src || !dst || src === dst) return;
@@ -957,15 +1029,23 @@ async function saveTransaction(){
       // Upload failed — transaction was saved. Existing attachment is preserved; warn the user.
       toast('⚠️ Transação salva, mas o anexo não foi enviado. Verifique o bucket "fintrack-attachments" no Supabase.', 'error');
       closeModal('txModal');
-      if(state.currentPage==='transactions')loadTransactions();
-      if(state.currentPage==='dashboard')loadDashboard();
+      if(!id && savedId) {
+        await _goToSavedTransaction(savedId, { ...data, id: savedId, status: data.status, date: data.date });
+      } else {
+        if(state.currentPage==='transactions') await loadTransactions();
+        if(state.currentPage==='dashboard') await loadDashboard();
+      }
       return;
     }
   }
   toast(id?'✓ Atualizado!':'✓ Transação salva!','success');
   closeModal('txModal');
-  if(state.currentPage==='transactions')loadTransactions();
-  if(state.currentPage==='dashboard')loadDashboard();
+  if(!id && savedId) {
+    await _goToSavedTransaction(savedId, { ...data, id: savedId, status: data.status, date: data.date });
+  } else {
+    if(state.currentPage==='transactions') await loadTransactions();
+    if(state.currentPage==='dashboard') await loadDashboard();
+  }
 }
 async function duplicateTransaction(id) {
   if(!confirm('Duplicar transação?')) return;
