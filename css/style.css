@@ -1764,68 +1764,24 @@ canvas { cursor: default; }
   }
   #page-transactions #txBody td{ padding:0; border:0; }
 
-  /* Grid compacto por coluna (ordem real do HTML) */
-  /* 1 Data, 2 Conta, 3 Descrição, 4 Beneficiário, 5 Categoria, 6 Valor, 7 Ações */
-  #page-transactions #txBody tr{
-    display:grid;
-    grid-template-columns: 1fr auto;
-    gap: 6px 10px;
-    align-items:start;
-  }
+  /* old 7-col grid removed — using .tx-v2 layout */
 
   /* Descrição (título) */
-  #page-transactions #txBody tr td:nth-child(3){
-    grid-column: 1 / 2;
-    font-weight: 650;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Valor sempre visível */
-  #page-transactions #txBody tr td:nth-child(6){
-    grid-column: 2 / 3;
-    justify-self:end;
-    font-weight: 750;
-    white-space:nowrap;
-  }
+  
 
   /* Data e Conta */
-  #page-transactions #txBody tr td:nth-child(1){
-    grid-column: 1 / 2;
-    color: var(--muted);
-    font-size:.80rem;
-    white-space:nowrap;
-  }
-  #page-transactions #txBody tr td:nth-child(2){
-    grid-column: 2 / 3;
-    justify-self:end;
-    white-space:nowrap;
-  }
+  
+  
 
   /* Beneficiário e Categoria */
-  #page-transactions #txBody tr td:nth-child(4){
-    grid-column: 1 / 2;
-    color: var(--muted);
-    font-size:.80rem;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
-  #page-transactions #txBody tr td:nth-child(5){
-    grid-column: 2 / 3;
-    justify-self:end;
-    max-width: 55vw;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
+  
 
   /* Ações embaixo (sem estourar largura) */
-  #page-transactions #txBody tr td:nth-child(7){
-    grid-column: 1 / -1;
-    padding-top: 8px;
-  }
+  
   #page-transactions #txBody tr td:nth-child(7) > div{
     display:flex;
     justify-content:flex-end;
@@ -1924,57 +1880,25 @@ canvas { cursor: default; }
   }
 
   /* DATA */
-  #page-transactions #txBody tr td:nth-child(1){
-    grid-column:1 / 2;
-    font-size:.80rem;
-    color:var(--muted);
-  }
+  
 
   /* CONTA */
-  #page-transactions #txBody tr td:nth-child(2){
-    grid-column:2 / 3;
-    justify-self:end;
-    font-size:.80rem;
-  }
+  
 
   /* DESCRIÇÃO */
-  #page-transactions #txBody tr td:nth-child(3){
-    grid-column:1 / 2;
-    font-size:1rem;
-    font-weight:600;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* BENEFICIÁRIO (maior) */
-  #page-transactions #txBody tr td:nth-child(4){
-    grid-column:1 / 2;
-    font-size:1.1rem;
-    font-weight:700;
-  }
+  
 
   /* CATEGORIA abaixo do beneficiário */
-  #page-transactions #txBody tr td:nth-child(5){
-    grid-column:1 / 2;
-    font-size:.85rem;
-    color:var(--muted);
-  }
+  
 
   /* VALOR bem maior para facilitar leitura */
-  #page-transactions #txBody tr td:nth-child(6){
-    grid-column:2 / 3;
-    justify-self:end;
-    font-size:1.45rem;
-    font-weight:800;
-    white-space:nowrap;
-  }
+  
 
   /* AÇÕES */
-  #page-transactions #txBody tr td:nth-child(7){
-    grid-column:1 / -1;
-    margin-top:6px;
-  }
+  
 
   #page-transactions #txBody tr td:nth-child(7) > div{
     display:flex;
@@ -2045,65 +1969,25 @@ canvas { cursor: default; }
   */
 
   /* Descrição */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(3){
-    grid-column: 1 / 2;
-    font-size: 1rem;
-    font-weight: 600;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Beneficiário maior */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(4){
-    grid-column: 1 / 2;
-    font-size: 1.1rem;
-    font-weight: 750;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Categoria abaixo do beneficiário (sempre à esquerda) */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(5){
-    grid-column: 1 / 2;
-    font-size: .85rem;
-    color: var(--muted);
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Valor bem maior */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(6){
-    grid-column: 2 / 3;
-    justify-self: end;
-    font-size: 1.55rem;
-    font-weight: 850;
-    white-space:nowrap;
-  }
+  
 
   /* Data */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(1){
-    grid-column: 1 / 2;
-    font-size: .80rem;
-    color: var(--muted);
-    white-space:nowrap;
-  }
+  
 
   /* Conta (quando existir no modo lista) */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(2){
-    grid-column: 2 / 3;
-    justify-self: end;
-    font-size: .80rem;
-    white-space:nowrap;
-  }
+  
 
   /* Ações embaixo */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(7){
-    grid-column: 1 / -1;
-    margin-top: 6px;
-  }
+  
   #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(7) > div{
     display:flex;
     justify-content:flex-end;
@@ -2230,65 +2114,25 @@ canvas { cursor: default; }
   */
 
   /* Descrição */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(3){
-    grid-column: 1 / 2;
-    font-size: 1rem;
-    font-weight: 600;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Beneficiário maior */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(4){
-    grid-column: 1 / 2;
-    font-size: 1.1rem;
-    font-weight: 750;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Categoria abaixo do beneficiário (sempre à esquerda) */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(5){
-    grid-column: 1 / 2;
-    font-size: .85rem;
-    color: var(--muted);
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
+  
 
   /* Valor bem maior */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(6){
-    grid-column: 2 / 3;
-    justify-self: end;
-    font-size: 1.55rem;
-    font-weight: 850;
-    white-space:nowrap;
-  }
+  
 
   /* Data */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(1){
-    grid-column: 1 / 2;
-    font-size: .80rem;
-    color: var(--muted);
-    white-space:nowrap;
-  }
+  
 
   /* Conta (quando existir no modo lista) */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(2){
-    grid-column: 2 / 3;
-    justify-self: end;
-    font-size: .80rem;
-    white-space:nowrap;
-  }
+  
 
   /* Ações embaixo */
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(7){
-    grid-column: 1 / -1;
-    margin-top: 6px;
-  }
+  
   #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(7) > div{
     display:flex;
     justify-content:flex-end;
@@ -4378,3 +4222,480 @@ html, body{
 @media (max-width: 400px) {
   .fam-features-grid { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   v25 — COMPACT UX OVERHAUL
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Global: tighter base density ───────────────────────────────── */
+:root {
+  --r-md: 10px;          /* used by old mobile card code */
+}
+
+/* Reduce default card padding everywhere */
+.card        { padding: 14px 16px; }
+.card-header { margin-bottom: 10px; }
+.mb-6        { margin-bottom: 14px !important; }
+.mb-4        { margin-bottom: 10px !important; }
+
+/* Tighter section-header */
+.section-header { margin-bottom: 12px; }
+.section-title  { font-size: 1.2rem; }
+
+/* Content padding already 24px desktop / 16px mobile — leave that */
+/* Just tighten bottom nav safe-area padding */
+@media (max-width: 768px) {
+  .content {
+    padding: 12px 12px;
+    padding-bottom: calc(var(--bottom-h) + 82px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── 2. Stat cards: compact ─────────────────────────────────────────── */
+.stat-card            { padding: 12px 14px; }
+.stat-label           { font-size: .67rem; margin-bottom: 5px; }
+.stat-value           { font-size: 1.45rem; }
+.stat-sub             { font-size: .7rem;   margin-top: 4px; }
+#page-dashboard .stat-value { font-size: 1.35rem; }
+
+@media (max-width: 768px) {
+  .stat-card  { padding: 10px 12px; }
+  .stat-value { font-size: 1.25rem; }
+  #page-dashboard .stat-value { font-size: 1.2rem; }
+}
+
+/* ── 3. Transaction rows v2 — compact 2-line cards ───────────────────
+   Desktop: table with 4 columns
+   Mobile ≤640: card layout
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Column widths — desktop */
+.tx-v2-th-date  { width: 78px;  white-space: nowrap; color: var(--muted); font-size: .72rem; }
+.tx-v2-th-body  { min-width: 160px; }
+.tx-v2-th-right { width: 110px; text-align: right; }
+.tx-v2-th-act   { width: 86px;  text-align: center; }
+
+/* Row cells — desktop */
+.tx-v2-date {
+  color: var(--muted);
+  font-size: .78rem;
+  white-space: nowrap;
+  vertical-align: top;
+  padding-top: 9px !important;
+}
+.tx-v2-body {
+  vertical-align: top;
+  padding: 7px 10px !important;
+  max-width: 0;           /* forces text-overflow to work in table */
+  min-width: 140px;
+}
+.tx-v2-title {
+  font-size: .875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tx-v2-meta {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 2px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tx-v2-acct, .tx-v2-pay {
+  font-size: .72rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.tx-v2-dot { font-size: .65rem; color: var(--border2); flex-shrink: 0; padding: 0 2px; }
+
+/* Category chip — inline small */
+.tx-cat-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-size: .65rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--c, var(--accent)) 12%, transparent);
+  color: var(--c, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--c, var(--accent)) 25%, transparent);
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+/* Fallback for browsers without color-mix */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .tx-cat-chip { background: rgba(42,96,73,.10); color: var(--accent); border-color: rgba(42,96,73,.22); }
+}
+
+/* Amount cell */
+.tx-v2-right {
+  text-align: right;
+  vertical-align: top;
+  padding: 7px 12px 7px 6px !important;
+  white-space: nowrap;
+}
+.tx-v2-amt-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.tx-v2-amt      { font-family: var(--font-serif); font-weight: 700; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.tx-v2-brl      { font-size: .68rem; color: var(--muted); font-weight: 400; margin-top: 1px; }
+
+/* Running balance */
+.tx-v2-bal {
+  font-size: .7rem;
+  color: var(--green, #2a7a4a);
+  font-weight: 600;
+  margin-top: 2px;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.tx-v2-bal.neg { color: var(--red, #c0392b); }
+
+/* Pending badge */
+.tx-v2-pend {
+  display: inline-block;
+  font-size: .6rem;
+  font-weight: 700;
+  background: #fef9c3;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  padding: 0px 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.tx-v2-clip { opacity: .55; font-size: .72rem; flex-shrink: 0; }
+
+/* Actions cell */
+.tx-v2-act { vertical-align: middle; text-align: center; padding: 4px 6px !important; }
+.tx-v2-btns { display: flex; gap: 2px; justify-content: center; }
+
+/* Separator row between pending / confirmed */
+.tx-v2-sep {
+  padding: 4px 12px !important;
+  background: var(--bg2);
+  color: var(--muted);
+  font-size: .67rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+/* Tighter table rows */
+.tx-table tbody tr { border-bottom: 1px solid var(--border); }
+.tx-table tbody tr:last-child { border-bottom: none; }
+.tx-table tbody tr:hover { background: var(--surface2); }
+.tx-table tbody td { padding: 7px 10px; border: 0; }
+.tx-table thead th { padding: 6px 10px; }
+
+/* Pending row tint */
+tr.tx-pending { background: rgba(251,191,36,.06); }
+
+/* ── Mobile TX: cards ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Reset all old v1 mobile overrides that used nth-child */
+  #page-transactions #txFlatCard table thead { display: none; }
+  #page-transactions #txFlatCard .table-wrap { overflow: visible; }
+
+  #page-transactions table,
+  #page-transactions tbody,
+  #page-transactions tr,
+  #page-transactions td { display: block; width: 100%; }
+
+  /* Card shell */
+  #page-transactions tbody tr {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto;
+    gap: 0 8px;
+    align-items: start;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-md) !important;
+    background: var(--surface) !important;
+    padding: 9px 10px !important;
+    margin: 6px 0 !important;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Pending tint */
+  #page-transactions tbody tr.tx-pending { background: rgba(251,191,36,.07) !important; border-color: rgba(251,191,36,.35) !important; }
+
+  /* Separator rows (no-hover, no shadow) */
+  #page-transactions tbody tr:has(.tx-v2-sep) {
+    grid-template-columns: 1fr !important;
+    border: 0 !important; background: transparent !important;
+    box-shadow: none !important; padding: 4px 2px !important; margin: 6px 0 2px !important;
+  }
+
+  /* Col 1: date */
+  #page-transactions tbody td.tx-v2-date {
+    grid-column: 1; grid-row: 1;
+    padding: 0 !important;
+    font-size: .72rem;
+    color: var(--muted);
+    white-space: nowrap;
+    align-self: center;
+  }
+
+  /* Col 2: body */
+  #page-transactions tbody td.tx-v2-body {
+    grid-column: 2; grid-row: 1;
+    padding: 0 !important;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Col 3: amount */
+  #page-transactions tbody td.tx-v2-right {
+    grid-column: 3; grid-row: 1;
+    padding: 0 !important;
+    text-align: right;
+    align-self: center;
+  }
+  .tx-v2-amt { font-size: 1.05rem !important; }
+
+  /* Actions: hidden on mobile (tap row to open detail) */
+  #page-transactions tbody td.tx-v2-act { display: none !important; }
+
+  /* Tighter title */
+  .tx-v2-title { font-size: .88rem; }
+  .tx-v2-meta  { font-size: .72rem; }
+}
+
+/* ── 4. Compact filter bar ──────────────────────────────────────────── */
+.tx-filter-bar   { gap: 5px; margin-bottom: 8px; }
+.tx-filter-select { font-size: .78rem; height: 30px; padding: 4px 6px; }
+.tx-search { min-width: 120px; }
+
+@media (max-width: 640px) {
+  .tx-filter-bar { flex-wrap: wrap; gap: 4px; }
+  .tx-filter-select { font-size: .75rem; flex: 1 1 auto; min-width: 110px; }
+}
+
+/* ── 5. Settings page — compact collapsible ─────────────────────────── */
+.cfg-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 10px 14px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+}
+.cfg-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cfg-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.cfg-sec-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition: background .12s;
+}
+.cfg-sec-hdr:hover { background: var(--surface2); }
+.cfg-sec-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem; flex-shrink: 0;
+}
+.cfg-sec-title {
+  flex: 1;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.cfg-sec-arr {
+  color: var(--muted);
+  font-size: .72rem;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.cfg-sec-body {
+  display: none;
+  border-top: 1px solid var(--border);
+}
+.cfg-sec-body.open { display: block; }
+
+/* Individual row inside settings */
+.cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  min-height: 44px;       /* was 60px — saves 16px per row */
+}
+.cfg-row:last-child { border-bottom: none; }
+.cfg-row:hover { background: var(--surface2); }
+.cfg-row-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.cfg-row-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cfg-row-label { font-size: .855rem; font-weight: 600; color: var(--text); }
+.cfg-row-sub   { font-size: .72rem;  color: var(--muted); }
+.cfg-select {
+  font-size: .8rem;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  max-width: 150px;
+}
+.cfg-input {
+  font-size: .8rem;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  max-width: 180px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .cfg-select { max-width: 130px; }
+  .cfg-row    { padding: 8px 12px; min-height: 40px; }
+}
+
+/* ── 6. Dashboard: tighter last-tx table ────────────────────────────── */
+#recentTxBody td { padding: 6px 10px !important; font-size: .82rem; }
+#recentTxBody tr { border-bottom: 1px solid var(--border); }
+#recentTxBody tr:last-child { border-bottom: none; }
+
+/* Dashboard account balances list tighter */
+#accountBalancesList > div { padding: 6px 14px !important; }
+
+/* ── 7. Accounts page: tighter cards ───────────────────────────────── */
+.account-card     { padding: 12px 14px; }
+.account-icon     { font-size: 1.3rem; margin-bottom: 5px; }
+.account-name     { font-size: .85rem; }
+
+/* ── 8. Scheduled: tighter upcoming items ──────────────────────────── */
+.sc-upcoming-item  { padding: 6px 14px; }
+.sc-upcoming-desc  { font-size: .82rem !important; }
+.sc-upcoming-amt   { font-size: .9rem !important; }
+.sc-upcoming-acct  { font-size: .67rem !important; }
+.sc-card           { margin-bottom: 8px; }
+.sc-card-header    { padding: 10px 14px; }
+.sc-card-type      { width: 30px; height: 30px; font-size: .85rem; }
+.sc-card-title     { font-size: .855rem; }
+.sc-card-amount    { font-size: .97rem; }
+.sc-occ-row        { padding: 5px 0; font-size: .8rem; }
+
+/* ── 9. Payees: tighter groups ──────────────────────────────────────── */
+.payee-group-header { padding: 9px 14px; }
+.payee-group-icon   { width: 30px; height: 30px; font-size: .95rem; }
+.payee-group-title  { font-size: .875rem; }
+
+/* ── 10. Budget cards ───────────────────────────────────────────────── */
+.budget-card, .budget-item { padding: 10px 14px !important; }
+
+/* ── 11. Category tree rows ─────────────────────────────────────────── */
+.category-tree li       { padding: 7px 12px; font-size: .84rem; }
+.category-tree li.child { padding-left: 28px; }
+.cat-item-row           { padding: 7px 12px; }
+
+/* ── 12. Form fields: slightly tighter ──────────────────────────────── */
+input:not([type=checkbox]):not([type=radio]),
+select, textarea { padding: 7px 10px; font-size: .875rem; }
+label { font-size: .7rem; }
+
+/* ── 13. Table-wrap: remove extra padding ───────────────────────────── */
+.table-wrap table { font-size: .84rem; }
+.table-wrap th, .table-wrap td { padding: 7px 12px; }
+
+/* ── 14. Modal: tighter ─────────────────────────────────────────────── */
+.modal-body   { padding: 14px 18px; }
+.modal-header { padding: 12px 18px 10px; }
+.modal-footer { padding: 10px 18px; }
+.modal-title  { font-size: 1.05rem; }
+
+/* ── 15. Empty state: less tall ─────────────────────────────────────── */
+.empty-state { padding: 40px 20px; }
+.empty-state .es-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ── 16. Report KPI cards ───────────────────────────────────────────── */
+.report-kpi        { padding: 10px 12px; }
+.report-kpi-label  { font-size: .68rem; margin-bottom: 3px; }
+.report-kpi-value  { font-size: 1.15rem; }
+
+/* ── 17. Import hero: less tall on mobile ───────────────────────────── */
+@media (max-width: 640px) {
+  .import-hero { padding: 18px 20px; }
+  .import-hero h2 { font-size: 1.2rem; }
+  .import-hero-icon { font-size: 2rem; }
+  .import-drop-zone { padding: 28px 16px; }
+  .import-section-card { padding: 12px 10px; }
+}
+
+/* ── 18. SC upcoming card: collapsible header ──────────────────────── */
+.sc-upcoming-header { cursor: pointer; user-select: none; }
+.sc-upcoming-header:hover { background: var(--surface2); }
+
+/* ── 19. Prices page: tighter stats ────────────────────────────────── */
+.pid-stat-card { padding: 10px 12px !important; }
+
+/* ── 20. Topbar: reduce height slightly on mobile ───────────────────── */
+@media (max-width: 768px) {
+  :root { --topbar-h: 48px; }
+  .topbar { padding: 0 12px; }
+  .topbar-title { font-size: 1rem; }
+}
+
+/* ── DESKTOP refinements ─────────────────────────────────────────────── */
+@media (min-width: 769px) {
+  .content { padding: 20px 24px; }
+
+  /* Sidebar nav items tighter */
+  .nav-item { padding: 7px 10px; font-size: .835rem; }
+  .nav-label { padding: 6px 10px 3px; }
+
+  /* Settings rows tighter on desktop too */
+  .settings-row { padding: 11px 16px; min-height: 52px; }
+}
+
+/* ── Ensure old settings classes still work for JS references ─────── */
+.settings-section { margin-bottom: 0; }
+.settings-row-label { font-weight: 600; font-size: .875rem; }
+.settings-row-sub   { font-size: .72rem; color: var(--muted); margin-top: 1px; }
+.settings-row-action { flex-shrink: 0; }
