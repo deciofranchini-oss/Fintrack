@@ -423,17 +423,17 @@
 
     <div class="nav-section">
       <div class="nav-label">Principal</div>
-      <button class="nav-item active" onclick="navigate('dashboard')" id="dashboardNav">
+      <button class="nav-item active" onclick="navigate('dashboard')" id="dashboardNav"    data-nav="dashboard">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         </span>Dashboard
       </button>
-      <button class="nav-item" onclick="navigate('transactions')" id="transactionsNav">
+      <button class="nav-item" onclick="navigate('transactions')" id="transactionsNav" data-nav="transactions">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         </span>Transações
       </button>
-      <button class="nav-item" onclick="navigate('accounts')" id="accountsNav">
+      <button class="nav-item" onclick="navigate('accounts')" id="accountsNav"     data-nav="accounts">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         </span>Contas
@@ -442,12 +442,12 @@
 
     <div class="nav-section">
       <div class="nav-label">Análise</div>
-      <button class="nav-item" onclick="navigate('reports')" id="reportsNav">
+      <button class="nav-item" onclick="navigate('reports')" id="reportsNav"      data-nav="reports">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         </span>Relatórios
       </button>
-      <button class="nav-item" onclick="navigate('budgets')" id="budgetsNav">
+      <button class="nav-item" onclick="navigate('budgets')" id="budgetsNav"      data-nav="budgets">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </span>Orçamentos
@@ -456,7 +456,7 @@
 
     <div class="nav-section">
       <div class="nav-label">Planejamento</div>
-      <button class="nav-item" onclick="navigate('scheduled')" id="scheduledNav">
+      <button class="nav-item" onclick="navigate('scheduled')" id="scheduledNav"    data-nav="scheduled">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </span>Programados
@@ -465,22 +465,22 @@
 
     <div class="nav-section">
       <div class="nav-label">Cadastros</div>
-      <button class="nav-item" onclick="navigate('categories')" id="categoriesNav">
+      <button class="nav-item" onclick="navigate('categories')" id="categoriesNav"   data-nav="categories">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         </span>Categorias
       </button>
-      <button class="nav-item" onclick="navigate('payees')" id="payeesNav">
+      <button class="nav-item" onclick="navigate('payees')" id="payeesNav"       data-nav="payees">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </span>Beneficiários
       </button>
-      <button class="nav-item" id="groceryNav" onclick="navigate('grocery')" style="display:none">
+      <button class="nav-item" id="groceryNav"      data-nav="grocery" onclick="navigate('grocery')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         </span>Mercado
       </button>
-      <button class="nav-item" id="pricesNav" onclick="navigate('prices')" style="display:none">
+      <button class="nav-item" id="pricesNav"       data-nav="prices" onclick="navigate('prices')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
         </span>Preços
@@ -490,12 +490,12 @@
     <!-- Seção Admin: visível apenas quando habilitado em Configurações -->
     <div class="nav-section" id="adminNavSection" style="display:none">
       <div class="nav-label">Administração</div>
-      <button class="nav-item" id="settingsNav" onclick="navigate('settings')" title="Configurações">
+      <button class="nav-item" id="settingsNav"     data-nav="settings" onclick="navigate('settings')" title="Configurações">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </span>Configurações
       </button>
-      <button class="nav-item" id="auditNav" onclick="navigate('audit')" title="Auditoria">
+      <button class="nav-item" id="auditNav"        data-nav="audit" onclick="navigate('audit')" title="Auditoria">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </span>Auditoria
@@ -595,15 +595,15 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         </a>
         <!-- Importar -->
-        <button class="topbar-icon-btn" id="importNav" onclick="navigate('import')" title="Importar">
+        <button class="topbar-icon-btn" id="importNav"       data-nav="import" onclick="navigate('import')" title="Importar">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
         <!-- Auditoria -->
-        <button class="topbar-icon-btn" id="auditNavTopbar" onclick="navigate('audit')" title="Auditoria">
+        <button class="topbar-icon-btn" id="auditNavTopbar"  data-nav="audit" onclick="navigate('audit')" title="Auditoria">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </button>
         <!-- Configurações -->
-        <button class="topbar-icon-btn" id="settingsNavTopbar" onclick="navigate('settings')" title="Configurações">
+        <button class="topbar-icon-btn" id="settingsNavTopbar" data-nav="settings" onclick="navigate('settings')" title="Configurações">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <!-- Sair -->
@@ -2674,25 +2674,25 @@
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Navegação principal mobile">
   <div class="bottom-nav-inner">
-    <button class="bn-item active" onclick="navigate('dashboard')" data-page="dashboard" aria-label="Início">
+    <button class="bn-item active" onclick="navigate('dashboard')" data-page="dashboard"    data-nav="dashboard" aria-label="Início">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><path d="M3 10.8L12 4l9 6.8"></path><path d="M5.5 9.8V20h4.8v-5.2h3.4V20h4.8V9.8"></path></svg>
       </span>
       <span class="bn-label">Início</span>
     </button>
-    <button class="bn-item" onclick="navigate('transactions')" data-page="transactions" aria-label="Lançamentos">
+    <button class="bn-item" onclick="navigate('transactions')" data-page="transactions" data-nav="transactions" aria-label="Lançamentos">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><path d="M7 4v16"></path><path d="M17 4v16"></path><path d="M4 8h6"></path><path d="M14 16h6"></path></svg>
       </span>
       <span class="bn-label">Lançamentos</span>
     </button>
-    <button class="bn-item" onclick="navigate('accounts')" data-page="accounts" aria-label="Contas">
+    <button class="bn-item" onclick="navigate('accounts')" data-page="accounts"     data-nav="accounts" aria-label="Contas">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><rect x="3.5" y="6" width="17" height="12" rx="2.5"></rect><path d="M15 12h3.5"></path></svg>
       </span>
       <span class="bn-label">Contas</span>
     </button>
-    <button class="bn-item" onclick="navigate('scheduled')" data-page="scheduled" aria-label="Programados">
+    <button class="bn-item" onclick="navigate('scheduled')" data-page="scheduled"    data-nav="scheduled" aria-label="Programados">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><rect x="4" y="5" width="16" height="15" rx="2.5"></rect><path d="M8 3.8v3.5"></path><path d="M16 3.8v3.5"></path><path d="M4 9.5h16"></path></svg>
       </span>
@@ -4537,34 +4537,7 @@
   </div>
 </div>
 
-<script>
-/* ── Bridge: adminNavSection aparece/some junto com settingsNav ou auditNav ── */
-(function() {
-  function syncAdminSection() {
-    const section = document.getElementById('adminNavSection');
-    if (!section) return;
-    const sNav = document.getElementById('settingsNav');
-    const aNav = document.getElementById('auditNav');
-    const sVisible = sNav && sNav.style.display !== 'none';
-    const aVisible = aNav && aNav.style.display !== 'none';
-    section.style.display = (sVisible || aVisible) ? '' : 'none';
-  }
-  // Observa mudanças de display em settingsNav e auditNav
-  const observer = new MutationObserver(syncAdminSection);
-  function attachObserver() {
-    ['settingsNav','auditNav'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
-    });
-    syncAdminSection();
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', attachObserver);
-  } else {
-    attachObserver();
-  }
-})();
-</script>
+<script>/* adminNavSection is now managed by applyMenuVisibility() and updateUserUI() via data-nav */</script>
 
 <!-- Feature 4: Grocery modals -->
 <div class="modal-overlay" id="groceryCreateModal">
