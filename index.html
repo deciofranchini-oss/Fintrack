@@ -680,29 +680,48 @@
         </div>
       </div>
 
-      <!-- Filter bar: single dense row on desktop -->
+      <!-- Filter bar: modern chip design -->
       <div class="tx-filter-bar">
-        <div class="search-wrap tx-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="txSearch" placeholder="Buscar..." oninput="filterTransactions()">
+        <!-- Search -->
+        <div class="tx-search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="txSearch" placeholder="Buscar transação…" oninput="filterTransactions()" class="tx-search-input">
         </div>
-        <select id="txMonth"        onchange="filterTransactions()" class="tx-filter-select"></select>
-        <select id="txAccount"      onchange="filterTransactions()" class="tx-filter-select"><option value="">Todas as contas</option></select>
-        <select id="txType"         onchange="filterTransactions()" class="tx-filter-select">
-          <option value="">Todos os tipos</option>
-          <option value="income">💰 Receitas</option>
-          <option value="expense">💸 Despesas</option>
-          <option value="transfer">🔄 Transferências</option>
-          <option value="card_payment">💳 Pgto. Cartão</option>
-        </select>
-        <select id="txStatusFilter" onchange="filterTransactions()" class="tx-filter-select">
-          <option value="">Todos os status</option>
-          <option value="pending">⏳ Pendentes</option>
-          <option value="confirmed">✅ Confirmadas</option>
-        </select>
-        <div class="view-toggle tx-view-toggle">
-          <button class="view-btn active" id="viewBtnFlat"  onclick="setTxView('flat')"  title="Lista">☰</button>
-          <button class="view-btn"        id="viewBtnGroup" onclick="setTxView('group')" title="Por conta">⊞</button>
+        <!-- Selects row -->
+        <div class="tx-filter-chips-row">
+          <div class="tx-filter-chip-wrap">
+            <select id="txMonth" onchange="filterTransactions()" class="tx-chip-select"></select>
+          </div>
+          <div class="tx-filter-chip-wrap">
+            <select id="txAccount" onchange="filterTransactions()" class="tx-chip-select">
+              <option value="">Todas as contas</option>
+            </select>
+          </div>
+          <div class="tx-filter-chip-wrap">
+            <select id="txType" onchange="filterTransactions()" class="tx-chip-select">
+              <option value="">Tipo</option>
+              <option value="income">💰 Receitas</option>
+              <option value="expense">💸 Despesas</option>
+              <option value="transfer">🔄 Transferências</option>
+              <option value="card_payment">💳 Pgto. Cartão</option>
+            </select>
+          </div>
+          <div class="tx-filter-chip-wrap">
+            <select id="txStatusFilter" onchange="filterTransactions()" class="tx-chip-select">
+              <option value="">Status</option>
+              <option value="pending">⏳ Pendentes</option>
+              <option value="confirmed">✅ Confirmadas</option>
+            </select>
+          </div>
+          <!-- View toggle -->
+          <div class="tx-view-btns">
+            <button class="tx-view-btn active" id="viewBtnFlat"  onclick="setTxView('flat')"  title="Lista plana">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <button class="tx-view-btn"        id="viewBtnGroup" onclick="setTxView('group')" title="Por conta">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </button>
+          </div>
         </div>
       </div>
 
