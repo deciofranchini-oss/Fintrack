@@ -752,7 +752,8 @@
         </div>
       </div>
       <div class="tab-bar" id="accountsTabBar">
-        <button class="tab active" onclick="filterAccounts('')">Todas</button>
+        <button class="tab" id="accTabFav"    onclick="filterAccounts('__fav__')">⭐ Favoritas</button>
+        <button class="tab active" id="accTabAll" onclick="filterAccounts('')">Todas</button>
         <button class="tab" onclick="filterAccounts('corrente')">Corrente</button>
         <button class="tab" onclick="filterAccounts('cartao_credito')">Cartão</button>
         <button class="tab" onclick="filterAccounts('investimento')">Investimentos</button>
