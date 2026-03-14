@@ -5377,3 +5377,18 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   .forecast-date-cell { width:70px; }
   .forecast-amount-cell, .forecast-balance-cell { width:88px; font-size:.8rem; }
 }
+
+
+/* ── Transactions: avoid blank area under title when optional lines are absent ── */
+.tx-v2-body {
+  height: auto !important;
+}
+.tx-v2-body .tx-v2-title,
+.tx-v2-body .tx-v2-category,
+.tx-v2-body .tx-v2-meta {
+  margin-bottom: 0 !important;
+}
+.tx-v2-body .tx-v2-category:empty,
+.tx-v2-body .tx-v2-meta:empty {
+  display: none !important;
+}
