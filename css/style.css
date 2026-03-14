@@ -5998,3 +5998,73 @@ tr.tx-row-new td:first-child {
   .wz-dot { width: 6px; height: 6px; }
   .wz-dots { gap: 5px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   USER ADMIN MODAL — refactored two-panel layout
+═══════════════════════════════════════════════════════════════ */
+.ua-modal { max-width: 680px; display: flex; flex-direction: column; max-height: 88dvh; overflow: hidden; padding: 0; }
+
+/* Header */
+.ua-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 10px; }
+.ua-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ua-back { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; transition: all .15s; }
+.ua-back:hover { background: var(--bg2); color: var(--text); border-color: var(--border2); }
+.ua-modal-title { font-size: .95rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+.ua-modal-sub { font-size: .72rem; color: var(--muted); margin-top: 1px; }
+.ua-new-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.ua-new-btn:hover { background: var(--accent2); }
+
+/* Tabs */
+.ua-tabs { display: flex; padding: 0 20px; border-bottom: 1px solid var(--border); gap: 2px; flex-shrink: 0; overflow-x: auto; }
+.ua-tab { display: inline-flex; align-items: center; gap: 5px; padding: 10px 14px; font-size: .82rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2.5px solid transparent; cursor: pointer; white-space: nowrap; transition: all .15s; margin-bottom: -1px; }
+.ua-tab:hover { color: var(--text2); }
+.ua-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.ua-count { font-size: .68rem; background: var(--bg2); color: var(--muted); padding: 1px 6px; border-radius: 20px; min-width: 18px; text-align: center; }
+.ua-badge { font-size: .65rem; background: var(--red); color: #fff; padding: 1px 5px; border-radius: 20px; min-width: 16px; text-align: center; font-weight: 700; }
+
+/* Body */
+.ua-body { flex: 1; overflow: hidden; position: relative; }
+.ua-panel { position: absolute; inset: 0; overflow-y: auto; transition: transform .22s cubic-bezier(.4,0,.2,1), opacity .22s; }
+.ua-panel-form { transform: translateX(100%); opacity: 0; pointer-events: none; }
+.ua-panel-form.ua-panel-visible { transform: translateX(0); opacity: 1; pointer-events: all; }
+.ua-pane { }
+
+/* User list */
+.ua-user-list { padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 4px; }
+.ua-user-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-sm); cursor: pointer; transition: background .12s; border: 1px solid transparent; }
+.ua-user-row:hover { background: var(--surface2); border-color: var(--border); }
+.ua-user-info { flex: 1; min-width: 0; }
+.ua-user-name { font-size: .875rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ua-user-email { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ua-user-badges { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0; }
+.ua-role-badge { font-size: .68rem; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+.ua-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ua-user-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+.ua-user-row:hover .ua-user-actions { opacity: 1; }
+.ua-action-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .78rem; color: var(--muted); transition: all .12s; }
+.ua-action-btn:hover { background: var(--bg2); color: var(--text); border-color: var(--border2); }
+.ua-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: .85rem; }
+.ua-section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 20px 4px; }
+
+/* Form panel */
+.ua-form-body { padding: 20px; flex: 1; overflow-y: auto; }
+.ua-form-hero { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 20px; }
+.ua-form-avatar-wrap { position: relative; cursor: pointer; flex-shrink: 0; }
+.ua-form-avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--bg2); border: 2px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: var(--muted); }
+.ua-form-avatar-overlay { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; font-size: .85rem; opacity: 0; transition: opacity .15s; }
+.ua-form-avatar-wrap:hover .ua-form-avatar-overlay { opacity: 1; }
+.ua-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.ua-form-section { margin-bottom: 16px; padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.ua-form-section-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; }
+.ua-perms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ua-perm-chip { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-sm); cursor: pointer; font-size: .78rem; color: var(--text2); transition: all .12s; }
+.ua-perm-chip:has(input:checked) { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.ua-perm-chip input { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
+.ua-form-footer { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.ua-form-error { margin-bottom: 10px; padding: 8px 12px; background: var(--red-lt); border: 1px solid var(--red); border-radius: var(--r-sm); color: var(--red); font-size: .8rem; }
+
+@media (max-width: 540px) {
+  .ua-form-grid { grid-template-columns: 1fr; }
+  .ua-perms-grid { grid-template-columns: repeat(2, 1fr); }
+  .ua-modal { max-height: 100dvh; }
+}
