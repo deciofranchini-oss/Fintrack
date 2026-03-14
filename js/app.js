@@ -436,7 +436,6 @@ function clearFamilyScopedUI() {
     state.txRunningBalanceMap = {};
     state.lastCategoryByPayee = {};
     state.cache = {};
-    // Reset filtros de transação para não vazar dados visuais
     state.txFilter = { search: '', month: '', account: '', type: '', status: '' };
     state.txView = 'flat';
   } catch(e) {}
@@ -445,7 +444,6 @@ function clearFamilyScopedUI() {
   try { _destroyForecastChart?.(); } catch(e) {}
   try { window._resetCatTxCounts?.(); } catch(e) {}
   try { window._resetPayeeTxCounts?.(); } catch(e) {}
-  try { window._budgetCacheRef?.(); } catch(e) {}
   try {
     if (typeof _grocery !== 'undefined') {
       _grocery.lists = [];
@@ -460,10 +458,6 @@ function clearFamilyScopedUI() {
       _px.activeItemId = null;
       _px.pidStoreFilter = '';
     }
-  } catch(e) {}
-  try {
-    // Limpar cache interno de orçamentos
-    if (typeof window._budgetCacheRef === 'function') window._budgetCacheRef();
   } catch(e) {}
 
   _clearFamilySwitchNode('txBody', '<tr><td colspan="7" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando dados da família…</td></tr>');
@@ -483,11 +477,6 @@ function clearFamilyScopedUI() {
   _clearFamilySwitchNode('scheduledList', '');
   _clearFamilySwitchNode('budgetList', '');
   _clearFamilySwitchNode('reportResult', '');
-  _clearFamilySwitchNode('accountGrid', '');
-  _clearFamilySwitchNode('budgetGrid', '<div style="text-align:center;padding:32px;color:var(--muted)">Carregando…</div>');
-  _clearFamilySwitchNode('payeeGroups', '');
-  _clearFamilySwitchNode('catEditorExpense', '');
-  _clearFamilySwitchNode('catEditorIncome', '');
 
   ['groceryDetailPanel','txBestCardSuggestion','txCurrencyPanel','txFxPanel','txCardPaymentBadge','pricesReceiptZone'].forEach(id => {
     try {

@@ -67,7 +67,7 @@ function renderCategories() {
           </div>
           <span class="cat-item-name" id="catName-${p.id}" ondblclick="startCatInlineEdit('${p.id}')">${esc(p.name)}</span>
           ${subs.length ? `<span class="cat-sub-count">${subs.length} sub</span>` : ''}
-          ${pTxCount > 0 ? `<span class="cat-tx-count" title="${pTxCount} transação(ões) — clique para ver histórico" style="cursor:pointer" onclick="event.stopPropagation();openCategoryHistory('${p.id}','${esc(p.name)}')">📊 ${pTxCount}</span>` : ''}
+          ${pTxCount > 0 ? `<span class="cat-tx-count" style="cursor:pointer" title="Ver histórico" onclick="event.stopPropagation();openCategoryHistory('${p.id}','${esc(p.name)}')">📊 ${pTxCount}</span>` : ''}
           <div class="cat-inline-actions">
             <button class="btn-icon" onclick="openCategoryModal('','${p.id}','${dbType}')" title="Nova subcategoria" style="font-size:.7rem;padding:3px 7px">+ Sub</button>
             <button class="btn-icon" onclick="openCategoryModal('${p.id}')" title="Editar">✏️</button>
@@ -91,7 +91,7 @@ function renderCategories() {
             </div>
             <span class="cat-item-name child-name" ondblclick="startCatInlineEdit('${c.id}')">${esc(c.name)}</span>
             <span class="cat-parent-chip" onclick="changeCatParent('${c.id}')" title="Mudar categoria pai">📂 ${esc(p.name)}</span>
-            ${cCount > 0 ? `<span class="cat-tx-count" title="${cCount} transação(ões) — clique para ver histórico" style="cursor:pointer" onclick="event.stopPropagation();openCategoryHistory('${c.id}','${esc(c.name)}')">📊 ${cCount}</span>` : ''}
+            ${cCount > 0 ? `<span class="cat-tx-count" style="cursor:pointer" title="Ver histórico" onclick="event.stopPropagation();openCategoryHistory('${c.id}','${esc(c.name)}')">📊 ${cCount}</span>` : ''}
             <div class="cat-inline-actions">
               <button class="btn-icon" onclick="openCategoryModal('${c.id}')" title="Editar">✏️</button>
               <button class="btn-icon" onclick="deleteCategory('${c.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
@@ -450,8 +450,7 @@ function quickCreateCategory(type, ctx) {
   openCategoryModal('', '', type);
 }
 
-// ── Category Tx History (últimos 6 meses) ─────────────────────────────────
-
+// ── Category Tx History (últimos 6 meses) ────────────────────────────────
 async function openCategoryHistory(catId, catName) {
   const modal = document.getElementById('categoryHistoryModal');
   if (!modal) return;
@@ -464,27 +463,16 @@ async function openCategoryHistory(catId, catName) {
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
   const sinceStr = since.toISOString().slice(0, 10);
-
-  // Incluir subcategorias filhas
-  const childIds = state.categories
-    .filter(c => c.parent_id === catId)
-    .map(c => c.id);
+  const childIds = state.categories.filter(c => c.parent_id === catId).map(c => c.id);
   const allIds = [catId, ...childIds];
 
   let q = famQ(
     sb.from('transactions')
       .select('id,date,description,amount,currency,brl_amount,status,accounts!transactions_account_id_fkey(name,currency),categories(name,color)')
   ).gte('date', sinceStr).order('date', { ascending: false }).limit(300);
-
-  // Filtrar por categoria e filhas
-  if (allIds.length === 1) {
-    q = q.eq('category_id', catId);
-  } else {
-    q = q.in('category_id', allIds);
-  }
+  q = allIds.length === 1 ? q.eq('category_id', catId) : q.in('category_id', allIds);
 
   const { data, error } = await q;
-
   if (error) {
     document.getElementById('catHistoryBody').innerHTML =
       `<tr><td colspan="4" style="text-align:center;color:var(--red)">Erro: ${esc(error.message)}</td></tr>`;
@@ -495,32 +483,24 @@ async function openCategoryHistory(catId, catName) {
       '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma transação nos últimos 6 meses</td></tr>';
     return;
   }
-
-  const totalAmt = data.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+  const total = data.reduce((s,t) => s + (parseFloat(t.amount)||0), 0);
   document.getElementById('catHistoryTotal').textContent =
-    data.length + ' transações · Total: ' + fmt(totalAmt);
-
+    data.length + ' transações · Total: ' + fmt(total);
   document.getElementById('catHistoryBody').innerHTML = data.map(t => {
     const cur = t.currency || t.accounts?.currency || 'BRL';
-    const amtClass = (parseFloat(t.amount) || 0) >= 0 ? 'amount-pos' : 'amount-neg';
+    const amtClass = (parseFloat(t.amount)||0) >= 0 ? 'amount-pos' : 'amount-neg';
     const catBadge = t.categories
-      ? `<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}28;font-size:.65rem">${esc(t.categories.name)}</span>`
-      : '';
-    const pendDot = t.status === 'pending'
-      ? '<span title="Pendente" style="color:var(--amber);font-size:.75rem"> ⏳</span>' : '';
+      ? `<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}28;font-size:.65rem">${esc(t.categories.name)}</span>` : '';
+    const pendDot = t.status==='pending' ? '<span style="color:var(--amber);font-size:.75rem"> ⏳</span>' : '';
     return `<tr style="cursor:pointer" onclick="closeModal('categoryHistoryModal');editTransaction('${t.id}')">
       <td style="white-space:nowrap;font-size:.8rem;color:var(--muted)">${fmtDate(t.date)}</td>
-      <td>
-        <div style="font-size:.85rem;font-weight:500">${esc(t.description || '')}${pendDot}</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">${catBadge}</div>
-        <div style="font-size:.7rem;color:var(--muted)">${esc(t.accounts?.name || '')}</div>
-      </td>
+      <td><div style="font-size:.85rem;font-weight:500">${esc(t.description||'')}${pendDot}</div>
+          <div style="margin-top:2px">${catBadge}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${esc(t.accounts?.name||'')}</div></td>
       <td class="${amtClass}" style="white-space:nowrap;font-weight:600;text-align:right">
-        ${(parseFloat(t.amount) || 0) >= 0 ? '+' : ''}${fmt(t.amount, cur)}
-        ${cur !== 'BRL' && t.brl_amount ? `<div style="font-size:.68rem;color:var(--muted)">${fmt(t.brl_amount, 'BRL')}</div>` : ''}
-      </td>
-      <td style="text-align:center;font-size:.75rem;color:var(--muted)">${esc(t.accounts?.name || '')}</td>
-    </tr>`;
+        ${(parseFloat(t.amount)||0)>=0?'+':''}${fmt(t.amount,cur)}
+        ${cur!=='BRL'&&t.brl_amount?`<div style="font-size:.68rem;color:var(--muted)">${fmt(t.brl_amount,'BRL')}</div>`:''}</td>
+      <td></td></tr>`;
   }).join('');
 }
 

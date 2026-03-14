@@ -3,7 +3,6 @@
 
 let _budgetView  = 'monthly';
 let _budgetCache = [];
-window._budgetCacheRef = () => { _budgetCache = []; }; // expõe reset para clearFamilyScopedUI
 let _dbHasBudgetType = null; // null = ainda não testado
 
 // ── DB capability detection ────────────────────────────────────────────────
@@ -181,21 +180,19 @@ async function loadBudgets() {
   grid.innerHTML = sorted.map(b => _budgetCardHTML(b, resolved[b.id], raw)).join('');
 }
 
-// ── Budget Drill-Through (transações do orçamento) ────────────────────────
-
+// ── Budget Drill-Through ────────────────────────────────────────────────
 async function openBudgetDrilldown(budgetId, catName) {
   const modal = document.getElementById('budgetDrilldownModal');
   if (!modal) return;
-
   const b = _budgetCache.find(x => x.id === budgetId);
   if (!b) return;
 
   const period = _getSelectedPeriod();
   let dateFrom, dateTo;
   if (_budgetView === 'monthly') {
-    const y = String(period.year), m = String(period.month).padStart(2, '0');
+    const y = String(period.year), m = String(period.month).padStart(2,'0');
     dateFrom = `${y}-${m}-01`;
-    dateTo   = `${y}-${m}-${String(_lastDayOf(y, m)).padStart(2, '0')}`;
+    dateTo   = `${y}-${m}-${String(_lastDayOf(y,m)).padStart(2,'0')}`;
   } else {
     dateFrom = `${period.year}-01-01`;
     dateTo   = `${period.year}-12-31`;
@@ -203,66 +200,45 @@ async function openBudgetDrilldown(budgetId, catName) {
 
   document.getElementById('budgetDrillTitle').textContent = catName + ' — transações do período';
   document.getElementById('budgetDrillBody').innerHTML =
-    '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Carregando…</td></tr>';
+    '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--muted)">Carregando…</td></tr>';
   openModal('budgetDrilldownModal');
 
-  // Todas as categorias incluídas neste orçamento (hierarquia)
   const allCatIds = [..._categoryFamily(b.category_id)];
-
   let q = famQ(
     sb.from('transactions')
-      .select('id,date,description,amount,currency,brl_amount,status,accounts!transactions_account_id_fkey(name),categories(name,color,parent_id)')
-  ).lt('amount', 0)
-   .gte('date', dateFrom)
-   .lte('date', dateTo)
-   .order('date', { ascending: false })
-   .limit(500);
-
-  if (allCatIds.length === 1) {
-    q = q.eq('category_id', allCatIds[0]);
-  } else {
-    q = q.in('category_id', allCatIds);
-  }
+      .select('id,date,description,amount,currency,brl_amount,status,accounts!transactions_account_id_fkey(name),categories(name,color)')
+  ).lt('amount',0).gte('date',dateFrom).lte('date',dateTo).order('date',{ascending:false}).limit(500);
+  q = allCatIds.length===1 ? q.eq('category_id',allCatIds[0]) : q.in('category_id',allCatIds);
 
   const { data, error } = await q;
-
+  const totalEl = document.getElementById('budgetDrillTotal');
   if (error) {
     document.getElementById('budgetDrillBody').innerHTML =
-      `<tr><td colspan="4" style="text-align:center;color:var(--red)">Erro: ${esc(error.message)}</td></tr>`;
+      `<tr><td colspan="3" style="text-align:center;color:var(--red)">Erro: ${esc(error.message)}</td></tr>`;
     return;
   }
-
-  const totalEl = document.getElementById('budgetDrillTotal');
   if (!data || !data.length) {
     if (totalEl) totalEl.textContent = 'Nenhuma transação no período';
     document.getElementById('budgetDrillBody').innerHTML =
-      '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma transação no período</td></tr>';
+      '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma transação no período</td></tr>';
     return;
   }
-
-  const totalSpent = data.reduce((s, t) => s + Math.abs(parseFloat(t.amount) || 0), 0);
+  const totalSpent = data.reduce((s,t)=>s+Math.abs(parseFloat(t.amount)||0),0);
   if (totalEl) totalEl.textContent = `${data.length} transações · Gasto: ${fmt(totalSpent)}`;
-
   document.getElementById('budgetDrillBody').innerHTML = data.map(t => {
-    const cur = t.currency || 'BRL';
-    const catColor = t.categories?.color || 'var(--muted)';
+    const cur = t.currency||'BRL';
+    const catColor = t.categories?.color||'var(--muted)';
     const catBadge = t.categories
-      ? `<span class="badge" style="background:${catColor}18;color:${catColor};border:1px solid ${catColor}28;font-size:.65rem">${esc(t.categories.name)}</span>`
-      : '';
-    const pendDot = t.status === 'pending'
-      ? '<span title="Pendente" style="color:var(--amber);font-size:.75rem"> ⏳</span>' : '';
+      ? `<span class="badge" style="background:${catColor}18;color:${catColor};border:1px solid ${catColor}28;font-size:.65rem">${esc(t.categories.name)}</span>` : '';
+    const pendDot = t.status==='pending'?'<span style="color:var(--amber);font-size:.75rem"> ⏳</span>':'';
     return `<tr style="cursor:pointer" onclick="closeModal('budgetDrilldownModal');editTransaction('${t.id}')">
       <td style="white-space:nowrap;font-size:.8rem;color:var(--muted)">${fmtDate(t.date)}</td>
-      <td>
-        <div style="font-size:.85rem;font-weight:500">${esc(t.description || '')}${pendDot}</div>
-        <div style="margin-top:2px">${catBadge}</div>
-        <div style="font-size:.7rem;color:var(--muted)">${esc(t.accounts?.name || '')}</div>
-      </td>
+      <td><div style="font-size:.85rem;font-weight:500">${esc(t.description||'')}${pendDot}</div>
+          <div style="margin-top:2px">${catBadge}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${esc(t.accounts?.name||'')}</div></td>
       <td class="amount-neg" style="white-space:nowrap;font-weight:600;text-align:right">
-        -${fmt(Math.abs(t.amount), cur)}
-        ${cur !== 'BRL' && t.brl_amount ? `<div style="font-size:.68rem;color:var(--muted)">${fmt(t.brl_amount, 'BRL')}</div>` : ''}
-      </td>
-      <td style="text-align:center;font-size:.75rem;color:var(--muted)">${esc(t.accounts?.name || '')}</td>
+        -${fmt(Math.abs(t.amount),cur)}
+        ${cur!=='BRL'&&t.brl_amount?`<div style="font-size:.68rem;color:var(--muted)">${fmt(t.brl_amount,'BRL')}</div>`:''}</td>
     </tr>`;
   }).join('');
 }
@@ -281,16 +257,15 @@ function _budgetCardHTML(b, spent, raw) {
     ? state.categories.find(c => c.id === cat.parent_id) : null;
   const children = state.categories.filter(c => c.parent_id === b.category_id && c.type === 'despesa');
 
-  // Tags de subcategorias com gasto > 0 — clicáveis
+  // Tags de subcategorias com gasto > 0
   const childTagsHtml = children.length
     ? `<div class="budget-child-tags">
         <span style="font-size:.68rem;color:var(--muted);margin-right:2px">Inclui:</span>
         ${children.map(c => {
           const cs = (raw || {})[c.id] || 0;
-          const hasSpent = cs > 0;
-          return `<span class="budget-child-tag" style="background:${c.color||'var(--accent)'}22;color:${c.color||'var(--accent)'};cursor:${hasSpent?'pointer':'default'}"
-            ${hasSpent ? `onclick="event.stopPropagation();openCategoryHistory('${c.id}','${esc(c.name)}')" title="Ver transações de ${esc(c.name)}"` : ''}>
-            ${c.icon || ''} ${esc(c.name)}${hasSpent ? ' · ' + fmt(cs) : ''}
+          const _hasSpent = cs > 0;
+          return `<span class="budget-child-tag" style="background:${c.color||'var(--accent)'}22;color:${c.color||'var(--accent)'};cursor:${_hasSpent?'pointer':'default'}" ${_hasSpent?`onclick="event.stopPropagation();openCategoryHistory('${c.id}','${esc(c.name)}')"`:''}>
+            ${c.icon || ''} ${esc(c.name)}${cs > 0 ? ' · ' + fmt(cs) : ''}
           </span>`;
         }).join('')}
       </div>` : '';
@@ -304,7 +279,8 @@ function _budgetCardHTML(b, spent, raw) {
       ? `<span class="budget-badge" style="background:var(--bg2);color:var(--muted)" title="${esc(b.notes)}">📝</span>` : '',
   ].filter(Boolean).join('');
 
-  return `<div class="budget-card${over ? ' budget-card--over' : near ? ' budget-card--near' : ''}" style="cursor:pointer" onclick="openBudgetDrilldown('${b.id}','${(cat.name||'').replace(/'/g, '\\u0027')}')"><div class="budget-card-stripe" style="background:${color}"></div>
+  return `<div class="budget-card${over ? ' budget-card--over' : near ? ' budget-card--near' : ''}" style="cursor:pointer" onclick="openBudgetDrilldown('${b.id}','${(cat.name||'').replace(/'/g,'\\u0027')}')">
+    <div class="budget-card-stripe" style="background:${color}"></div>
 
     <div class="budget-card-header">
       <div class="budget-cat-info">

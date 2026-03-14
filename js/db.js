@@ -69,14 +69,10 @@ const _accounts = {
 
   /**
    * Compute running balance per account.
-   * Strategy:
-   *   - Modern transfers: two linked legs stored (one debit, one credit).
-   *     Summing account_id gives correct result naturally — no extra work needed.
-   *   - Legacy single-leg transfers: only the debit leg has account_id set;
-   *     the destination is stored in transfer_to_account_id with no paired row.
-   *     We must credit the destination manually.
-   * The old code always ran the legacy query, causing double-credits when
-   * both legs exist (linked_transfer_id is set on both rows). Fixed.
+   * Modern transfers have two linked legs (both with account_id set) — summing
+   * account_id naturally gives the correct result for each account.
+   * Legacy single-leg transfers only have the debit row; the destination must
+   * be credited separately (only when linked_transfer_id IS NULL).
    */
   async recalcBalances() {
     if (!state.accounts.length) return;
@@ -90,9 +86,7 @@ const _accounts = {
       (s1 || []).forEach(t => {
         if (t.account_id) txMap[t.account_id] = (txMap[t.account_id] || 0) + (parseFloat(t.amount) || 0);
       });
-
-      // Step 2: legacy single-leg transfers only — credit destination
-      // ONLY rows where linked_transfer_id IS NULL (no paired credit leg exists)
+      // Step 2: legacy single-leg transfers — credit destination only when no paired leg exists
       const { data: s2 } = await famQ(
         sb.from('transactions')
           .select('transfer_to_account_id,amount')
@@ -102,10 +96,7 @@ const _accounts = {
       );
       (s2 || []).forEach(t => {
         const dest = t.transfer_to_account_id;
-        if (dest) {
-          // Credit destination with the absolute amount (debit leg is negative)
-          txMap[dest] = (txMap[dest] || 0) + Math.abs(parseFloat(t.amount) || 0);
-        }
+        if (dest) txMap[dest] = (txMap[dest] || 0) + Math.abs(parseFloat(t.amount) || 0);
       });
     } catch (e) {
       console.warn('[DB.accounts.recalcBalances] fallback:', e.message);
@@ -362,7 +353,6 @@ const _prices = {
 ════════════════════════════════════════════════════════════════════ */
 async function dbPreload() {
   return _wrap('Iniciando…', async () => {
-    // Carrega contas, categorias e beneficiários em paralelo (dados estáveis)
     await Promise.all([
       _accounts.load(true),
       _categories.load(true),
@@ -376,18 +366,6 @@ function dbBustAll() {
   ['accounts', 'categories', 'payees'].forEach(_bust);
 }
 
-/**
- * Recarrega apenas os dados stale/ausentes sem recarregar o que já está fresco.
- * Chamado ao navegar para páginas que dependem de dados específicos.
- */
-async function dbEnsure(keys = []) {
-  const toLoad = [];
-  if (keys.includes('accounts')   && !_fresh('accounts'))   toLoad.push(_accounts.load());
-  if (keys.includes('categories') && !_fresh('categories')) toLoad.push(_categories.load());
-  if (keys.includes('payees')     && !_fresh('payees'))     toLoad.push(_payees.load());
-  if (toLoad.length) await Promise.all(toLoad);
-}
-
 /* ── Expose on window ──────────────────────────────────────────── */
 window.DB = {
   accounts:     _accounts,
@@ -398,5 +376,4 @@ window.DB = {
   prices:       _prices,
   preload:      dbPreload,
   bustAll:      dbBustAll,
-  ensure:       dbEnsure,
 };

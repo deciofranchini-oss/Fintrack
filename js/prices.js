@@ -27,23 +27,27 @@ async function isPricesEnabled() {
   const famId = currentUser?.family_id;
   if (!famId) return false;
   const cacheKey = 'prices_enabled_' + famId;
-  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache)
+  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache) {
     return !!window._familyFeaturesCache[cacheKey];
-  try { if (typeof _appSettingsCache!=='undefined' && _appSettingsCache && cacheKey in _appSettingsCache)
-    return _appSettingsCache[cacheKey]===true||_appSettingsCache[cacheKey]==='true'; } catch{}
-  const local = localStorage.getItem(cacheKey);
-  if (local !== null) return local === 'true';
+  }
   const val = await getAppSetting(cacheKey, false);
   return val === true || val === 'true';
+}
+
+function _syncModulesSection() {
+  const sec = document.getElementById('modulesNavSection');
+  if (!sec) return;
+  const anyOn = ['groceryNav','pricesNav'].some(id => {
+    const el = document.getElementById(id);
+    return el && el.style.display !== 'none';
+  });
+  sec.style.display = anyOn ? '' : 'none';
 }
 
 async function applyPricesFeature() {
   const on = await isPricesEnabled();
   const navEl = document.getElementById('pricesNav');
-  if (navEl) {
-    navEl.style.display = on ? '' : 'none';
-    navEl.dataset.featureControlled = '1';
-  }
+  if (navEl) { navEl.style.display = on ? '' : 'none'; navEl.dataset.featureControlled = '1'; }
   const txBtn = document.getElementById('txRegisterPricesBtn');
   if (txBtn) txBtn.style.display = on ? '' : 'none';
   _syncModulesSection();
@@ -55,17 +59,6 @@ async function toggleFamilyPrices(familyId, enabled) {
   toast(enabled ? '✓ Gestão de Preços ativada' : 'Gestão de Preços desativada', 'success');
 }
 
-// Mostra a seção "Módulos" na sidebar se pelo menos um módulo estiver ativo
-function _syncModulesSection() {
-  const sec = document.getElementById('modulesNavSection');
-  if (!sec) return;
-  const anyVisible = ['groceryNav', 'pricesNav'].some(id => {
-    const el = document.getElementById(id);
-    return el && el.style.display !== 'none';
-  });
-  sec.style.display = anyVisible ? '' : 'none';
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE INIT & DATA LOAD
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,10 +68,7 @@ async function applyGroceryFeature() {
   if (!famId) return;
   const on = await isGroceryEnabled();
   const navEl = document.getElementById('groceryNav');
-  if (navEl) {
-    navEl.style.display = on ? '' : 'none';
-    navEl.dataset.featureControlled = '1';
-  }
+  if (navEl) { navEl.style.display = on ? '' : 'none'; navEl.dataset.featureControlled = '1'; }
   _syncModulesSection();
 }
 
@@ -88,8 +78,6 @@ async function isGroceryEnabled() {
   const cacheKey = 'grocery_enabled_' + famId;
   if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache)
     return !!window._familyFeaturesCache[cacheKey];
-  try { if (typeof _appSettingsCache!=='undefined' && _appSettingsCache && cacheKey in _appSettingsCache)
-    return _appSettingsCache[cacheKey]===true||_appSettingsCache[cacheKey]==='true'; } catch{}
   const local = localStorage.getItem(cacheKey);
   if (local !== null) return local === 'true';
   const val = await getAppSetting(cacheKey, false);
@@ -106,44 +94,6 @@ async function initPricesPage() {
   await _loadPricesData();
   _populatePricesStoreFilter();
   _renderPricesPage();
-  // Mostrar banner de acesso / ativação do Mercado
-  _updatePricesGroceryBanner();
-}
-
-async function _updatePricesGroceryBanner() {
-  const groceryOn = await isGroceryEnabled();
-  const bannerOn  = document.getElementById('pricesGroceryBanner');
-  const bannerOff = document.getElementById('pricesGroceryActivateBanner');
-  if (bannerOn)  bannerOn.style.display  = groceryOn ? 'flex' : 'none';
-  if (bannerOff) bannerOff.style.display = groceryOn ? 'none' : 'flex';
-}
-
-async function _pricesPageActivateGrocery() {
-  const btn = document.querySelector('#pricesGroceryActivateBanner button');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Ativando…'; }
-  const famId = currentUser?.family_id;
-  if (!famId) { toast('Nenhuma família ativa', 'error'); return; }
-  const key = 'grocery_enabled_' + famId;
-  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-  window._familyFeaturesCache[key] = true;
-  try { localStorage.setItem(key, 'true'); } catch {}
-  try { if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache) _appSettingsCache[key] = true; } catch {}
-  let saved = false;
-  if (sb) {
-    // Tenta RPC SECURITY DEFINER primeiro (requer migration_family_feature_flags.sql)
-    try {
-      const { error: rpcErr } = await sb.rpc('set_family_feature_flag', { p_family_id: famId, p_key: key, p_value: true });
-      if (!rpcErr) saved = true;
-    } catch {}
-    // Fallbacks diretos — sem family_id para compatibilidade máxima de schema
-    if (!saved) { try { const { error: e } = await sb.from('app_settings').update({ value: true }).eq('key', key); if (!e) saved = true; } catch {} }
-    if (!saved) { try { const { error: e } = await sb.from('app_settings').insert({ key, value: true }); if (!e) saved = true; } catch {} }
-    if (!saved) { try { await sb.from('app_settings').upsert({ key, value: true }, { onConflict: 'key' }); saved = true; } catch {} }
-  }
-  try { await applyGroceryFeature(); } catch {}
-  toast('🛒 Módulo Mercado ativado!', 'success');
-  _updatePricesGroceryBanner();
-  if (btn) { btn.disabled = false; btn.textContent = '⚡ Ativar Mercado'; }
 }
 
 function _populatePricesCatFilter() {

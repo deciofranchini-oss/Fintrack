@@ -1476,27 +1476,18 @@ async function loadFamiliesList() {
     return;
   }
 
-  // ── Pré-carregar feature flags de todas as famílias visíveis ─────────────
-  // Garante que grocery_enabled_ e prices_enabled_ estejam no cache
-  // antes de renderizar os checkboxes — evita estado incorreto.
-  if (typeof _loadFamilyFeatures === 'function') {
-    try { await _loadFamilyFeatures(visibleFamilies); } catch(_) {}
-  } else {
-    // Fallback: carregar direto do banco se _loadFamilyFeatures não disponível
-    try {
-      const flagKeys = visibleFamilies.flatMap(f => [
-        'grocery_enabled_' + f.id,
-        'prices_enabled_'  + f.id,
-      ]);
-      const { data: flagRows } = await sb.from('app_settings')
-        .select('key,value').in('key', flagKeys);
-      if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-      (flagRows || []).forEach(r => {
-        window._familyFeaturesCache[r.key] = (r.value === true || r.value === 'true');
-      });
-    } catch(_) {}
-  }
-  const _fc = window._familyFeaturesCache || {};
+  // Pre-load feature flags so checkboxes show correct state
+  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+  try {
+    const flagKeys = visibleFamilies.flatMap(f =>
+      ['grocery_enabled_','prices_enabled_'].map(p => p + f.id));
+    const { data: flagRows } = await sb.from('app_settings')
+      .select('key,value').in('key', flagKeys);
+    (flagRows||[]).forEach(r => {
+      window._familyFeaturesCache[r.key] = (r.value===true||r.value==='true');
+    });
+  } catch {}
+  const _fc = window._familyFeaturesCache;
 
   // Show "+ Nova Família" button only to global admins and family owners
   const newFamBtn = document.querySelector('#uaFamilies .btn-primary');
@@ -1531,200 +1522,139 @@ async function loadFamiliesList() {
     // Usuários que ainda NÃO são membros desta família
     const available = (allUsers||[]).filter(u => !familiesByUser[u.id]?.has(f.id));
 
-    const fid = f.id;
-    const fname = esc(_familyDisplayName(f.id, f.name || ''));
-    const fdesc = f.description ? esc(f.description) : '';
-    const canManage = isGlobalAdmin || members.some(m => m.user_email === currentUser?.email && m.member_role === 'owner');
-    const _groceryOn = !!_fc['grocery_enabled_' + fid];
-    const _pricesOn  = !!_fc['prices_enabled_'  + fid];
-
-    return `<div class="fam-card-v2" id="famCard-${fid}">
-
-      <!-- ── Header ── -->
-      <div class="fam-cv2-header">
-        <div class="fam-cv2-avatar">🏠</div>
-        <div class="fam-cv2-info">
-          <div class="fam-cv2-name">${fname}</div>
-          ${fdesc ? `<div class="fam-cv2-desc">${fdesc}</div>` : ''}
-          <div class="fam-cv2-meta">${members.length} membro${members.length!==1?'s':''}</div>
+    const _groceryOn = !!(_fc['grocery_enabled_' + f.id]);
+    const _pricesOn  = !!(_fc['prices_enabled_'  + f.id]);
+    return `<div class="card" style="margin-bottom:14px">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:10px;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏠</div>
+          <div>
+            <div style="font-weight:700;font-size:.95rem">${esc(_familyDisplayName(f.id, f.name||''))}</div>
+            <div style="font-size:.74rem;color:var(--muted)">${members.length} membro${members.length!==1?'s':''} ${f.description ? '· ' + esc(f.description) : ''}</div>
+          </div>
         </div>
-        ${canManage ? `
-        <div class="fam-cv2-actions">
-          <button class="fam-cv2-btn" onclick="editFamily('${fid}')" title="Editar família">✏️</button>
-          <button class="fam-cv2-btn" onclick="openDbBackupCreateForFamily('${fid}','${fname.replace(/'/g,"\'")}')" title="Criar backup">📸</button>
-          <button class="fam-cv2-btn" onclick="openFamilyBackupManager('${fid}','${fname.replace(/'/g,"\'")}')" title="Ver snapshots">🗂️</button>
-          <button class="fam-cv2-btn danger" onclick="wipeFamilyData('${fid}','${f.name.replace(/'/g,"\'")}')" title="Apagar dados">🗑️</button>
-          <button class="fam-cv2-btn danger" onclick="deleteFamily('${fid}','${f.name.replace(/'/g,"\'")}')" title="Excluir família">✕</button>
-        </div>` : ''}
-      </div>
-
-      <!-- ── Módulos ── -->
-      <div class="fam-cv2-section">
-        <div class="fam-cv2-section-label">Módulos opcionais</div>
-        <div class="fam-cv2-modules">
-          <button class="fam-cv2-module-btn ${_groceryOn ? 'active' : ''}"
-            id="famGroceryBtn-${fid}"
-            onclick="_famToggleModule('${fid}','grocery_enabled_','groceryFamToggle-${fid}','famGroceryBtn-${fid}','applyGroceryFeature')"
-            title="${_groceryOn ? 'Desativar' : 'Ativar'} Lista de Mercado">
-            <span class="fam-cv2-mod-icon">🛒</span>
-            <span class="fam-cv2-mod-label">Mercado</span>
-            <span class="fam-cv2-mod-status">${_groceryOn ? '●' : '○'}</span>
-            <input type="checkbox" id="groceryFamToggle-${fid}" ${_groceryOn ? 'checked' : ''} style="display:none">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button id="famGroceryBtn-${f.id}"
+            class="fam-mod-btn${_groceryOn?' active':''}"
+            onclick="_famToggleModule('${f.id}','grocery_enabled_','famGroceryBtn-${f.id}','applyGroceryFeature')"
+            title="${_groceryOn?'Desativar':'Ativar'} Mercado">
+            🛒 Mercado <span class="fam-mod-dot">${_groceryOn?'●':'○'}</span>
           </button>
-          <button class="fam-cv2-module-btn ${_pricesOn ? 'active' : ''}"
-            id="famPricesBtn-${fid}"
-            onclick="_famToggleModule('${fid}','prices_enabled_','pricesFamToggle-${fid}','famPricesBtn-${fid}','applyPricesFeature')"
-            title="${_pricesOn ? 'Desativar' : 'Ativar'} Gestão de Preços">
-            <span class="fam-cv2-mod-icon">🏷️</span>
-            <span class="fam-cv2-mod-label">Preços</span>
-            <span class="fam-cv2-mod-status">${_pricesOn ? '●' : '○'}</span>
-            <input type="checkbox" id="pricesFamToggle-${fid}" ${_pricesOn ? 'checked' : ''} style="display:none">
+          <button id="famPricesBtn-${f.id}"
+            class="fam-mod-btn${_pricesOn?' active':''}"
+            onclick="_famToggleModule('${f.id}','prices_enabled_','famPricesBtn-${f.id}','applyPricesFeature')"
+            title="${_pricesOn?'Desativar':'Ativar'} Preços">
+            🏷️ Preços <span class="fam-mod-dot">${_pricesOn?'●':'○'}</span>
           </button>
+          ${(isGlobalAdmin || membersByFamily[f.id]?.some(m => m.user_email === currentUser?.email && m.member_role === 'owner')) ? `
+            <button class="btn btn-ghost btn-sm" onclick="editFamily('${f.id}')" style="padding:3px 10px;font-size:.73rem">✏️ Editar</button>
+            <button class="btn btn-ghost btn-sm" onclick="openDbBackupCreateForFamily('${f.id}','${esc(_familyDisplayName(f.id, f.name||'')).replace(/'/g,"\\'")}')" style="padding:3px 10px;font-size:.73rem" title="Criar snapshot desta família">📸 Backup</button>
+            <button class="btn btn-ghost btn-sm" onclick="openFamilyBackupManager('${f.id}','${esc(_familyDisplayName(f.id, f.name||'')).replace(/'/g,"\\'")}')" style="padding:3px 10px;font-size:.73rem" title="Ver e restaurar snapshots desta família">🗂️ Snapshots</button>
+            <button class="btn btn-ghost btn-sm" id="wipeFamBtn-${f.id}" onclick="wipeFamilyData('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')" style="padding:3px 10px;font-size:.73rem;color:var(--amber,#f59e0b)" title="Apagar todos os dados desta família">🗑️ Dados</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteFamily('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')" style="padding:3px 10px;font-size:.73rem;color:var(--red)" title="Excluir família">✕ Excluir</button>
+          ` : ''}
         </div>
       </div>
-
-      <!-- ── Membros ── -->
-      <div class="fam-cv2-section">
-        <div class="fam-cv2-section-label">Membros</div>
-        <div class="fam-cv2-members">
-          ${membersHtml}
-        </div>
+      <div style="padding:4px 0">
+        ${membersHtml}
         ${available.length ? `
-        <div class="fm-add-row" style="margin-top:10px">
-          <select id="addMemberSel-${fid}" style="font-size:.8rem;flex:1">
+        <div class="fm-add-row">
+          <select id="addMemberSel-${f.id}" style="font-size:.8rem;flex:1">
             <option value="">— Adicionar usuário existente —</option>
             ${available.map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('')}
           </select>
-          <select id="addMemberRole-${fid}" style="font-size:.8rem;width:120px">
+          <select id="addMemberRole-${f.id}" style="font-size:.8rem;width:130px">
             <option value="user">👤 Usuário</option>
             <option value="admin">🔧 Admin</option>
             <option value="viewer">👁 Visualizador</option>
             <option value="owner">👑 Owner</option>
           </select>
-          <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${fid}')" style="font-size:.78rem;white-space:nowrap">+ Adicionar</button>
+          <button class="btn btn-primary btn-sm" onclick="addUserToFamily('${f.id}')"
+                  style="font-size:.78rem;white-space:nowrap">+ Adicionar</button>
         </div>` : ''}
-        <div class="fm-invite-row" style="margin-top:8px">
-          <span style="font-size:.72rem;color:var(--muted);font-weight:600;white-space:nowrap">📨 Convidar:</span>
-          <input type="email" id="inviteEmail-${fid}" placeholder="email@exemplo.com"
-                 style="font-size:.8rem;flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"
-                 onkeydown="if(event.key==='Enter')inviteToFamily('${fid}','${fname.replace(/'/g,"\'")}')" />
-          <select id="inviteRole-${fid}" style="font-size:.8rem;width:110px">
+        <!-- Convidar novo usuário por e-mail -->
+        <div class="fm-invite-row">
+          <span style="font-size:.73rem;color:var(--muted);font-weight:600;white-space:nowrap">📨 Convidar por e-mail:</span>
+          <input type="email" id="inviteEmail-${f.id}" placeholder="email@exemplo.com"
+                 style="font-size:.8rem;flex:1;min-width:140px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"
+                 onkeydown="if(event.key==='Enter')inviteToFamily('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')" />
+          <select id="inviteRole-${f.id}" style="font-size:.8rem;width:120px">
             <option value="user">👤 Usuário</option>
             <option value="admin">🔧 Admin</option>
             <option value="viewer">👁 Visualizador</option>
             <option value="owner">👑 Owner</option>
           </select>
-          <button class="btn btn-primary btn-sm" onclick="inviteToFamily('${fid}','${fname.replace(/'/g,"\'")}')" style="font-size:.78rem;white-space:nowrap">📨 Convidar</button>
+          <button class="btn btn-primary btn-sm" id="inviteBtn-${f.id}"
+                  onclick="inviteToFamily('${f.id}','${esc(f.name).replace(/'/g,"\\'")}')"
+                  style="font-size:.78rem;white-space:nowrap">📨 Convidar</button>
         </div>
       </div>
-    </div>`  }).join('');
+    </div>`;
+  }).join('');
 
-  // O estado dos checkboxes já foi injetado no HTML via _pricesOn/_groceryOn.
-  // Este bloco apenas garante sincronia caso o cache tenha sido atualizado
-  // depois da renderização (ex.: toggle concorrente).
+  // Sync button states from cache (in case cache updated after render)
   setTimeout(() => {
     const fc = window._familyFeaturesCache || {};
     for (const f of visibleFamilies) {
-      const cbP = document.getElementById('pricesFamToggle-'  + f.id);
-      const cbG = document.getElementById('groceryFamToggle-' + f.id);
-      if (cbP) cbP.checked = !!fc['prices_enabled_'  + f.id];
-      if (cbG) cbG.checked = !!fc['grocery_enabled_' + f.id];
+      const gBtn = document.getElementById('famGroceryBtn-' + f.id);
+      const pBtn = document.getElementById('famPricesBtn-'  + f.id);
+      if (gBtn) {
+        const on = !!fc['grocery_enabled_' + f.id];
+        gBtn.classList.toggle('active', on);
+        const dot = gBtn.querySelector('.fam-mod-dot');
+        if (dot) dot.textContent = on ? '●' : '○';
+      }
+      if (pBtn) {
+        const on = !!fc['prices_enabled_' + f.id];
+        pBtn.classList.toggle('active', on);
+        const dot = pBtn.querySelector('.fam-mod-dot');
+        if (dot) dot.textContent = on ? '●' : '○';
+      }
     }
-  }, 80);
+  }, 100);
 }
 
-// ── Toggle de módulo de família (Mercado / Preços) ────────────────────────
-// Gravar diretamente no banco sem depender de upsert com constraint específica.
-async function _famToggleModule(famId, keyPrefix, cbId, btnId, applyFn) {
-  const key  = keyPrefix + famId;
-  const cb   = document.getElementById(cbId);
-  const btn  = document.getElementById(btnId);
-  if (!cb || !btn) return;
+// ── Toggle módulo de família (Mercado / Preços) ──────────────────────────
+async function _famToggleModule(famId, keyPrefix, btnId, applyFn) {
+  const key = keyPrefix + famId;
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
 
-  const wasOn = cb.checked;
-  const nowOn = !wasOn;
+  const isOn = btn.classList.contains('active');
+  const nowOn = !isOn;
 
-  // 1. Feedback visual imediato — não espera o banco
-  cb.checked = nowOn;
+  // UI imediato
   btn.classList.toggle('active', nowOn);
-  btn.querySelector('.fam-cv2-mod-status').textContent = nowOn ? '●' : '○';
-  btn.title = (nowOn ? 'Desativar ' : 'Ativar ') + btn.querySelector('.fam-cv2-mod-label').textContent;
+  btn.querySelector('.fam-mod-dot').textContent = nowOn ? '●' : '○';
   btn.disabled = true;
 
-  // 2. Caches locais — garantem funcionamento na sessão mesmo sem banco
+  // Caches locais
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
   window._familyFeaturesCache[key] = nowOn;
   try { localStorage.setItem(key, String(nowOn)); } catch {}
-  try { if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache) _appSettingsCache[key] = nowOn; } catch {}
 
-  // 3. Aplicar sidebar imediatamente
-  try {
-    if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
-  } catch(e) { console.warn('[_famToggleModule] applyFn:', e.message); }
+  // Aplicar sidebar imediatamente
+  try { if (applyFn && typeof window[applyFn]==='function') await window[applyFn](); } catch {}
 
-  // 4. Persistir no banco — 4 estratégias em cascata
+  // Persistir no banco — RPC primeiro, depois upsert padrão
   let saved = false;
-  let lastErr = '';
-
   if (sb) {
-    // A) RPC SECURITY DEFINER — bypassa RLS (requer migration_family_feature_flags.sql)
     try {
-      const { error: rpcErr } = await sb.rpc('set_family_feature_flag', {
-        p_family_id: famId,
-        p_key:       key,
-        p_value:     nowOn,
-      });
-      if (!rpcErr) { saved = true; }
-      else {
-        lastErr = rpcErr.message;
-        // Só loga se não for "function does not exist" (migration pendente)
-        if (!rpcErr.message?.includes('exist') && !rpcErr.message?.includes('function')) {
-          console.warn('[_famToggleModule] RPC:', rpcErr.message);
-        }
-      }
-    } catch(e) { lastErr = e.message; }
-
-    // B) Upsert direto — sem family_id para máxima compatibilidade de schema
+      const { error } = await sb.rpc('set_family_feature_flag',
+        { p_family_id: famId, p_key: key, p_value: nowOn });
+      if (!error) saved = true;
+    } catch {}
     if (!saved) {
       try {
-        const { error: e } = await sb.from('app_settings')
+        const { error } = await sb.from('app_settings')
           .upsert({ key, value: nowOn }, { onConflict: 'key' });
-        if (!e) { saved = true; } else { lastErr = e.message; }
-      } catch(e) { lastErr = e.message; }
-    }
-
-    // C) UPDATE por key (row já existe)
-    if (!saved) {
-      try {
-        const { error: e } = await sb.from('app_settings')
-          .update({ value: nowOn }).eq('key', key);
-        if (!e) { saved = true; } else { lastErr = e.message; }
-      } catch(e) { lastErr = e.message; }
-    }
-
-    // D) INSERT (row não existe ainda)
-    if (!saved) {
-      try {
-        const { error: e } = await sb.from('app_settings')
-          .insert({ key, value: nowOn });
-        if (!e) { saved = true; } else { lastErr = e.message; }
-      } catch(e) { lastErr = e.message; }
+        if (!error) saved = true;
+      } catch {}
     }
   }
 
   btn.disabled = false;
-
-  if (!sb || saved) {
-    toast(nowOn ? '✓ Módulo ativado' : 'Módulo desativado', 'success');
-  } else {
-    console.error('[_famToggleModule] Todos os métodos falharam:', lastErr);
-    toast(
-      nowOn
-        ? '✓ Ativado nesta sessão · Aplique migration_family_feature_flags.sql para persistir'
-        : 'Desativado nesta sessão',
-      'warning'
-    );
-  }
+  toast(nowOn ? '✓ Módulo ativado' : 'Módulo desativado', saved ? 'success' : 'warning');
 }
 
 function showFamilyForm(id='') {

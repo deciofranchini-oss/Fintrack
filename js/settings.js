@@ -7,13 +7,6 @@ async function loadAppSettings() {
     if (error) throw error;
     _appSettingsCache = {};
     (data || []).forEach(row => { _appSettingsCache[row.key] = row.value; });
-    // Alimentar _familyFeaturesCache com flags de família vindos do banco
-    if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-    (data || []).forEach(row => {
-      if (/^(grocery_enabled_|prices_enabled_|backup_enabled_|snapshot_enabled_)/.test(row.key)) {
-        window._familyFeaturesCache[row.key] = (row.value === true || row.value === 'true');
-      }
-    });
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
@@ -47,43 +40,32 @@ async function loadAppSettings() {
 }
 
 async function saveAppSetting(key, value) {
-  // Persiste localmente como fallback imediato
-  try { localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : String(value)); } catch {}
-
-  // Atualiza cache em memória
-  if (!_appSettingsCache) _appSettingsCache = {};
-  _appSettingsCache[key] = value;
-
+  // Always persist locally as fallback
+  if (typeof value === 'object') {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  } else {
+    localStorage.setItem(key, value);
+  }
   if (!sb) return;
-
   try {
-    const m = String(key || '').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_)(.+)$/);
-    const family_id = m ? m[2] : null;
+    let family_id = null;
+    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_)(.+)$/);
+    if (m) family_id = m[2];
 
-    // Para feature flags de família: tenta RPC SECURITY DEFINER primeiro
-    // A RPC só existe após aplicar migration_family_feature_flags.sql
-    if (family_id) {
-      try {
-        const { error: rpcErr } = await sb.rpc('set_family_feature_flag', {
-          p_family_id: family_id,
-          p_key:       key,
-          p_value:     !!value,
-        });
-        if (!rpcErr) return; // gravou via RPC — fim
-      } catch {}
-      // RPC não existe ou falhou — cai no upsert padrão abaixo
-    }
+    const payload = { key, value: typeof value === 'object' ? value : value };
+    if (family_id) payload.family_id = family_id;
 
-    // Upsert padrão — NÃO inclui family_id para compatibilidade máxima
-    // (family_id pode não existir na tabela app_settings de alguns deploys)
+    // upsert: insert or update by key
     const { error } = await sb.from('app_settings')
-      .upsert({ key, value }, { onConflict: 'key' });
+      .upsert(payload, { onConflict: 'key' });
     if (error) throw error;
-
+    if (!_appSettingsCache) _appSettingsCache = {};
+    _appSettingsCache[key] = value;
   } catch(e) {
     console.warn('saveAppSetting DB error (saved locally):', e.message);
   }
 }
+
 async function getAppSetting(key, defaultValue = null) {
   if (_appSettingsCache && key in _appSettingsCache) return _appSettingsCache[key];
   // Fallback localStorage
@@ -645,8 +627,7 @@ const DEFAULT_MENU_VISIBILITY = {
   import: true,
   audit: true,
   settings: true,
-  // grocery e prices são controlados por feature flag por família,
-  // não pela visibilidade do menu — omitidos aqui intencionalmente
+  // grocery e prices são controlados por feature flag — omitidos intencionalmente
 };
 
 function _getMenuVisibilityFromCache() {
@@ -675,8 +656,7 @@ function applyMenuVisibility(vis) {
   STANDARD_KEYS.forEach(key => {
     const show = vis[key] !== false; // default true when not explicitly set
     document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
-      // grocery e prices são controlados por feature flag por família —
-      // nunca sobrescrever quando já marcados como feature-controlled
+      // grocery/prices são controlados por feature flag — não sobrescrever
       if (el.dataset && el.dataset.featureControlled === '1') return;
       el.style.display = show ? '' : 'none';
     });

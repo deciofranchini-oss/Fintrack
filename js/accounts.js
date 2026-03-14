@@ -531,10 +531,7 @@ async function deleteGroup(id){
 }
 
 async function openGroupModal(id=''){
-  // Garantir que os grupos estão carregados antes de renderizar
-  if (!state.groups || !state.groups.length) {
-    await loadGroups();
-  }
+  if (!state.groups || !state.groups.length) { await loadGroups(); }
   document.getElementById('groupName').value='';
   document.getElementById('groupEmoji').value='';
   const colorEl=document.getElementById('groupColor');
