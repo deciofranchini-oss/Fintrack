@@ -27,9 +27,12 @@ async function isPricesEnabled() {
   const famId = currentUser?.family_id;
   if (!famId) return false;
   const cacheKey = 'prices_enabled_' + famId;
-  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache) {
+  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache)
     return !!window._familyFeaturesCache[cacheKey];
-  }
+  try { if (typeof _appSettingsCache!=='undefined' && _appSettingsCache && cacheKey in _appSettingsCache)
+    return _appSettingsCache[cacheKey]===true||_appSettingsCache[cacheKey]==='true'; } catch{}
+  const local = localStorage.getItem(cacheKey);
+  if (local !== null) return local === 'true';
   const val = await getAppSetting(cacheKey, false);
   return val === true || val === 'true';
 }
@@ -82,11 +85,13 @@ async function applyGroceryFeature() {
 async function isGroceryEnabled() {
   const famId = currentUser?.family_id;
   if (!famId) return false;
-  // Check admin panel cache first (set by toggleFamilyFeature)
   const cacheKey = 'grocery_enabled_' + famId;
-  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache) {
+  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache)
     return !!window._familyFeaturesCache[cacheKey];
-  }
+  try { if (typeof _appSettingsCache!=='undefined' && _appSettingsCache && cacheKey in _appSettingsCache)
+    return _appSettingsCache[cacheKey]===true||_appSettingsCache[cacheKey]==='true'; } catch{}
+  const local = localStorage.getItem(cacheKey);
+  if (local !== null) return local === 'true';
   const val = await getAppSetting(cacheKey, false);
   return val === true || val === 'true';
 }
@@ -101,6 +106,46 @@ async function initPricesPage() {
   await _loadPricesData();
   _populatePricesStoreFilter();
   _renderPricesPage();
+  // Mostrar banner de acesso / ativação do Mercado
+  _updatePricesGroceryBanner();
+}
+
+async function _updatePricesGroceryBanner() {
+  const groceryOn = await isGroceryEnabled();
+  const bannerOn  = document.getElementById('pricesGroceryBanner');
+  const bannerOff = document.getElementById('pricesGroceryActivateBanner');
+  if (bannerOn)  bannerOn.style.display  = groceryOn ? 'flex' : 'none';
+  if (bannerOff) bannerOff.style.display = groceryOn ? 'none' : 'flex';
+}
+
+async function _pricesPageActivateGrocery() {
+  const btn = document.querySelector('#pricesGroceryActivateBanner button');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Ativando…'; }
+  const famId = currentUser?.family_id;
+  if (!famId) { toast('Nenhuma família ativa', 'error'); return; }
+  const key = 'grocery_enabled_' + famId;
+  // Gravar via estratégia tripla
+  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+  window._familyFeaturesCache[key] = true;
+  try { localStorage.setItem(key, 'true'); } catch {}
+  if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache) _appSettingsCache[key] = true;
+  let saved = false;
+  if (sb) {
+    try {
+      const { data: upd } = await sb.from('app_settings').update({ value: true }).eq('key', key).eq('family_id', famId).select('key');
+      if (upd && upd.length > 0) { saved = true; }
+    } catch {}
+    if (!saved) {
+      try { await sb.from('app_settings').insert({ key, value: true, family_id: famId }); saved = true; } catch {}
+    }
+    if (!saved) {
+      try { await sb.from('app_settings').update({ value: true }).eq('key', key); saved = true; } catch {}
+    }
+  }
+  try { await applyGroceryFeature(); } catch {}
+  toast('🛒 Módulo Mercado ativado!', 'success');
+  _updatePricesGroceryBanner();
+  if (btn) { btn.disabled = false; btn.textContent = '⚡ Ativar Mercado'; }
 }
 
 function _populatePricesCatFilter() {
