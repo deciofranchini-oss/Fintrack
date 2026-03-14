@@ -125,14 +125,17 @@ async function loadFamiliesList() {
     const backupOn   = fc[backupKey]   !== undefined ? !!fc[backupKey]   : true;
     const snapshotOn = fc[snapshotKey] !== undefined ? !!fc[snapshotKey] : true;
 
-    // Compact module toggle pill
-    function modPill(key, famId, label, emoji, on) {
-      return `<button class="fam-mod-pill ${on?'on':''}"
-        onclick="toggleFamilyFeature('${famId}','${key}',${!on})"
-        title="${on?'Desativar':'Ativar'} ${label}">
-        ${emoji} ${label}
-        <span class="fam-mod-dot">${on?'●':'○'}</span>
-      </button>`;
+    function modCheck(key, famId, label, emoji, on) {
+      return `<label class="fam-mod-check ${on?'on':''}" title="${on?'Desativar':'Ativar'} ${label}">
+        <input type="checkbox" ${on?'checked':''}
+          onchange="toggleFamilyFeature('${famId}','${key}',this.checked)">
+        <span class="fam-mod-check-box"></span>
+        <span class="fam-mod-check-label">${emoji} ${label}</span>
+      </label>`;
+    }
+
+    function actionBtn(cls, label, icon, onclick) {
+      return `<button class="fam-inline-btn ${cls||''}" onclick="${onclick}">${icon} ${label}</button>`;
     }
 
     // Member row
@@ -151,33 +154,32 @@ async function loadFamiliesList() {
       : '<div class="fam-empty-members">Nenhum membro nesta família</div>';
 
     return `<div class="fam-card2">
-      <!-- Header -->
-      <div class="fam-card2-header">
+      <div class="fam-card2-header fam-card2-header-stacked">
         <div class="fam-card2-avatar">🏠</div>
-        <div class="fam-card2-title-block">
-          <div class="fam-card2-name">${esc(f.name)}</div>
-          ${f.description ? `<div class="fam-card2-desc">${esc(f.description)}</div>` : ''}
-          <div class="fam-card2-count">${members.length} membro${members.length!==1?'s':''}</div>
-        </div>
-        <div class="fam-card2-header-btns">
-          <button class="fam-hdr-btn" onclick="editFamily('${f.id}')" title="Editar">✏️</button>
-          <button class="fam-hdr-btn danger" onclick="deleteFamily('${f.id}','${esc(f.name)}')" title="Excluir">🗑</button>
+        <div class="fam-card2-main">
+          <div class="fam-card2-title-row">
+            <div class="fam-card2-name">${esc(f.name)}</div>
+          </div>
+          <div class="fam-card2-subline">
+            ${f.description ? `<span class="fam-card2-desc">${esc(f.description)}</span>` : ''}
+            <span class="fam-card2-count">${members.length} membro${members.length!==1?'s':''}</span>
+          </div>
+          <div class="fam-card2-controls-row">
+            <div class="fam-card2-controls-left">
+              ${modCheck(pricesKey,   fid, 'Preços',  '🏷️', pricesOn)}
+              ${modCheck(groceryKey,  fid, 'Mercado', '🛒', groceryOn)}
+              ${modCheck(backupKey,   fid, 'Backup',  '📦', backupOn)}
+              ${modCheck(snapshotKey, fid, 'Snapshots', '🗂️', snapshotOn)}
+            </div>
+            <div class="fam-card2-controls-right">
+              ${actionBtn('', 'Editar', '✏️', `editFamily('${f.id}')`)}
+              ${actionBtn('danger', 'Excluir', '✕', `deleteFamily('${f.id}','${esc(f.name)}')`)}
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Modules -->
-      <div class="fam-section">
-        <div class="fam-section-label">Módulos</div>
-        <div class="fam-mod-pills">
-          ${modPill(pricesKey,   fid, 'Preços',   '🏷️', pricesOn)}
-          ${modPill(groceryKey,  fid, 'Mercado',  '🛒', groceryOn)}
-          ${modPill(backupKey,   fid, 'Backup',   '☁️', backupOn)}
-          ${modPill(snapshotKey, fid, 'Snapshot', '📸', snapshotOn)}
-        </div>
-      </div>
-
-      <!-- Members -->
-      <div class="fam-section">
+      <div class="fam-section fam-section-members">
         <div class="fam-section-label">Membros</div>
         <div class="fam-members-list">${membersHtml}</div>
 
