@@ -4487,22 +4487,8 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
 }
 
 /* ── 5. Settings page — compact collapsible ─────────────────────────── */
-.cfg-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 10px 14px 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  margin-bottom: 10px;
-  box-shadow: var(--shadow-sm);
-}
-.cfg-user-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+/* cfg-header removed — user info in topbar/sidebar */
+.cfg-user-row { display: flex; align-items: center; gap: 10px; }
 .cfg-section {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -5744,4 +5730,39 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 @media (max-width: 380px) {
   .sc-cal-day { min-height: 52px; }
   .sc-cal-day-dot { width: 5px; height: 5px; }
+}
+
+/* ── New transaction highlight ──────────────────────────────────────
+   .tx-row-new: entrance flash + sustained glow for newly saved rows.
+   Triggered by _goToSavedTransaction after insert.
+   Duration: 3 s total — 0.4 s pop-in, 2.6 s fade to normal.
+─────────────────────────────────────────────────────────────────── */
+@keyframes txRowEnter {
+  0%   {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+    box-shadow: inset 3px 0 0 var(--accent),
+                0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+    transform: translateX(4px);
+  }
+  18%  {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    box-shadow: inset 3px 0 0 var(--accent),
+                0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    transform: translateX(0);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 3px 0 0 transparent, 0 0 0 0 transparent;
+    transform: translateX(0);
+  }
+}
+
+tr.tx-row-new {
+  animation: txRowEnter 3s cubic-bezier(.22,.68,0,1.2) forwards;
+  position: relative;
+  z-index: 1;
+}
+/* Keep the left border visible at rest after animation ends */
+tr.tx-row-new td:first-child {
+  border-left: 3px solid var(--accent) !important;
 }
