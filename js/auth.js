@@ -1237,9 +1237,47 @@ function switchUATab(tab) {
     if (panel) panel.classList.toggle('active', t === tab);
     if (pane)  pane.style.display = t === tab ? '' : 'none';
   });
-  if (tab === 'pending') _renderPendingTab();
-  if (tab === 'users')   loadUsersList().catch(e => console.warn('loadUsersList:', e));
+  // Always show list panel, hide form panel when switching tabs
+  uaShowList(false); // false = no animation, just reset
+  if (tab === 'pending')  _renderPendingTab();
+  if (tab === 'users')    loadUsersList().catch(e => console.warn('loadUsersList:', e));
   if (tab === 'families') loadFamiliesList().catch(e => console.warn('loadFamiliesList:', e));
+}
+
+// ── Panel navigation ──────────────────────────────────────────────────────
+function uaShowList(reload = true) {
+  const listPanel = document.getElementById('ua-list-panel');
+  const formPanel = document.getElementById('ua-form-panel');
+  const backBtn   = document.getElementById('ua-back-btn');
+  const newBtn    = document.getElementById('ua-new-btn');
+  const tabs      = document.getElementById('ua-tabs');
+  if (listPanel) listPanel.style.display = '';
+  if (formPanel) { formPanel.classList.remove('ua-panel-visible'); setTimeout(() => { if (!formPanel.classList.contains('ua-panel-visible')) formPanel.style.display = 'none'; }, 230); }
+  if (backBtn)  backBtn.style.display  = 'none';
+  if (newBtn)   newBtn.style.display   = '';
+  if (tabs)     tabs.style.display     = '';
+}
+
+function uaShowForm(title = 'Novo Usuário', sub = '') {
+  const listPanel = document.getElementById('ua-list-panel');
+  const formPanel = document.getElementById('ua-form-panel');
+  const backBtn   = document.getElementById('ua-back-btn');
+  const newBtn    = document.getElementById('ua-new-btn');
+  const tabs      = document.getElementById('ua-tabs');
+  const titleEl   = document.getElementById('ua-panel-title');
+  const subEl     = document.getElementById('ua-panel-sub');
+  if (titleEl) titleEl.textContent = title;
+  if (subEl)   subEl.textContent   = sub;
+  if (formPanel) { formPanel.style.display = ''; requestAnimationFrame(() => formPanel.classList.add('ua-panel-visible')); }
+  if (backBtn)  backBtn.style.display  = '';
+  if (newBtn)   newBtn.style.display   = 'none';
+  if (tabs)     tabs.style.display     = 'none';
+  // Clear error
+  const errEl = document.getElementById('ua-form-error');
+  if (errEl) errEl.style.display = 'none';
+  // Scroll form to top
+  const body = formPanel?.querySelector('.ua-form-body');
+  if (body) body.scrollTop = 0;
 }
 
 async function _renderPendingTab() {
@@ -2008,105 +2046,93 @@ async function loadUsersList() {
   }
 
   if (!activeUsers.length) {
-    html += '<div style="text-align:center;padding:20px;color:var(--muted)">Nenhum usuário ativo.</div>';
+    html += '<div class="ua-empty">Nenhum usuário ativo.</div>';
   } else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Família</th><th>Status</th><th style="width:80px"></th></tr></thead><tbody>';
+    html += '<div class="ua-section-label">Usuários Ativos</div><div>';
     html += activeUsers.map(u => {
-      const avatarHtml = _userAvatarHtml(u, 34);
-      const roleBadge = u.role==='owner'
-        ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:.7rem">👑 Owner</span>'
-        : u.role==='admin'
-        ? '<span class="badge badge-amber" style="font-size:.7rem">🔧 Admin</span>'
-        : u.role==='viewer'
-        ? '<span class="badge badge-muted" style="font-size:.7rem">👁 Viewer</span>'
-        : '<span class="badge badge-blue" style="font-size:.7rem">👤 Usuário</span>';
-      return `<tr onclick="editUser('${u.id}')" style="cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <td>
-          <div style="display:flex;align-items:center;gap:10px">
-            ${avatarHtml}
-            <div>
-              <div style="font-weight:600;font-size:.875rem">${esc(u.name||'—')}</div>
-              <div style="font-size:.72rem;color:var(--muted)">${esc(u.email)}</div>
-            </div>
-          </div>
-        </td>
-        <td>${roleBadge}</td>
-        <td style="font-size:.78rem;color:var(--text2)">
-          ${(() => {
-            const userFams = (allMembers||[]).filter(m => m.user_id === u.id);
-            if (!userFams.length) return '<span style="color:var(--muted)">—</span>';
-            return userFams.map(m => {
-              const roleIcon = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role]||'👤';
-              const fName = m.family_name || famById[m.family_id] || m.family_id?.slice(0,8) || '—';
-              return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:.7rem;margin:1px">${roleIcon} ${esc(fName)}</span>`;
-            }).join('');
-          })()}
-        </td>
-        <td><span style="font-size:.75rem;color:${u.active?'var(--green)':'var(--red)'}">● ${u.active?'Ativo':'Inativo'}</span></td>
-        <td style="white-space:nowrap" onclick="event.stopPropagation()">
-          ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="toggleUserActive('${u.id}',${u.active})" style="padding:3px 8px;font-size:.73rem" title="${u.active?'Desativar':'Ativar'}">${u.active?'🚫':'✅'}</button>` : ''}
-          ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="resetUserPwd('${u.id}','${esc(u.name||u.email)}')" style="padding:3px 8px;font-size:.73rem" title="Redefinir senha">🔑</button>` : ''}
-        </td>
-      </tr>`;
+      const avatarHtml = _userAvatarHtml(u, 36);
+      const roleCfg = {
+        owner:  { bg:'#fef3c7', color:'#92400e', label:'👑 Owner' },
+        admin:  { bg:'#fef9c3', color:'#713f12', label:'🔧 Admin' },
+        viewer: { bg:'var(--bg2)', color:'var(--muted)', label:'👁 Viewer' },
+        user:   { bg:'var(--accent-lt)', color:'var(--accent)', label:'👤 Usuário' },
+      }[u.role] || { bg:'var(--bg2)', color:'var(--muted)', label:u.role };
+      const famsHtml = (() => {
+        const userFams = (allMembers||[]).filter(m => m.user_id === u.id);
+        if (!userFams.length) return '<span style="color:var(--muted);font-size:.7rem">—</span>';
+        return userFams.map(m => {
+          const fName = m.family_name || famById[m.family_id] || '—';
+          return `<span style="font-size:.68rem;background:var(--accent-lt);color:var(--accent);padding:1px 6px;border-radius:10px;margin:1px 2px 1px 0;display:inline-block">${esc(fName)}</span>`;
+        }).join('');
+      })();
+      return `<div class="ua-user-row" onclick="editUser('${u.id}')">
+        <div style="flex-shrink:0">${avatarHtml}</div>
+        <div class="ua-user-info">
+          <div class="ua-user-name">${esc(u.name||'—')}</div>
+          <div class="ua-user-email">${esc(u.email)}</div>
+          <div style="margin-top:3px">${famsHtml}</div>
+        </div>
+        <div class="ua-user-badges">
+          <span class="ua-role-badge" style="background:${roleCfg.bg};color:${roleCfg.color}">${roleCfg.label}</span>
+          <div class="ua-status-dot" style="background:${u.active?'var(--green)':'var(--red)'}" title="${u.active?'Ativo':'Inativo'}"></div>
+        </div>
+        <div class="ua-user-actions" onclick="event.stopPropagation()">
+          ${u.id !== currentUser?.id ? `<button class="ua-action-btn" onclick="toggleUserActive('${u.id}',${u.active})" title="${u.active?'Desativar':'Ativar'}">${u.active?'🚫':'✅'}</button>` : ''}
+          ${u.id !== currentUser?.id ? `<button class="ua-action-btn" onclick="resetUserPwd('${u.id}','${esc(u.name||u.email)}')" title="Redefinir senha">🔑</button>` : ''}
+        </div>
+      </div>`;
     }).join('');
-    html += '</tbody></table></div>';
+    html += '</div>';
   }
   el.innerHTML = html;
 }
 
 function showNewUserForm() {
-  const formArea = document.getElementById('userFormArea');
-  document.getElementById('userFormTitle').textContent = 'Novo Usuário';
-
-  // Clear form fields
-  const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-  _set('uName', ''); _set('uEmail', ''); _set('uPassword', '');
-  // Target specifically the hidden field inside userFormArea (not legacy)
-  const hiddenId = formArea?.querySelector('input[type="hidden"][id="editUserId"]')
-                || formArea?.querySelector('input[type="hidden"]');
-  if (hiddenId) hiddenId.value = '';
-
+  // Clear all form fields
+  const _s = (id, v='') => { const el = document.getElementById(id); if (el) el.value = v; };
+  _s('editUserId'); _s('uName'); _s('uEmail'); _s('uPassword'); _s('uAvatarRemoveFlag');
   const roleEl = document.getElementById('uRole'); if (roleEl) roleEl.value = 'user';
 
-  // Show family selector for new users
-  const initFamSel  = document.getElementById('uInitFamilyId');
-  const initRoleSel = document.getElementById('uInitFamilyRole');
-  const initFamLabel = formArea?.querySelector('label[for="uInitFamilyId"]');
+  // Family section: visible + populated
+  const famSec = document.getElementById('ua-family-section');
+  if (famSec) famSec.style.display = '';
+  const initFamSel = document.getElementById('uInitFamilyId');
   if (initFamSel) {
-    initFamSel.style.display = '';
     initFamSel.innerHTML = '<option value="">— Nenhuma (admin global) —</option>' +
       _families.map(f => `<option value="${f.id}">${esc(_familyDisplayName(f.id, f.name||''))}</option>`).join('');
     initFamSel.value = '';
   }
+  const initRoleSel = document.getElementById('uInitFamilyRole');
   if (initRoleSel) { initRoleSel.style.display = ''; initRoleSel.value = 'user'; }
-  if (initFamLabel) initFamLabel.style.display = '';
 
+  // Permissions defaults
   const _chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = v; };
   _chk('pView', true); _chk('pCreate', true); _chk('pEdit', true);
   _chk('pDelete', false); _chk('pExport', true); _chk('pImport', false);
 
-  const pwdHint = document.getElementById('pwdHint'); if (pwdHint) pwdHint.textContent = '(mín. 8 chars)';
-
-  // Reset avatar
-  const avatarPreview = document.getElementById('uAvatarPreview');
-  if (avatarPreview) { avatarPreview.innerHTML = ''; }
+  // Avatar
+  const preview = document.getElementById('uAvatarPreview');
+  if (preview) preview.innerHTML = '';
   const removeBtn = document.getElementById('uAvatarRemoveBtn');
   if (removeBtn) removeBtn.style.display = 'none';
-  const removeFlag = document.getElementById('uAvatarRemoveFlag');
-  if (removeFlag) removeFlag.value = '';
+  const fileInput = document.getElementById('uAvatarFile');
+  if (fileInput) fileInput.value = '';
 
-  formArea.style.display = '';
+  // Hint
+  const pwdHint = document.getElementById('pwdHint');
+  if (pwdHint) pwdHint.textContent = '(mín. 8 chars)';
 
-  // rAF: scroll after browser paints the form
-  requestAnimationFrame(() => {
-    const modal = document.getElementById('userAdminModal')?.querySelector('.modal');
-    if (modal) modal.scrollTop = 0;
-    setTimeout(() => document.getElementById('uName')?.focus(), 80);
-  });
+  // Save button label
+  const saveBtn = document.getElementById('ua-save-btn');
+  if (saveBtn) saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Criar Usuário';
+
+  uaShowForm('Novo Usuário', '');
+  setTimeout(() => document.getElementById('uName')?.focus(), 250);
 }
 
+
 async function editUser(userId) {
-  // Fetch user — use RPC if available to bypass RLS
+  // Fetch user data — RPC first to bypass RLS
   let u;
   try {
     const { data: rpcUsers } = await sb.rpc('get_all_users');
@@ -2116,65 +2142,45 @@ async function editUser(userId) {
     const { data: direct } = await sb.from('app_users').select('*').eq('id', userId).single();
     u = direct;
   }
-  if (!u) { toast('Usuário não encontrado ou sem permissão', 'error'); return; }
+  if (!u) { toast('Usuário não encontrado', 'error'); return; }
 
-  const formArea = document.getElementById('userFormArea');
-  if (!formArea) return;
+  // Populate form
+  document.getElementById('editUserId').value = u.id;
+  const _s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  _s('uName', u.name); _s('uEmail', u.email); _s('uPassword', '');
+  const roleEl = document.getElementById('uRole'); if (roleEl) roleEl.value = u.role || 'user';
 
-  // NOTE: no switchUATab here — it fires loadUsersList async which races with form display
-  document.getElementById('userFormTitle').textContent = 'Editar Usuário';
-  // Set the correct hidden field (inside userFormArea — second occurrence has id="editUserId")
-  // We use querySelectorAll to target specifically the one inside userFormArea
-  const hiddenId = formArea.querySelector('#editUserId') ||
-                   formArea.querySelector('input[type="hidden"]');
-  if (hiddenId) hiddenId.value = u.id;
-  // Also set the first-in-DOM occurrence as fallback for saveUser()
-  const firstHidden = document.getElementById('editUserId');
-  if (firstHidden) firstHidden.value = u.id;
-
-  document.getElementById('uName').value     = u.name  || '';
-  document.getElementById('uEmail').value    = u.email || '';
-  document.getElementById('uPassword').value = '';
-  const roleEl = document.getElementById('uRole');
-  if (roleEl) roleEl.value = u.role || 'user';
-
-  // Hide family/role selectors — family links managed in Families tab
-  const initFamSelE  = document.getElementById('uInitFamilyId');   if (initFamSelE)  initFamSelE.style.display  = 'none';
-  const initRoleSelE = document.getElementById('uInitFamilyRole'); if (initRoleSelE) initRoleSelE.style.display = 'none';
-  const initFamLabel = formArea.querySelector('label[for="uInitFamilyId"]');
-  if (initFamLabel) initFamLabel.style.display = 'none';
+  // Hide family section for edits (managed in Families tab)
+  const famSec = document.getElementById('ua-family-section');
+  if (famSec) famSec.style.display = 'none';
 
   // Permissions
-  const _chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
-  _chk('pView',   u.can_view);
-  _chk('pCreate', u.can_create);
-  _chk('pEdit',   u.can_edit);
-  _chk('pDelete', u.can_delete);
-  _chk('pExport', u.can_export);
-  _chk('pImport', u.can_import);
+  const _chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  _chk('pView', u.can_view); _chk('pCreate', u.can_create); _chk('pEdit', u.can_edit);
+  _chk('pDelete', u.can_delete); _chk('pExport', u.can_export); _chk('pImport', u.can_import);
 
+  // Password hint
   const pwdHint = document.getElementById('pwdHint');
   if (pwdHint) pwdHint.textContent = '(deixe em branco para manter)';
 
   // Avatar
-  const avatarPreview = document.getElementById('uAvatarPreview');
-  if (avatarPreview) {
-    avatarPreview.innerHTML = _userAvatarHtml(u, 52);
-    avatarPreview.dataset.currentUrl = u.avatar_url || '';
-  }
+  const preview = document.getElementById('uAvatarPreview');
+  if (preview) { preview.innerHTML = _userAvatarHtml(u, 56); preview.dataset.currentUrl = u.avatar_url || ''; }
   const removeBtn = document.getElementById('uAvatarRemoveBtn');
   if (removeBtn) removeBtn.style.display = u.avatar_url ? '' : 'none';
   const removeFlag = document.getElementById('uAvatarRemoveFlag');
   if (removeFlag) removeFlag.value = '';
+  const fileInput = document.getElementById('uAvatarFile');
+  if (fileInput) fileInput.value = '';
 
-  // Show form and scroll modal to top so form is visible
-  formArea.style.display = '';
-  requestAnimationFrame(() => {
-    const modal = document.getElementById('userAdminModal')?.querySelector('.modal');
-    if (modal) modal.scrollTop = 0;
-    else formArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
+  // Save button label
+  const saveBtn = document.getElementById('ua-save-btn');
+  if (saveBtn) saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Alterações';
+
+  uaShowForm('Editar Usuário', u.email);
+  setTimeout(() => document.getElementById('uName')?.focus(), 250);
 }
+
 
 // ── Avatar upload ─────────────────────────────────────────────────────────
 
@@ -2324,7 +2330,7 @@ async function saveUser() {
       ? `✓ Usuário ${name} atualizado com sucesso!`
       : `✓ Usuário ${name} criado! E-mail de boas-vindas enviado.`;
     toast(successMsg, 'success');
-    document.getElementById('userFormArea').style.display = 'none';
+    uaShowList();
     if (userId === currentUser?.id) {
       if (record.avatar_url !== undefined) currentUser.avatar_url = record.avatar_url;
       _applyCurrentUserAvatar();
@@ -2332,7 +2338,11 @@ async function saveUser() {
     }
     await loadUsersList();
     await loadFamiliesList();
-  } catch(e) { toast('Erro: '+e.message,'error'); }
+  } catch(e) {
+    const errEl = document.getElementById('ua-form-error');
+    if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
+    else toast('Erro: ' + e.message, 'error');
+  }
 }
 
 async function approveUser(userId, userName) {
