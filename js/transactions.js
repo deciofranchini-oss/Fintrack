@@ -305,40 +305,65 @@ async function buildAccountRunningBalanceMap(accountId) {
   const acct = (state.accounts || []).find(a => a.id === accountId);
   let running = parseFloat(acct?.initial_balance || 0) || 0;
 
-  // Buscar todas as transações confirmadas da conta, incluindo
-  // transferências legadas cujo destino é esta conta
-  const { data, error } = await famQ(
+  // ── Estratégia de queries ───────────────────────────────────────────────
+  // Transferências MODERNAS (linked_transfer_id preenchido):
+  //   Dois registros existem — cada um com account_id correto (origem/destino).
+  //   Filtrar apenas por account_id já captura o lado correto de cada conta.
+  //   NÃO usar cláusula OR com transfer_to_account_id para evitar duplicatas.
+  //
+  // Transferências LEGADAS (linked_transfer_id IS NULL, is_transfer = true):
+  //   Apenas um registro existe (débito na origem).
+  //   Se esta conta for o DESTINO, o registro não tem account_id = accountId,
+  //   então precisamos buscá-lo separadamente e tratá-lo como crédito.
+  // ───────────────────────────────────────────────────────────────────────
+
+  // Query 1: todas as transações onde esta conta é a proprietária (account_id)
+  const { data: ownRows, error: e1 } = await famQ(
     sb.from('transactions')
-      .select('id,amount,date,created_at,status,is_transfer,linked_transfer_id,transfer_to_account_id,account_id')
-      .or(`account_id.eq.${accountId},and(is_transfer.eq.true,linked_transfer_id.is.null,transfer_to_account_id.eq.${accountId})`)
+      .select('id,amount,date,created_at,is_transfer,linked_transfer_id,transfer_to_account_id,account_id')
+      .eq('account_id', accountId)
       .eq('status', 'confirmed')
       .order('date',       { ascending: true })
       .order('created_at', { ascending: true })
       .order('id',         { ascending: true })
   );
-  if (error) throw error;
+  if (e1) throw e1;
+
+  // Query 2: transferências legadas onde esta conta é o DESTINO
+  // (registro pertence à conta de origem, transfer_to_account_id aponta aqui)
+  const { data: legacyInbound } = await famQ(
+    sb.from('transactions')
+      .select('id,amount,date,created_at,is_transfer,linked_transfer_id,transfer_to_account_id,account_id')
+      .eq('is_transfer', true)
+      .is('linked_transfer_id', null)
+      .eq('transfer_to_account_id', accountId)
+      .eq('status', 'confirmed')
+  );
+
+  // Juntar e ordenar cronologicamente
+  const allRows = [
+    ...(ownRows || []).map(t => ({ ...t, _legacy_inbound: false })),
+    ...(legacyInbound || [])
+      .filter(t => t.account_id !== accountId) // nunca duplicar
+      .map(t => ({ ...t, _legacy_inbound: true })),
+  ].sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
+    return a.id < b.id ? -1 : 1;
+  });
 
   const map = {};
-  (data || []).forEach(t => {
+  allRows.forEach(t => {
     let delta = parseFloat(t.amount || 0) || 0;
 
-    // Transferência legada de entrada (single-leg): a linha pertence à conta
-    // de origem mas credita esta conta destino — inverter para positivo
-    if (
-      t.is_transfer === true &&
-      !t.linked_transfer_id &&
-      t.transfer_to_account_id === accountId &&
-      t.account_id !== accountId
-    ) {
-      delta = Math.abs(delta);
-    }
+    // Legada de entrada: o amount é negativo (débito da origem) — inverter
+    if (t._legacy_inbound) delta = Math.abs(delta);
 
-    // Registrar saldo ANTES do lançamento (mostrado ao lado da linha)
-    // e depois incrementar. Isso dá ao usuário o saldo que havia antes
-    // de cada transação ocorrer — mais útil para auditoria.
-    map[t.id] = running + delta; // saldo APÓS o lançamento
-    running   += delta;
+    // Saldo APÓS o lançamento (exibido ao lado de cada linha)
+    running += delta;
+    map[t.id] = running;
   });
+
   return map;
 }
 function txRow(t, showAccount=true, runningBalance=null) {
