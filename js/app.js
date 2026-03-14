@@ -424,6 +424,7 @@ function clearFamilyScopedUI() {
 
   try {
     state.accounts = [];
+    state.groups = [];
     state.categories = [];
     state.payees = [];
     state.transactions = [];

@@ -11,7 +11,9 @@ let _accountsViewMode='';
 function renderAccounts(ft=''){
   _accountsViewMode=ft;
   const grid=document.getElementById('accountGrid');
-  let accs=state.accounts;
+  if(!grid) return;
+  state.groups = state.groups || [];
+  let accs=state.accounts || [];
   if(ft==='__group__'){
     if(!state.groups.length){ renderAccountsFlat(accs,grid); return; }
     renderAccountsGrouped(accs,grid);
@@ -19,7 +21,9 @@ function renderAccounts(ft=''){
     renderAccountsFlat(ft?accs.filter(a=>a.type===ft):accs,grid);
   }
   renderAccountsSummary();
+  try { renderGroupManager(); } catch(e) {}
 }
+
 
 function renderAccountsFlat(accs,grid){
   if(!accs.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🏦</div><p>Nenhuma conta encontrada</p></div>';return;}
@@ -483,7 +487,8 @@ async function loadGroups(){
     const{data,error}=await famQ(sb.from('account_groups').select('*')).order('name');
     if(error)throw error;
     state.groups=data||[];
-  }catch(e){state.groups=[];}
+    state.accountGroups = state.groups;
+  }catch(e){state.groups=[]; state.accountGroups=[];}
 }
 
 function renderGroupManager(){
