@@ -480,12 +480,12 @@
     <!-- Módulos opcionais: visíveis apenas quando ativados por feature flag -->
     <div class="nav-section" id="modulesNavSection" style="display:none">
       <div class="nav-label">Módulos</div>
-      <button class="nav-item" id="groceryNav" data-nav="grocery" onclick="navigate('grocery')" style="display:none">
+      <button class="nav-item" id="groceryNav" data-nav="grocery" data-feature-controlled="1" onclick="navigate('grocery')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         </span>Mercado
       </button>
-      <button class="nav-item" id="pricesNav" data-nav="prices" onclick="navigate('prices')" style="display:none">
+      <button class="nav-item" id="pricesNav" data-nav="prices" data-feature-controlled="1" onclick="navigate('prices')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
         </span>Preços
@@ -1158,8 +1158,10 @@
         <div class="card" style="margin-bottom:10px">
           <div class="card-header" style="padding-bottom:8px">
             <span class="card-title" id="groceryDetailTitle">Lista</span>
-            <div style="display:flex;gap:8px;align-items:center">
-              <div id="groceryTotals" style="display:flex;gap:10px"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div id="groceryTotals" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+              <button class="btn btn-ghost btn-sm" onclick="openGroceryReceiptAI()"
+                style="border-color:var(--accent);color:var(--accent)">🤖 Registrar Compra</button>
               <button class="btn btn-primary btn-sm" onclick="openAddGroceryItem()">+ Item</button>
             </div>
           </div>
@@ -4603,24 +4605,29 @@
 </div>
 
 <div class="modal-overlay" id="groceryAddItemModal">
-  <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
+  <div class="modal" style="max-width:460px"><div class="modal-handle"></div>
     <div class="modal-header">
-      <span class="modal-title">+ Adicionar Item</span>
+      <span class="modal-title">➕ Adicionar Item</span>
       <button class="modal-close" onclick="closeModal('groceryAddItemModal')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Buscar item</label>
-        <div style="position:relative">
-          <input type="text" id="groceryItemSearch" placeholder="Digite para buscar na base de preços…"
-                 oninput="searchGroceryItem(this.value)" autocomplete="off">
-          <div id="groceryItemSuggestions" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-md);max-height:200px;overflow-y:auto"></div>
-        </div>
+        <label>Buscar no catálogo de preços</label>
+        <input type="text" id="groceryItemSearch"
+               placeholder="Digite o nome do item…"
+               oninput="searchGroceryItem(this.value)"
+               onfocus="searchGroceryItem(this.value)"
+               autocomplete="off">
+        <div id="groceryItemSuggestions"
+             style="border:1px solid var(--border);border-radius:var(--r-sm);
+                    background:var(--surface);max-height:220px;overflow-y:auto;
+                    margin-top:4px;display:none"></div>
       </div>
+      <div id="groceryItemMappingBadge" style="margin-bottom:8px"></div>
       <div id="groceryItemForm" style="display:none">
         <div class="form-grid">
           <div class="form-group full">
-            <label>Descrição *</label>
+            <label>Nome do item *</label>
             <input type="text" id="groceryNewItemName" placeholder="Nome do item">
           </div>
           <div class="form-group">
@@ -4628,15 +4635,20 @@
             <input type="number" id="groceryNewItemQty" value="1" min="0.1" step="any">
           </div>
           <div class="form-group">
+            <label>Unidade</label>
+            <input type="text" id="groceryNewItemUnit" value="un" placeholder="un / kg / l">
+          </div>
+          <div class="form-group">
             <label>Preço sugerido</label>
             <input type="number" id="groceryNewItemPrice" min="0" step="0.01" placeholder="0,00">
           </div>
-          <div class="form-group full">
-            <label>Estabelecimento sugerido</label>
-            <input type="text" id="groceryNewItemStore" placeholder="Onde costuma comprar">
+          <div class="form-group">
+            <label>Estabelecimento</label>
+            <input type="text" id="groceryNewItemStore" placeholder="Onde comprar">
           </div>
         </div>
         <input type="hidden" id="groceryNewItemPriceItemId">
+        <input type="hidden" id="groceryNewItemNeedsMapping" value="false">
       </div>
     </div>
     <div class="modal-footer">
@@ -4645,6 +4657,37 @@
     </div>
   </div>
 </div>
+
+<!-- Modal: registrar compra com IA (recibo/nota) -->
+<div class="modal-overlay" id="groceryReceiptModal">
+  <div class="modal" style="max-width:500px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">🤖 Registrar Compra com IA</span>
+      <button class="modal-close" onclick="closeModal('groceryReceiptModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
+        Fotografe ou faça upload do recibo/nota. A IA identificará os itens,
+        comparará com sua lista e salvará os preços automaticamente no histórico.
+      </p>
+      <div class="form-group">
+        <label>Recibo ou nota fiscal</label>
+        <input type="file" id="groceryReceiptFile"
+               accept="image/*,application/pdf"
+               onchange="groceryReceiptFileSelected(this)"
+               style="font-size:.83rem">
+      </div>
+      <div id="groceryReceiptPreview" style="display:none;margin:8px 0;text-align:center"></div>
+      <div id="groceryReceiptResult" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('groceryReceiptModal')">Fechar</button>
+      <button class="btn btn-primary" id="groceryReceiptAiBtn"
+              onclick="processGroceryReceiptWithAI()">🤖 Analisar com IA</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
 
