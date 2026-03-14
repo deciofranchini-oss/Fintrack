@@ -19,7 +19,7 @@ async function loadForecast() {
 
   // ── 1. Real transactions in period ──────────────────────────────────────
   let q = famQ(sb.from('transactions')
-    .select('id, date, description, amount, account_id, is_transfer, category_id, payee_id, categories(name,color), payees(name)')
+    .select('id, date, description, amount, currency, brl_amount, account_id, is_transfer, category_id, payee_id, categories(name,color), payees(name)')
     .gte('date', fromStr)
     .lte('date', toStr)
     .order('date'));
@@ -63,6 +63,7 @@ async function loadForecast() {
               date,
               description: sc.description + ' 📅',
               amount: originAmount,
+              currency: sc.currency || sc.accounts?.currency || null,
               account_id: sc.account_id,
               categories: sc.categories,
               payees: sc.payees,
@@ -81,6 +82,7 @@ async function loadForecast() {
             date,
             description: sc.description + ' 📅',
             amount: creditAmt,
+            currency: null, // credit leg uses destination account currency
             account_id: sc.transfer_to_account_id,
             categories: sc.categories,
             payees: null,
@@ -235,7 +237,11 @@ function renderForecastTables(allItems, accounts) {
           ${payeeLine}
         </td>
         <td class="forecast-amount-cell ${(parseFloat(t.amount)||0)>=0?'amount-pos':'amount-neg'}">
-          <div class="forecast-amount-main">${(parseFloat(t.amount)||0)>=0?'+':''}${fmt(t.amount)}</div>
+          <div class="forecast-amount-main">${(parseFloat(t.amount)||0)>=0?'+':''}${fmt(t.amount, a.currency)}</div>
+          ${(a.currency !== 'BRL' && t.brl_amount != null)
+            ? `<div class="forecast-amount-brl">${fmt(t.brl_amount,'BRL')}</div>`
+            : (a.currency === 'BRL' ? '' : `<div class="forecast-amount-brl">&nbsp;</div>`)
+          }
           <div class="forecast-balance-mobile ${isNeg?'amount-neg':''}">${fmt(runningBalance,a.currency)}</div>
         </td>
       </tr>`;
