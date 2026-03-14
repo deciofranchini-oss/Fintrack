@@ -5598,3 +5598,157 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     font-size: .78rem;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PATCH 2026-03-14 01:55 — category left + family market checkbox
+═══════════════════════════════════════════════════════════════════ */
+
+.tx-v2-cat-row {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-start;
+  min-width: 0;
+}
+.tx-cat-chip.tx-cat-inline {
+  margin: 0;
+  justify-content: flex-start;
+  text-align: left;
+  max-width: 100%;
+}
+.tx-v2-meta {
+  margin-top: 4px;
+}
+
+.fam-card2-header-stacked {
+  align-items: flex-start;
+}
+.fam-card2-main {
+  flex: 1;
+  min-width: 0;
+}
+.fam-card2-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fam-card2-subline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+.fam-card2-controls-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.fam-card2-controls-left,
+.fam-card2-controls-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.fam-mod-check {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: .15s ease;
+  user-select: none;
+}
+.fam-mod-check:hover {
+  border-color: rgba(42,96,73,.35);
+  background: rgba(42,96,73,.04);
+}
+.fam-mod-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.fam-mod-check-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border2);
+  background: #fff;
+  position: relative;
+  flex: 0 0 16px;
+}
+.fam-mod-check.on .fam-mod-check-box {
+  background: rgba(42,96,73,.14);
+  border-color: var(--accent);
+}
+.fam-mod-check.on .fam-mod-check-box::after {
+  content: '✓';
+  position: absolute;
+  inset: -1px 0 0 2px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--accent);
+  font-weight: 700;
+}
+.fam-mod-check-label {
+  font-size: .82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fam-inline-btn {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: .82rem;
+  font-weight: 600;
+}
+.fam-inline-btn:hover {
+  border-color: rgba(42,96,73,.35);
+  color: var(--accent);
+}
+.fam-inline-btn.danger:hover {
+  color: var(--red, #c0392b);
+  border-color: rgba(192,57,43,.28);
+}
+.fam-section-members {
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .tx-v2-cat-row {
+    margin-top: 3px;
+  }
+  .tx-cat-chip.tx-cat-inline {
+    max-width: 100%;
+    font-size: .64rem;
+  }
+  .fam-card2-controls-row {
+    gap: 8px;
+  }
+  .fam-card2-controls-left,
+  .fam-card2-controls-right {
+    width: 100%;
+  }
+  .fam-mod-check,
+  .fam-inline-btn {
+    min-height: 32px;
+    padding: 5px 10px;
+  }
+  .fam-mod-check-label,
+  .fam-inline-btn {
+    font-size: .78rem;
+  }
+}
