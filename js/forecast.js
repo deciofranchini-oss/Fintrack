@@ -222,8 +222,8 @@ function renderForecastTables(allItems, accounts) {
             t.transferLeg === 'credit' ? '📅 prog.↑' : t.transferLeg === 'debit' ? '📅 prog.↓' : '📅 prog.'
           }</span>`
         : '';
-      const catBadge = t.categories
-        ? `<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}28;font-size:.65rem">${esc(t.categories.name)}</span>`
+      const catLine = t.categories
+        ? `<div class="forecast-category">${esc(t.categories.name)}</div>`
         : '';
       const todayMarker = isToday ? '<span style="color:var(--accent);font-size:.65rem;margin-left:4px">●hoje</span>' : '';
       // Feature 6: compact row — description + badges on one line, payee inline
@@ -232,8 +232,9 @@ function renderForecastTables(allItems, accounts) {
         <td class="forecast-col-body">
           <div class="forecast-desc-line">
             <span class="forecast-desc-text">${esc(t.description||'')}</span>
-            ${scheduledBadge}${catBadge}
+            ${scheduledBadge}
           </div>
+          ${catLine}
           ${t.payees?.name ? `<div class="forecast-payee">${esc(t.payees.name)}</div>` : ''}
         </td>
         <td class="forecast-col-amount ${(parseFloat(t.amount)||0)>=0?'amount-pos':'amount-neg'}">${(parseFloat(t.amount)||0)>=0?'+':''}${fmt(t.amount)}</td>
