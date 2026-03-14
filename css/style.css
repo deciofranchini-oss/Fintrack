@@ -5386,7 +5386,12 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .tx-v2-body .tx-v2-title,
 .tx-v2-body .tx-v2-category,
 .tx-v2-body .tx-v2-meta {
-  margin-bottom: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.tx-v2-body .tx-v2-category:not(:empty),
+.tx-v2-body .tx-v2-meta:not(:empty) {
+  margin-top: 0 !important;
 }
 .tx-v2-body .tx-v2-category:empty,
 .tx-v2-body .tx-v2-meta:empty {
