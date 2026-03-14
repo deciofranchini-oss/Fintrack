@@ -44,7 +44,7 @@ async function saveAppSetting(key, value) {
   if (typeof value === 'object') {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
   } else {
-    localStorage.setItem(key, value);
+    try { localStorage.setItem(key, String(value)); } catch {}
   }
   if (!sb) return;
   try {
@@ -52,13 +52,39 @@ async function saveAppSetting(key, value) {
     const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_)(.+)$/);
     if (m) family_id = m[2];
 
-    const payload = { key, value: typeof value === 'object' ? value : value };
+    const payload = { key, value: value };
     if (family_id) payload.family_id = family_id;
 
-    // upsert: insert or update by key
+    // IMPORTANTE: a constraint única de app_settings é:
+    //   - settings globais  → UNIQUE(key)           → onConflict: 'key'
+    //   - settings de família → UNIQUE(key, family_id) → onConflict: 'key,family_id'
+    // Usar onConflict errado faz o upsert falhar silenciosamente (insere duplicado
+    // ou ignora), portanto escolhemos a constraint correta conforme o contexto.
+    const conflictCol = family_id ? 'key,family_id' : 'key';
+
     const { error } = await sb.from('app_settings')
-      .upsert(payload, { onConflict: 'key' });
-    if (error) throw error;
+      .upsert(payload, { onConflict: conflictCol });
+
+    if (error) {
+      // Fallback: tentar UPDATE direto se o upsert falhar
+      // (acontece quando a constraint do banco é diferente da esperada)
+      if (family_id) {
+        const { error: updErr } = await sb.from('app_settings')
+          .update({ value })
+          .eq('key', key)
+          .eq('family_id', family_id);
+        if (updErr) {
+          // Última tentativa: INSERT
+          await sb.from('app_settings').insert(payload);
+        }
+      } else {
+        const { error: updErr } = await sb.from('app_settings')
+          .update({ value })
+          .eq('key', key);
+        if (updErr) throw updErr;
+      }
+    }
+
     if (!_appSettingsCache) _appSettingsCache = {};
     _appSettingsCache[key] = value;
   } catch(e) {
