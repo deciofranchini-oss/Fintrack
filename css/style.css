@@ -5416,3 +5416,121 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     display:block;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   UX IMPROVEMENTS — v32
+   Melhorias visuais e interativas gerais
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Budget card hover & clicável ────────────────────────────────── */
+.budget-card[style*="cursor:pointer"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.10);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.budget-card {
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+/* ── Budget child tags clicáveis ─────────────────────────────────── */
+.budget-child-tag {
+  transition: opacity .15s ease, transform .15s ease;
+}
+.budget-child-tag[onclick]:hover {
+  opacity: .82;
+  transform: scale(.97);
+}
+
+/* ── Cat tx-count badge hover ────────────────────────────────────── */
+.cat-tx-count[style*="cursor:pointer"] {
+  transition: background .15s, color .15s;
+}
+.cat-tx-count[style*="cursor:pointer"]:hover {
+  background: var(--accent-lt);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 1px 6px;
+}
+
+/* ── Family switching overlay ────────────────────────────────────── */
+.family-switching .content {
+  opacity: .45;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+
+/* ── Loading skeleton pulse ──────────────────────────────────────── */
+@keyframes ft-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .45; }
+}
+.ft-skeleton {
+  animation: ft-skeleton-pulse 1.3s ease-in-out infinite;
+  background: var(--bg2);
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* ── Budget drilldown & category history modal footer ────────────── */
+#budgetDrilldownModal .modal-footer,
+#categoryHistoryModal .modal-footer {
+  padding: 10px 16px;
+}
+
+/* ── Modals: smooth open on mobile ──────────────────────────────── */
+.modal-overlay.open .modal {
+  animation: ft-modal-in .22s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes ft-modal-in {
+  from { transform: translateY(24px) scale(.97); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+
+/* ── Tx row running balance: align right & color ─────────────────── */
+.tx-v2-bal {
+  font-size: .7rem;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: right;
+  margin-top: 2px;
+}
+.tx-v2-bal.neg {
+  color: var(--red);
+}
+
+/* ── Account card: balance always prominent ──────────────────────── */
+.account-balance {
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  margin-top: 4px;
+}
+
+/* ── Group modal existing list ───────────────────────────────────── */
+#groupList > div:hover {
+  background: var(--bg2) !important;
+  transition: background .15s;
+}
+
+/* ── Payee history & category history: alternating row ──────────── */
+#payeeHistoryBody tr:nth-child(even),
+#catHistoryBody tr:nth-child(even),
+#budgetDrillBody tr:nth-child(even) {
+  background: var(--surface2);
+}
+#payeeHistoryBody tr:hover,
+#catHistoryBody tr:hover,
+#budgetDrillBody tr:hover {
+  background: var(--accent-lt) !important;
+}
+
+/* ── Empty-state on small viewports ─────────────────────────────── */
+@media (max-width: 480px) {
+  .budget-child-tags {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .budget-card {
+    padding: 12px 12px 10px;
+  }
+}
