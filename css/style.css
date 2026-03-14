@@ -5752,3 +5752,111 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     font-size: .78rem;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PATCH 2026-03-14 v3 — cleaner tx list + compact detail actions
+═══════════════════════════════════════════════════════════════════ */
+
+/* Transactions list: remove inline action column and keep fixed reading zones */
+.tx-v2-th-right, .tx-v2-right { width: 132px; }
+.tx-v2-body { padding-right: 6px; }
+.tx-v2-catline {
+  margin-top: 4px;
+  min-height: 20px;
+}
+.tx-v2-catline .tx-cat-chip {
+  margin: 0;
+  max-width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: .68rem;
+  padding: 3px 8px;
+}
+.tx-v2-meta {
+  margin-top: 4px;
+}
+.tx-v2-th-act, .tx-v2-act, .tx-v2-btns {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  #page-transactions tbody tr {
+    grid-template-columns: 54px minmax(0,1fr) 118px !important;
+    min-height: 88px;
+  }
+  #page-transactions tbody td.tx-v2-right {
+    width: 118px !important;
+  }
+  .tx-v2-catline {
+    margin-top: 4px;
+    margin-bottom: 1px;
+  }
+  .tx-v2-catline .tx-cat-chip {
+    min-height: 18px;
+    max-width: 100%;
+    font-size: .6rem;
+    padding: 2px 7px;
+  }
+  .tx-v2-meta {
+    margin-top: 3px;
+    font-size: .71rem;
+  }
+}
+
+/* Transaction detail: smaller icon-first actions to fit inside modal */
+.tx-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.tx-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  min-width: 42px;
+  font-size: .8rem;
+  line-height: 1;
+}
+.tx-detail-btn-icon {
+  font-size: .9rem;
+  line-height: 1;
+}
+.tx-detail-btn-danger {
+  color: var(--red) !important;
+}
+@media (max-width: 640px) {
+  .tx-detail-actions {
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .tx-detail-btn {
+    flex: 1 1 calc(20% - 6px);
+    padding: 8px 6px;
+    min-width: 0;
+  }
+  .tx-detail-btn-label {
+    display: none;
+  }
+  .tx-detail-btn-icon {
+    font-size: 1rem;
+  }
+}
+
+/* Forecast: category below description, no colored badge */
+.forecast-category {
+  margin-top: 2px;
+  font-size: .72rem;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .forecast-category {
+    font-size: .71rem;
+  }
+}
