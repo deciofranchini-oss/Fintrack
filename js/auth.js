@@ -2037,7 +2037,8 @@ async function loadUsersList() {
             if (!userFams.length) return '<span style="color:var(--muted)">—</span>';
             return userFams.map(m => {
               const roleIcon = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role]||'👤';
-              return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:.7rem;margin:1px">${roleIcon} ${esc(m.family_name||'—')}</span>`;
+              const fName = m.family_name || famById[m.family_id] || m.family_id?.slice(0,8) || '—';
+              return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:.7rem;margin:1px">${roleIcon} ${esc(fName)}</span>`;
             }).join('');
           })()}
         </td>

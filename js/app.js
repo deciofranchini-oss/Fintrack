@@ -308,6 +308,8 @@ async function bootApp(){
   // Aplica visibilidade do módulo de preços conforme feature flag da família
   if (typeof applyPricesFeature === 'function') applyPricesFeature().catch(() => {});
   if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
+  // Setup wizard — shows for new users until accounts + categories + transactions exist
+  if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
 }
 
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',prices:'Gestão de Preços',
