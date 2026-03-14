@@ -4751,6 +4751,55 @@
     </div>
   </div>
 </div>
+
+  <script src="js/wizard.js"></script>
+
+<!-- ═══ SETUP WIZARD ═══════════════════════════════════════════════════════ -->
+<div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)">
+  <div class="wz-modal">
+    <!-- Header -->
+    <div class="wz-header">
+      <div class="wz-logo">
+        <img src="https://deciofranchini-oss.github.io/fintrack/logo.png" alt="FinTrack" style="height:28px;object-fit:contain;filter:brightness(0) invert(1)">
+      </div>
+      <button class="wz-close-btn" onclick="_wzDismiss()" title="Pular configuração">✕</button>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="wz-progress-wrap">
+      <div class="wz-progress-bar"><div class="wz-progress-fill" id="wzProgress" style="width:0%"></div></div>
+      <div class="wz-dots">
+        <div class="wz-dot" title="Família"></div>
+        <div class="wz-dot" title="Membros"></div>
+        <div class="wz-dot" title="Convites"></div>
+        <div class="wz-dot" title="Gastos"></div>
+        <div class="wz-dot" title="Contas"></div>
+        <div class="wz-dot" title="Transações"></div>
+        <div class="wz-dot" title="Relatórios"></div>
+        <div class="wz-dot" title="Concluído"></div>
+      </div>
+    </div>
+
+    <!-- Title area -->
+    <div class="wz-title-area">
+      <h2 class="wz-title" id="wzTitle">Bem-vindo!</h2>
+      <p class="wz-subtitle" id="wzSubtitle">Vamos configurar seu app.</p>
+    </div>
+
+    <!-- Body (dynamic) -->
+    <div class="wz-body" id="wzBody"></div>
+
+    <!-- Error -->
+    <div id="wzError" class="wz-error" style="display:none"></div>
+
+    <!-- Footer nav -->
+    <div class="wz-footer">
+      <button class="btn btn-ghost" id="wzBackBtn" onclick="_wzBack()" style="display:none">← Voltar</button>
+      <button class="btn btn-ghost wz-skip-btn" id="wzSkipBtn" onclick="_wzSkip()" style="display:none">Pular</button>
+      <button class="btn btn-primary wz-next-btn" id="wzNextBtn" onclick="_wzNext()">Continuar →</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
