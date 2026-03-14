@@ -317,9 +317,12 @@ async function buildAccountRunningBalanceMap(accountId) {
   if (error) throw error;
 
   const map = {};
+  // Store the opening balance for each transaction row.
+  // This guarantees that the first historical transaction of the account
+  // starts from the account initial balance configured in the master data.
   (data || []).forEach(t => {
-    running += parseFloat(t.amount || 0) || 0;
     map[t.id] = running;
+    running += parseFloat(t.amount || 0) || 0;
   });
   return map;
 }
