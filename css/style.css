@@ -5375,7 +5375,16 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
   .forecast-date-cell { width:70px; }
-  .forecast-amount-cell, .forecast-balance-cell { width:88px; font-size:.8rem; }
+  .forecast-amount-cell { width:auto !important; font-size:.8rem; }
+  .forecast-balance-head,
+  .forecast-balance-cell {
+    display:none !important;
+    width:0 !important;
+    min-width:0 !important;
+    padding:0 !important;
+    overflow:hidden !important;
+  }
+  .forecast-table-wrap table { table-layout:auto !important; }
 }
 
 
@@ -5451,3 +5460,24 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* ── Running balance in tx list ─────────────────────────────────── */
 .tx-v2-bal { font-size:.7rem; color:var(--accent); font-weight:600; text-align:right; margin-top:2px; }
 .tx-v2-bal.neg { color:var(--red); }
+
+/* ── Grocery module v2 ────────────────────────────────────────────── */
+.grocery-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 4px; border-bottom:1px solid var(--border);
+}
+.grocery-item:last-child { border-bottom:none; }
+.grocery-item-done { opacity:.55; }
+.grocery-check-btn { transition:all .15s; }
+.grocery-list-card:hover { transform:translateY(-1px); box-shadow:var(--shadow-md); transition:all .18s; }
+
+.grocery-sug-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:9px 12px; cursor:pointer;
+  border-bottom:1px solid var(--border); transition:background .12s;
+}
+.grocery-sug-row:last-child { border-bottom:none; }
+.grocery-sug-new {
+  color:var(--accent); font-size:.82rem;
+  background:var(--accent-lt);
+}
