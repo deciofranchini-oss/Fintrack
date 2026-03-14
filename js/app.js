@@ -577,7 +577,7 @@ function navigate(page){
   _scrollActivePageToTop(page);
   if(page==='dashboard')loadDashboard();
   else if(page==='transactions'){populateTxMonthFilter();loadTransactions();}
-  else if(page==='accounts')renderAccounts();
+  else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
   else if(page==='reports'){populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();

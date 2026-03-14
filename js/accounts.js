@@ -17,11 +17,32 @@ function renderAccounts(ft=''){
   if(ft==='__group__'){
     if(!state.groups.length){ renderAccountsFlat(accs,grid); return; }
     renderAccountsGrouped(accs,grid);
+  } else if(ft==='__fav__'){
+    renderAccountsFlat(accs.filter(a=>a.is_favorite), grid);
   } else {
     renderAccountsFlat(ft?accs.filter(a=>a.type===ft):accs,grid);
   }
   renderAccountsSummary();
+  // Sync active tab to current view mode
+  _syncAccountsTab(ft);
   try { renderGroupManager(); } catch(e) {}
+}
+
+function _syncAccountsTab(ft) {
+  document.querySelectorAll('#page-accounts .tab').forEach(t => t.classList.remove('active'));
+  // Find the tab whose onclick matches the current ft
+  const map = {
+    '__fav__':         'accTabFav',
+    '':                'accTabAll',
+  };
+  if (map[ft]) {
+    document.getElementById(map[ft])?.classList.add('active');
+  } else {
+    // Type tabs — match by onclick text
+    document.querySelectorAll('#accountsTabBar .tab').forEach(t => {
+      if (t.getAttribute('onclick')?.includes(`'${ft}'`)) t.classList.add('active');
+    });
+  }
 }
 
 
@@ -146,8 +167,6 @@ function goToAccountTransactions(accountId){
 }
 
 function filterAccounts(type){
-  document.querySelectorAll('#page-accounts .tab').forEach(t=>t.classList.remove('active'));
-  event.target.classList.add('active');
   renderAccounts(type);
 }
 
@@ -610,4 +629,11 @@ async function checkAccountIofConfig(accountId){
     const mirrorInfo=document.getElementById('txIofMirrorInfo');
     if(mirrorInfo)mirrorInfo.classList.remove('visible');
   }
+}
+
+// Called by app.js navigate('accounts') instead of bare renderAccounts()
+function initAccountsPage() {
+  const hasFav = (state.accounts || []).some(a => a.is_favorite);
+  const mode = hasFav ? '__fav__' : (_accountsViewMode || '');
+  renderAccounts(mode);
 }
