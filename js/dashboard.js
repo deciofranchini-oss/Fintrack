@@ -204,25 +204,23 @@ async function loadDashboard(){
       const isFav = !!a.is_favorite;
       const balColor = a.balance < 0 ? 'var(--red)' : 'var(--accent)';
       if (isFav) {
-        // Highlighted card for favorites
-        return `<div onclick="goToAccountTransactions('${a.id}')"
-          class="dash-acc-fav-row"
-          onmouseover="this.classList.add('dash-acc-fav-row--hover')"
-          onmouseout="this.classList.remove('dash-acc-fav-row--hover')">
-          <div style="display:flex;align-items:center;gap:9px;min-width:0;flex:1">
-            <div style="position:relative;flex-shrink:0">
-              ${renderIconEl(a.icon,a.color,22)}
-              <span style="position:absolute;top:-4px;right:-5px;font-size:.55rem;line-height:1">⭐</span>
-            </div>
-            <div style="min-width:0">
-              <div style="font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</div>
-              <div style="font-size:.68rem;color:var(--muted)">${a.currency !== 'BRL' ? a.currency : accountTypeLabel(a.type)||''}</div>
-            </div>
+        // Fintech-style card for favorites
+        const _cardColor  = a.color || '#2a6049';
+        const _typeLabel  = accountTypeLabel(a.type) || a.type || '';
+        const _isNeg      = a.balance < 0;
+        const _brlLine    = (a.currency !== 'BRL')
+          ? `<div class="dash-fav-brl">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>`
+          : '';
+        return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
+          style="--card-clr:${_cardColor}">
+          <div class="dash-fav-card__top">
+            <div class="dash-fav-card__icon">${renderIconEl(a.icon,a.color,20)}</div>
+            <span class="dash-fav-card__type">${esc(_typeLabel)}</span>
           </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.95rem;font-weight:700;color:${balColor};font-family:var(--font-serif)">${fmt(a.balance,a.currency)}</div>
-            ${a.currency !== 'BRL' ? `<div style="font-size:.68rem;color:var(--muted)">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>` : ''}
-          </div>
+          <div class="dash-fav-card__name">${esc(a.name)}</div>
+          <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
+          ${_brlLine}
+          <div class="dash-fav-card__shine"></div>
         </div>`;
       }
       // Standard row for non-favorites
@@ -237,9 +235,8 @@ async function loadDashboard(){
 
     // Favorites section — always at top if any exist
     if (favs.length) {
-      html += `<div style="margin-bottom:8px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 0 4px">⭐ Favoritas</div>
-        <div class="dash-acc-favs-grid">${favs.map(rowHtml).join('')}</div>
+      html += `<div class="dash-favs-section">
+        <div class="dash-favs-grid">${favs.map(rowHtml).join('')}</div>
       </div>`;
 
       // Non-favorites below, as a compact collapsed section if many accounts
