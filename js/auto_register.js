@@ -408,31 +408,7 @@ async function sendUpcomingNotification(sc, date, emailTo, daysBefore) {
   } catch(e) { console.warn('[AutoReg] Upcoming email error:', e.message); }
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   SQL MIGRATION — Fields for auto_regis
-   SQL MIGRATION — Fields for auto_register
-   (run in Supabase SQL Editor)
-══════════════════════════════════════════════════════════════════ */
-// AUTO_REGISTER_SQL is declared in autocheck.js (loaded before this file).
-// Guard prevents duplicate-const SyntaxError when both files are present.
-if (typeof AUTO_REGISTER_SQL === 'undefined') {
-  var AUTO_REGISTER_SQL = `
--- Add auto-register columns to scheduled_transactions
-ALTER TABLE scheduled_transactions
-  ADD COLUMN IF NOT EXISTS auto_register      BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS notify_email       BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS notify_email_addr  TEXT,
-  ADD COLUMN IF NOT EXISTS notify_days_before INTEGER DEFAULT 1;
-
--- Index for efficient auto-register queries
-CREATE INDEX IF NOT EXISTS idx_scheduled_auto_register
-  ON scheduled_transactions(status, auto_register)
-  WHERE auto_register = true AND status = 'active';
-
--- Optional: pg_cron extension for server-side execution
--- CREATE EXTENSION IF NOT EXISTS pg_cron;
-`;
-}
+/* AUTO_REGISTER_SQL declared in autocheck.js */
 
 
 function showAuthMigration() {
