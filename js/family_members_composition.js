@@ -42,6 +42,8 @@ let _fmc = {
   members: [],   // cached family_composition rows
   loaded: false,
 };
+// Current family context for the member form (set by openFamilyMemberForm)
+let _fmcActiveFamilyId = null;
 
 const FMC_RELATIONS = [
   // ── Adultos ──────────────────────────────────────────────────────
@@ -245,7 +247,9 @@ function _renderFamilyCompositionPanel() {
 }
 
 // ── Member form modal ────────────────────────────────────────────────────────
-async function openFamilyMemberForm(memberId = null) {
+async function openFamilyMemberForm(memberId = null, familyId = null) {
+  // Store which family this form is for; falls back to current active family
+  _fmcActiveFamilyId = familyId || famId() || null;
   const m = memberId ? getFamilyMemberById(memberId) : null;
   const title = m ? 'Editar Membro' : 'Novo Membro';
 
@@ -364,8 +368,14 @@ async function saveFamilyMember() {
   }
   if (errEl) errEl.style.display = 'none';
 
+  const family_id = _fmcActiveFamilyId || famId();
+  if (!family_id) {
+    if (errEl) { errEl.textContent = 'Erro: família não identificada. Feche e tente novamente.'; errEl.style.display = ''; }
+    return;
+  }
+
   const record = {
-    family_id:            famId(),
+    family_id,
     name,
     member_type,
     family_relationship,
@@ -388,6 +398,10 @@ async function saveFamilyMember() {
     await loadFamilyComposition(true);
     _renderFamilyCompositionPanel();
     refreshAllFamilyMemberSelects();
+    // If opened via a family card, refresh that card too
+    if (_fmcActiveFamilyId && typeof _loadAndRenderFmcForFamily === 'function') {
+      await _loadAndRenderFmcForFamily(_fmcActiveFamilyId);
+    }
   } catch (e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e?.message || e); errEl.style.display = ''; }
   }
@@ -727,24 +741,13 @@ async function _loadAndRenderFmcForFamily(familyId) {
  * familyId is passed explicitly so this works for any family (not just the active one).
  */
 async function openFamilyMemberFormForFamily(familyId, memberId = null) {
-  // Await the async form (it fetches user list before building HTML)
-  await openFamilyMemberForm(memberId);
-
-  // Modal is now fully rendered — patch synchronously (no setTimeout needed)
-  // Store familyId in a hidden field for saveFamilyMemberForFamily
-  let hiddenFid = document.getElementById('fmcFamilyId');
-  if (!hiddenFid) {
-    hiddenFid = document.createElement('input');
-    hiddenFid.type = 'hidden';
-    hiddenFid.id   = 'fmcFamilyId';
-    document.getElementById('fmcMemberModal')?.querySelector('.modal-body')?.appendChild(hiddenFid);
-  }
-  hiddenFid.value = familyId;
-
-  // Override save button to use family-specific save (refreshes the right card)
-  const saveBtn = document.getElementById('fmcMemberModal')
-    ?.querySelector('button[onclick="saveFamilyMember()"]');
-  if (saveBtn) saveBtn.setAttribute('onclick', `saveFamilyMemberForFamily('${familyId}')`);
+  // Pass familyId directly — no post-render patching needed
+  await openFamilyMemberForm(memberId, familyId);
+  // _fmcActiveFamilyId is now set inside openFamilyMemberForm
+  // saveFamilyMember() will use it automatically
+  // After save, _loadAndRenderFmcForFamily(familyId) is called to refresh the card
+  // Store familyId for the after-save refresh
+  _fmcActiveFamilyId = familyId;
 }
 
 async function saveFamilyMemberForFamily(familyId) {
