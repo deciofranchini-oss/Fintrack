@@ -413,7 +413,10 @@ async function sendUpcomingNotification(sc, date, emailTo, daysBefore) {
    SQL MIGRATION — Fields for auto_register
    (run in Supabase SQL Editor)
 ══════════════════════════════════════════════════════════════════ */
-const AUTO_REGISTER_SQL = `
+// AUTO_REGISTER_SQL is declared in autocheck.js (loaded before this file).
+// Guard prevents duplicate-const SyntaxError when both files are present.
+if (typeof AUTO_REGISTER_SQL === 'undefined') {
+  var AUTO_REGISTER_SQL = `
 -- Add auto-register columns to scheduled_transactions
 ALTER TABLE scheduled_transactions
   ADD COLUMN IF NOT EXISTS auto_register      BOOLEAN DEFAULT false,
@@ -429,6 +432,7 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_auto_register
 -- Optional: pg_cron extension for server-side execution
 -- CREATE EXTENSION IF NOT EXISTS pg_cron;
 `;
+}
 
 
 function showAuthMigration() {
