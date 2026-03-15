@@ -35,9 +35,7 @@ CREATE POLICY "fmc_family_access"
          SELECT fm.family_id
          FROM public.family_members fm
          JOIN public.app_users au ON au.id = fm.user_id
-         WHERE au.email = (
-           SELECT email FROM auth.users WHERE id = auth.uid()
-         )
+         WHERE au.email = auth.email()
        )
      );
 
@@ -571,7 +569,7 @@ CREATE POLICY "fmc_family_access"
       SELECT fm.family_id
       FROM public.family_members fm
       JOIN public.app_users au ON au.id = fm.user_id
-      WHERE au.email = (SELECT email FROM auth.users WHERE id = auth.uid())
+      WHERE au.email = auth.email()
     )
   );
 
