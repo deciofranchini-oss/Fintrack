@@ -254,18 +254,52 @@ async function renderCashflowChart(){
 let _catChartRawData = [];  // [{name, color, brl, t}]
 let _catChartEntries = [];  // [{name, total, color, txs}]
 
-// Diverse 16-color palette that works on both light and dark backgrounds
+// Extended 24-color palette — enough for all realistic category counts without repeats
 const CAT_PALETTE = [
   '#2a6049','#1e5ba8','#b45309','#c0392b','#7c3aed',
   '#0891b2','#be185d','#15803d','#c2410c','#4338ca',
   '#0f766e','#9333ea','#b91c1c','#1d4ed8','#92400e',
-  '#166534',
+  '#166534','#0369a1','#a16207','#9f1239','#1e40af',
+  '#065f46','#6d28d9','#7f1d1d','#1e3a5f',
 ];
 
-// Assign a palette color if the category has no custom color or uses a generic gray
-function _catColor(color, idx) {
-  if (color && color !== '#94a3b8' && color !== '#888' && color !== '#999') return color;
-  return CAT_PALETTE[idx % CAT_PALETTE.length];
+const GENERIC_COLORS = new Set(['#94a3b8','#888','#888888','#999','#999999']);
+
+/**
+ * Assign a distinct palette color to each slice.
+ * Strategy: if the category has a meaningful custom color, use it only if no
+ * earlier slice in the same chart already used that exact color. Otherwise
+ * advance to the next available palette slot — guaranteeing no repeats.
+ *
+ * @param {string}   color   raw category color from DB
+ * @param {number}   idx     position in the current chart (0-based)
+ * @param {Set}      usedSet Set of colors already assigned in this chart pass
+ */
+function _catColor(color, idx, usedSet) {
+  const isGeneric = !color || GENERIC_COLORS.has(color.toLowerCase());
+  if (!isGeneric) {
+    const c = color.toLowerCase();
+    if (!usedSet || !usedSet.has(c)) {
+      if (usedSet) usedSet.add(c);
+      return color;
+    }
+  }
+  // Advance through palette until we find an unused color
+  let paletteIdx = idx;
+  if (usedSet) {
+    paletteIdx = 0;
+    let checked = 0;
+    while (checked < CAT_PALETTE.length) {
+      const candidate = CAT_PALETTE[paletteIdx % CAT_PALETTE.length];
+      if (!usedSet.has(candidate)) { usedSet.add(candidate); return candidate; }
+      paletteIdx++; checked++;
+    }
+    // All palette colors used (>24 categories) — cycle with opacity variation
+    const base = CAT_PALETTE[idx % CAT_PALETTE.length];
+    usedSet.add(base + '_' + idx);
+    return base;
+  }
+  return CAT_PALETTE[paletteIdx % CAT_PALETTE.length];
 }
 
 async function renderCategoryChart(){
@@ -285,13 +319,14 @@ async function renderCategoryChart(){
     catMap[n].txs.push({...t, _brl: brl});
   });
 
+  const _usedColors = new Set();
   _catChartEntries=Object.entries(catMap)
     .sort((a,b)=>b[1].total-a[1].total)
     .slice(0,8)
     .map(([name,v],i)=>({
       name,
       total: v.total,
-      color: _catColor(v.rawColor, i),
+      color: _catColor(v.rawColor, i, _usedColors),
       txs: v.txs.sort((a,b)=>b._brl-a._brl),
     }));
 

@@ -117,35 +117,37 @@ async function loadReports() {
   document.getElementById('reportDataInfo').textContent =
     `${fmtDate(from)} → ${fmtDate(to)}  ·  ${txs.length} transações`;
 
-  const FB = ['#2a6049','#1e5ba8','#b45309','#c0392b','#7c3aed','#2a7a4a','#d97706','#6b7280','#3d7a5e','#4e8f73'];
-
   /* Despesas por categoria */
   const expMap = {};
   exps.forEach(t=>{
     const n=t.categories?.name||'Sem categoria', c=t.categories?.color||'#94a3b8';
-    if(!expMap[n]) expMap[n]={total:0,color:c,count:0};
+    if(!expMap[n]) expMap[n]={total:0,rawColor:c,count:0};
     expMap[n].total+=Math.abs(t.amount); expMap[n].count++;
   });
   const expEntries = Object.entries(expMap).sort((a,b)=>b[1].total-a[1].total);
-  if(expEntries.length)
+  if(expEntries.length){
+    const _expColors = new Set();
     renderChart('reportCatChart','doughnut',expEntries.map(e=>e[0]),
       [{data:expEntries.map(e=>e[1].total),
-        backgroundColor:expEntries.map((e,i)=>e[1].color||FB[i%FB.length]),
+        backgroundColor:expEntries.map((e,i)=>_catColor(e[1].rawColor,i,_expColors)),
         borderWidth:2,borderColor:'#fff',hoverOffset:8}]);
+  }
 
   /* Receitas por categoria */
   const incMap = {};
   incs.forEach(t=>{
-    const n=t.categories?.name||'Sem categoria', c=t.categories?.color||'#2a7a4a';
-    if(!incMap[n]) incMap[n]={total:0,color:c,count:0};
+    const n=t.categories?.name||'Sem categoria', c=t.categories?.color||'#94a3b8';
+    if(!incMap[n]) incMap[n]={total:0,rawColor:c,count:0};
     incMap[n].total+=t.amount; incMap[n].count++;
   });
   const incEntries = Object.entries(incMap).sort((a,b)=>b[1].total-a[1].total);
-  if(incEntries.length)
+  if(incEntries.length){
+    const _incColors = new Set();
     renderChart('reportIncomeChart','doughnut',incEntries.map(e=>e[0]),
       [{data:incEntries.map(e=>e[1].total),
-        backgroundColor:incEntries.map((e,i)=>e[1].color||FB[i%FB.length]),
+        backgroundColor:incEntries.map((e,i)=>_catColor(e[1].rawColor,i,_incColors)),
         borderWidth:2,borderColor:'#fff',hoverOffset:8}]);
+  }
 
   /* Por conta */
   const accMap = {};
@@ -378,22 +380,65 @@ function _chartToImage(canvasId) {
   try {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
-    // If canvas has zero dimensions (was in display:none), try via Chart.js resize
     const chartInst = state.chartInstances?.[canvasId];
+
+    // Walk up DOM to find any display:none ancestor and temporarily show it
+    const hiddenParents = [];
+    let el = canvas.parentElement;
+    while (el) {
+      if (el.style && el.style.display === 'none') {
+        hiddenParents.push(el);
+        el.style.display = '';
+      }
+      el = el.parentElement;
+    }
+
+    // Now resize the Chart.js instance if canvas still reports zero
     if (chartInst && (canvas.width === 0 || canvas.height === 0)) {
       chartInst.resize(600, 300);
     }
-    if (canvas.width === 0 || canvas.height === 0) return null;
-    return canvas.toDataURL('image/png', 0.95);
+
+    const result = (canvas.width > 0 && canvas.height > 0)
+      ? canvas.toDataURL('image/png', 0.95)
+      : null;
+
+    // Restore hidden parents
+    hiddenParents.forEach(p => { p.style.display = 'none'; });
+
+    return result;
   } catch (e) { return null; }
 }
 
 /* ── Ensure all report charts are rendered before PDF ── */
 async function _ensureChartsRendered() {
-  // If currently in regular view, charts should exist. If switching views for PDF, re-render.
   if (rptState.view === 'regular') {
-    // Charts may not have rendered if view was just activated — re-run
-    if (!state.chartInstances?.['reportCatChart']) await loadReports();
+    // Force re-render if charts haven't been created yet
+    if (!state.chartInstances?.['reportCatChart']) {
+      await loadReports();
+    }
+    // Force Chart.js resize on all report canvases that may have zero dimensions
+    // (happens when parent div was display:none when charts were first drawn)
+    const reportIds = ['reportCatChart','reportIncomeChart','reportAccountChart','reportTrendChart'];
+    for (const id of reportIds) {
+      const inst = state.chartInstances?.[id];
+      const canvas = document.getElementById(id);
+      if (inst && canvas && (canvas.width === 0 || canvas.height === 0 || canvas.clientWidth === 0)) {
+        // Make parent visible temporarily for resize
+        const parent = canvas.closest('[style*="display:none"]');
+        if (parent) {
+          const prev = parent.style.display;
+          parent.style.display = '';
+          inst.resize();
+          inst.update('none');
+          // restore after a tick
+          await new Promise(r => setTimeout(r, 0));
+          parent.style.display = prev;
+        } else {
+          inst.resize();
+          inst.update('none');
+        }
+      }
+    }
     return;
   }
   if (rptState.view === 'transactions') {
