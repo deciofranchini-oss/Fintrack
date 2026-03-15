@@ -249,15 +249,14 @@ async function openFamilyMemberForm(memberId = null) {
   const m = memberId ? getFamilyMemberById(memberId) : null;
   const title = m ? 'Editar Membro' : 'Novo Membro';
 
-  // Build relation options grouped by type
-  // Show only relations matching the current member type; when editing, always include current value
+  const mtype_cur = m?.member_type || m?.type || 'adult';
+  const mrel_cur  = m?.family_relationship || m?.relation || 'outro';
+
+  // Build relation options filtered to current member type
   const relOpts = FMC_RELATIONS
     .filter(r => r.type === mtype_cur || r.value === mrel_cur)
     .map(r => `<option value="${r.value}" ${mrel_cur === r.value ? 'selected' : ''}>${esc(r.label)}</option>`)
     .join('');
-
-  const mtype_cur = m?.member_type || m?.type || 'adult';
-  const mrel_cur  = m?.family_relationship || m?.relation || 'outro';
 
   // Build user select for app_user_id association (users from same family)
   const _famUsers = typeof _fmc !== 'undefined' ? [] : [];
