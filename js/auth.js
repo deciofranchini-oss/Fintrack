@@ -1900,8 +1900,9 @@ async function loadFamiliesList() {
   function _familyPanel(f, members, available, isActive) {
     const fid   = f.id;
     const fname = _familyDisplayName(fid, f.name || '');
-    const _groceryOn = !!(_fc['grocery_enabled_' + fid]);
-    const _pricesOn  = !!(_fc['prices_enabled_'  + fid]);
+    const _groceryOn     = !!(_fc['grocery_enabled_'     + fid]);
+    const _pricesOn      = !!(_fc['prices_enabled_'      + fid]);
+    const _investmentsOn = !!(_fc['investments_enabled_' + fid]);
     const isOwner    = isGlobalAdmin || members.some(m => m.user_id === currentUser?.id && m.member_role === 'owner');
 
     const membersHtml = members.length
@@ -1956,6 +1957,11 @@ async function loadFamiliesList() {
             class="fam-mod-chip${_pricesOn?' active':''}"
             onclick="_famToggleModule('${fid}','prices_enabled_','famPricesBtn-${fid}','applyPricesFeature')">
             🏷️ Preços <span>${_pricesOn?'●':'○'}</span>
+          </button>
+          <button id="famInvestBtn-${fid}"
+            class="fam-mod-chip${_investmentsOn?' active':''}"
+            onclick="_famToggleModule('${fid}','investments_enabled_','famInvestBtn-${fid}','applyInvestmentsFeature')">
+            📈 Investimentos <span>${_investmentsOn?'●':'○'}</span>
           </button>
         </div>
       </div>`;
