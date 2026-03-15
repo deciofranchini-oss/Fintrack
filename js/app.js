@@ -210,11 +210,12 @@ async function tryAutoConnect(){
     _pinUnlocked=true;
     // Register magic-link gate to catch passwordless SIGNED_IN events
     if(typeof _registerMagicLinkGate === 'function') _registerMagicLinkGate();
-    if(restored){
+    if(restored && currentUser){
       hideLoginScreen?.();
       updateUserUI?.();
       await bootApp();
     } else {
+      // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
     }
     return;
@@ -272,11 +273,12 @@ async function bootApp(){
   // Logos (can be overridden by app_settings)
   setAppLogo(APP_LOGO_URL);
 
-  // Carregar dados essenciais (accounts, categories, payees, settings)
+  // Carregar dados essenciais — loadAppSettings corre em paralelo mas
+  // nunca aborta o boot se falhar (RLS, tabela ausente, etc.)
   try {
     await Promise.all([
       DB.preload(),
-      loadAppSettings(),
+      loadAppSettings().catch(e => console.warn('[boot] loadAppSettings (não fatal):', e?.message)),
     ]);
   } catch(e) {
     toast('Erro ao carregar dados: '+e.message,'error');
@@ -577,7 +579,7 @@ function navigate(page){
   if(_iconEl) _iconEl.innerHTML=_pageIconsSVG[page]||_pageIconsSVG['dashboard'];
   state.currentPage=page;closeSidebar();
   _scrollActivePageToTop(page);
-  if(page==='dashboard')loadDashboard();
+  if(page==='dashboard' && sb) loadDashboard();
   else if(page==='transactions'){populateTxMonthFilter();loadTransactions();}
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
   else if(page==='reports'){populateReportFilters();loadCurrentReport();}

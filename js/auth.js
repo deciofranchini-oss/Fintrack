@@ -195,8 +195,7 @@ async function _loadCurrentUserContext() {
     } catch (_) {}
   }
 
-  // Fallback: se family_members ainda não tem dados, usa app_users.family_id
-  // mas tenta buscar o nome real da família para não exibir UUID na UI.
+  // Fallback 1: family_members vazio → usa app_users.family_id
   if (!userFamilies.length && appUserRow?.family_id) {
     let famName = appUserRow.family_id;
     try {
@@ -207,10 +206,29 @@ async function _loadCurrentUserContext() {
         .maybeSingle();
       famName = famRow?.name || famName;
     } catch (_) {}
-
-    // Admin/owner global mantém poder de gerenciar essa família legada.
     const fallbackRole = (appRole === 'admin' || appRole === 'owner') ? 'owner' : appRole;
     userFamilies = [{ id: appUserRow.family_id, name: famName, role: fallbackRole }];
+  }
+
+  // Fallback 2: ainda sem família → tenta a primeira família que existe no banco
+  // (ocorre quando usuário foi aprovado mas family_id não foi gravado em app_users)
+  if (!userFamilies.length && (appRole === 'admin' || appRole === 'owner')) {
+    // Admin/owner global sem família: acesso amplo — não precisa de família
+    // famQ() já retorna query sem filtro para admins
+  } else if (!userFamilies.length) {
+    try {
+      const { data: anyFam } = await sb
+        .from('family_members')
+        .select('family_id, role, families(id,name)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (anyFam?.family_id) {
+        userFamilies = [{ id: anyFam.family_id, name: anyFam.families?.name || anyFam.family_id, role: anyFam.role || 'user' }];
+        console.warn('[auth] family_id recuperado via fallback2 para user:', user.email);
+      }
+    } catch (_) {}
   }
 
   // Prioridade: 1) preferência salva no banco, 2) última usada (localStorage), 3) primeira da lista

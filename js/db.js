@@ -212,6 +212,14 @@ const _dashboard = {
    */
   async loadKPIs() {
     return _wrap('Carregando dashboard…', async () => {
+      // Guard: sem family_id e sem role global → retorna zeros, não faz query
+      const fid = typeof currentUser !== 'undefined' ? currentUser?.family_id : null;
+      const isGlobal = typeof currentUser !== 'undefined' &&
+        (currentUser?.role === 'admin' || currentUser?.role === 'owner');
+      if (!fid && !isGlobal) {
+        return { income: 0, expense: 0, total: 0, pendingCount: 0 };
+      }
+
       // Accounts already in state from bootApp preload; refresh if stale
       await _accounts.load();
 
