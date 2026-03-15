@@ -6368,3 +6368,15 @@ tr.tx-row-new td:first-child {
   background: var(--surface);
   min-height: 44px;
 }
+
+.fmc-picker-hint { font-size:.75rem; color:var(--muted); font-style:italic; padding:2px 4px; }
+
+/* ── Family copy action button ───────────────────────────────────────────── */
+.fam-action-copy {
+  color: var(--accent);
+  border-color: var(--accent);
+  grid-column: 1 / -1;   /* full width — stands out from destructive actions */
+}
+.fam-action-copy:hover {
+  background: var(--accent-lt);
+}
