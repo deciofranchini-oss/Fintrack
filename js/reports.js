@@ -536,9 +536,13 @@ function _pdfHeader(doc, from, to, viewLabel, familyName) {
   // Accent stripe
   doc.setFillColor(...PDF_GREEN_LT);
   doc.rect(0, 0, 5, 42, 'F');
-  // Subtle diagonal stripe overlay (decorative)
-  doc.setFillColor(255, 255, 255);
-  doc.setGState && doc.setGState(new doc.GState({ opacity: 0.04 }));
+  // Subtle diagonal stripe overlay (decorative) — reset opacity immediately after
+  if (doc.setGState) {
+    doc.setFillColor(255, 255, 255);
+    doc.setGState(new doc.GState({ opacity: 0.04 }));
+    // Draw a subtle stripe rect here if desired (currently just sets fill, no draw)
+    doc.setGState(new doc.GState({ opacity: 1.0 })); // ← CRITICAL: restore full opacity
+  }
 
   // Logo mark
   doc.setFontSize(20); doc.setFont('helvetica', 'bold');
