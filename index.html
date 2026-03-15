@@ -2829,12 +2829,17 @@
     <div class="modal-body" id="txDetailBody" style="padding:0">
       <!-- filled by JS -->
     </div>
-    <div class="modal-footer" style="gap:8px">
-      <button class="btn btn-ghost" onclick="closeModal('txDetailModal')">Fechar</button>
-      <button class="btn btn-ghost" id="txDetailDupBtn" onclick="_txDetailAction('dup')">📋 Duplicar</button>
-      <button class="btn btn-ghost" id="txDetailSchedBtn" onclick="_txDetailAction('makeScheduled')" title="Criar programação com base nesta transação" style="font-size:.78rem">📅 Programar</button>
-      <button class="btn btn-ghost" style="color:var(--red)" id="txDetailDelBtn" onclick="_txDetailAction('del')">🗑️ Excluir</button>
-      <button class="btn btn-primary" id="txDetailEditBtn" onclick="_txDetailAction('edit')">✏️ Editar</button>
+    <div class="modal-footer tx-detail-footer">
+      <!-- Row 1: primary actions always visible -->
+      <div class="tx-detail-footer-main">
+        <button class="btn btn-ghost tx-detail-close-btn" onclick="closeModal('txDetailModal')">✕ Fechar</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDelBtn" onclick="_txDetailAction('del')" style="color:var(--red)" title="Excluir">🗑️</button>
+          <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDupBtn" onclick="_txDetailAction('dup')" title="Duplicar">📋</button>
+          <button class="btn btn-ghost tx-detail-action-btn" id="txDetailSchedBtn" onclick="_txDetailAction('makeScheduled')" title="Programar">📅</button>
+          <button class="btn btn-primary" id="txDetailEditBtn" onclick="_txDetailAction('edit')" style="white-space:nowrap">✏️ Editar</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
