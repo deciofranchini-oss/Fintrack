@@ -1798,6 +1798,25 @@
         </div>
       </div>
 
+      <!-- ══ VERIFICAÇÃO DE ANEXOS ══ -->
+      <div class="cfg-section">
+        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_attach')">
+          <span class="cfg-sec-icon">📎</span>
+          <span class="cfg-sec-title">Verificação de Anexos Órfãos</span>
+          <span class="cfg-caret">▾</span>
+        </button>
+        <div class="cfg-sec-body" id="cfgSec_attach" style="display:none">
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
+            Verifica se as transações com <code>attachment_url</code> preenchido apontam para arquivos que realmente existem no Storage do Supabase.
+            Útil após operações de cópia de família, restauração de backup ou exclusões manuais no bucket.
+          </p>
+          <button id="attachScanBtn" class="btn btn-primary btn-sm" onclick="scanOrphanAttachments()">
+            🔍 Verificar Anexos
+          </button>
+          <div id="attachScanResults" style="margin-top:14px"></div>
+        </div>
+      </div>
+
       <!-- ══ SOBRE ══ -->
       <div class="cfg-section">
         <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_sobre')">
