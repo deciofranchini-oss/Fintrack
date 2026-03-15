@@ -24,7 +24,9 @@
      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
    );
    ALTER TABLE public.family_composition ENABLE ROW LEVEL SECURITY;
-   CREATE POLICY "fmc_family_access"
+   -- Idempotent: drop first so script can be re-run safely
+DROP POLICY IF EXISTS "fmc_family_access" ON public.family_composition;
+CREATE POLICY "fmc_family_access"
      ON public.family_composition FOR ALL
      USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
 
@@ -420,6 +422,8 @@ CREATE INDEX IF NOT EXISTS idx_family_composition_user
 
 ALTER TABLE public.family_composition ENABLE ROW LEVEL SECURITY;
 
+-- Idempotent: drop first so script can be re-run safely
+DROP POLICY IF EXISTS "fmc_family_access" ON public.family_composition;
 CREATE POLICY "fmc_family_access"
   ON public.family_composition FOR ALL
   USING (
@@ -611,11 +615,13 @@ async function _loadAndRenderFmcForFamily(familyId) {
       .from('family_composition')
       .select('*')
       .eq('family_id', familyId)
-      .order('type', { ascending: false })
+      .order('member_type', { ascending: false })
       .order('name');
 
     if (error) {
-      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+      const isNoTable = error.code === '42P01' || error.message?.includes('does not exist');
+      const isBadColumn = error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist');
+      if (isNoTable) {
         listEl.innerHTML = `<div style="font-size:.75rem;color:var(--amber,#b45309);padding:8px 10px;
             background:var(--amber-lt);border:1px solid var(--amber);border-radius:6px">
           ⚠️ Execute <code>migration_family_composition.sql</code> no Supabase para habilitar.
@@ -625,7 +631,13 @@ async function _loadAndRenderFmcForFamily(familyId) {
         if (badgeEl) badgeEl.textContent = '— sem tabela';
         return;
       }
-      throw error;
+      // Other DB errors: log and show generic message (don't show migration hint)
+      console.error('[FMC] loadFamily error:', error.code, error.message);
+      listEl.innerHTML = `<div style="font-size:.75rem;color:var(--red);padding:6px 10px">
+        Erro ao carregar membros: ${(error.message || '').split('(')[0].trim()}
+      </div>`;
+      if (badgeEl) badgeEl.textContent = '— erro';
+      return;
     }
 
     const members = data || [];
