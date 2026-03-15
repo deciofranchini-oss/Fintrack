@@ -575,6 +575,10 @@ function resetTxModal(){
   if(iofCb) iofCb.checked = false;
   document.getElementById('txIofMirrorInfo').classList.remove('visible');
   document.getElementById('txIofGroup').style.display='none';
+  // Render family member multi-picker (cleared state)
+  if (typeof renderFmcMultiPicker === 'function') {
+    renderFmcMultiPicker('txFamilyMemberPicker', { selected: [] });
+  }
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
@@ -589,13 +593,12 @@ async function editTransaction(id){
   setTimeout(()=>checkAccountIofConfig(data.account_id), 50);
   const type=data.is_transfer?(data.is_card_payment?'card_payment':'transfer'):data.amount>=0?'income':'expense';setTxType(type);if(type==='transfer'||type==='card_payment')document.getElementById('txTransferTo').value=data.transfer_to_account_id||'';
   document.getElementById('txModalTitle').textContent='Editar Transação';
-  // Populate family member select
-  if (typeof populateFamilyMemberSelect === 'function') {
-    populateFamilyMemberSelect('txFamilyMember');
-    if (data?.family_member_id) {
-      const fmSel = document.getElementById('txFamilyMember');
-      if (fmSel) setTimeout(() => { fmSel.value = data.family_member_id || ''; }, 50);
-    }
+  // Render family member multi-picker
+  if (typeof renderFmcMultiPicker === 'function') {
+    const preselected = data?.family_member_ids?.length
+      ? data.family_member_ids
+      : (data?.family_member_id ? [data.family_member_id] : []);
+    renderFmcMultiPicker('txFamilyMemberPicker', { selected: preselected });
   }
   // Restore currency panel state after DOM settles
   setTimeout(() => {
@@ -1100,7 +1103,16 @@ async function saveTransaction(){
     attachment_name: existingName,
     updated_at:new Date().toISOString(),
     family_id:famId(),
-    family_member_id: (()=>{ const v=document.getElementById('txFamilyMember')?.value; return v||null; })()
+    family_member_ids: typeof getFmcMultiPickerSelected === 'function'
+      ? getFmcMultiPickerSelected('txFamilyMemberPicker')
+      : [],
+    family_member_id: (()=>{
+      if (typeof getFmcMultiPickerSelected === 'function') {
+        const ids = getFmcMultiPickerSelected('txFamilyMemberPicker');
+        return ids[0] || null;
+      }
+      return document.getElementById('txFamilyMember')?.value || null;
+    })()
   };
   if(!data.date||!data.account_id){toast('Preencha data e conta','error');return;}
   let err,txResult;

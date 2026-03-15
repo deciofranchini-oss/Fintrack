@@ -129,8 +129,9 @@ async function fetchRptTransactions() {
   // Tag filter: PostgREST array-contains operator
   if(tagV)    q = q.contains('tags', [tagV]);
   // Apply specific member filter OR relationship group filter
+  // Uses family_member_ids[] (array) when available, falls back to family_member_id
   if (memberV) {
-    q = q.eq('family_member_id', memberV);
+    q = q.or(`family_member_id.eq.${memberV},family_member_ids.cs.{${memberV}}`);
   } else if (relGroupV && typeof getMemberIdsByRelGroup === 'function') {
     const groupIds = getMemberIdsByRelGroup(relGroupV);
     if (groupIds && groupIds.length > 0) {
