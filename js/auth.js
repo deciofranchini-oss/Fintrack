@@ -3838,6 +3838,75 @@ async function _mfmRender() {
   const inviteEl = document.getElementById('mfmInviteEmail');
   if (inviteEl) inviteEl.value = '';
   _mfmMsg('', '');
+
+  // Render feature toggle cards
+  _mfmRenderFeatures(_mfmActiveFamilyId);
+}
+
+function _mfmRenderFeatures(famId) {
+  const container = document.getElementById('mfmFeatCards');
+  if (!container || !famId) return;
+
+  const MODULES = [
+    { key: 'prices_enabled_'      + famId, label: 'Preços',       emoji: '🏷️', applyFn: 'applyPricesFeature' },
+    { key: 'grocery_enabled_'     + famId, label: 'Mercado',      emoji: '🛒', applyFn: 'applyGroceryFeature' },
+    { key: 'investments_enabled_' + famId, label: 'Investimentos',emoji: '📈', applyFn: 'applyInvestmentsFeature' },
+    { key: 'backup_enabled_'      + famId, label: 'Backup',       emoji: '☁️', applyFn: null },
+    { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',     emoji: '📸', applyFn: null },
+  ];
+
+  const fc = window._familyFeaturesCache || {};
+
+  function render() {
+    container.innerHTML = MODULES.map(({ key, label, emoji, applyFn }) => {
+      const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup') || key.includes('snapshot'));
+      return `<button
+        onclick="_mfmToggleFeature('${key}','${famId}','${label}','${applyFn||''}')"
+        style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+          padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;text-align:left;
+          border:1.5px solid ${on ? 'var(--accent)' : 'var(--border)'};
+          background:${on ? 'var(--accent-lt)' : 'var(--surface2)'};
+          transition:all .15s">
+        <span style="font-size:1.1rem">${emoji}</span>
+        <span style="font-size:.78rem;font-weight:600;color:var(--text)">${label}</span>
+        <span style="font-size:.68rem;font-weight:700;color:${on ? 'var(--accent)' : 'var(--muted)'}">
+          ${on ? '● Ativo' : '○ Inativo'}
+        </span>
+      </button>`;
+    }).join('');
+  }
+
+  // Load cache if empty, then render
+  (async () => {
+    if (!window._familyFeaturesCache || !Object.keys(window._familyFeaturesCache).length) {
+      try {
+        const { data } = await sb.from('app_settings')
+          .select('key,value')
+          .in('key', MODULES.map(m => m.key));
+        if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+        (data || []).forEach(r => {
+          window._familyFeaturesCache[r.key] = (r.value === true || r.value === 'true');
+        });
+      } catch(_) {}
+    }
+    render();
+  })();
+}
+
+async function _mfmToggleFeature(key, famId, label, applyFn) {
+  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+  const wasOn = !!window._familyFeaturesCache[key];
+  const nowOn = !wasOn;
+  window._familyFeaturesCache[key] = nowOn;
+  try {
+    await saveAppSetting(key, nowOn);
+    if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
+    toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
+  } catch(e) {
+    window._familyFeaturesCache[key] = wasOn;
+    toast('Erro: ' + e.message, 'error');
+  }
+  _mfmRenderFeatures(famId);
 }
 
 async function mfmChangeRole(sel, userId, famId) {
