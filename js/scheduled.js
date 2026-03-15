@@ -156,6 +156,9 @@ async function processScheduledOccurrence(sc, opts = {}) {
     transfer_to_account_id: isScTransfer ? sc.transfer_to_account_id : null,
     updated_at: new Date().toISOString(),
     status: txStatus,
+    // Propagate member attribution from the scheduled transaction
+    family_member_id:  sc.family_member_id  || null,
+    family_member_ids: sc.family_member_ids?.length ? sc.family_member_ids : [],
   };
 
   const { data: txData, error: txErr } = await sb.from('transactions').insert(txPayload).select().single();
@@ -436,13 +439,27 @@ function _scCardHtml(sc) {
     ? `<span class="sc-cat-chip" style="--c:${sc.categories.color}">${esc(sc.categories.name)}</span>`
     : '';
 
+  // Member chip(s)
+  const memberIds = sc.family_member_ids?.length ? sc.family_member_ids
+    : (sc.family_member_id ? [sc.family_member_id] : []);
+  const memberChips = memberIds.length && typeof getFamilyMemberById === 'function'
+    ? memberIds.map(mid => {
+        const m = getFamilyMemberById(mid);
+        if (!m) return '';
+        const emoji = m.avatar_emoji || (m.member_type === 'child' ? '👶' : '🧑');
+        const age   = typeof _fmcCalcAge === 'function' ? _fmcCalcAge(m.birth_date) : null;
+        const lbl   = emoji + ' ' + esc(m.name) + (age !== null ? ` (${age})` : '');
+        return `<span class="sc-member-chip">${lbl}</span>`;
+      }).filter(Boolean).join('')
+    : '';
+
   return `<div class="sc-card" id="scCard-${sc.id}">
     <!-- Header row: icon · title+meta · amount+status · actions -->
     <div class="sc-card-row" onclick="toggleScCard('${sc.id}')">
       <div class="sc-card-icon" style="background:${iconBg}">${icon}</div>
       <div class="sc-card-mid">
         <div class="sc-card-title2">${esc(sc.description)}</div>
-        <div class="sc-card-meta">${meta}${catChip ? ' · ' + catChip : ''}</div>
+        <div class="sc-card-meta">${meta}${catChip ? ' · ' + catChip : ''}${memberChips ? '<div class="sc-member-chips">' + memberChips + '</div>' : ''}</div>
       </div>
       <div class="sc-card-end">
         <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount))}</div>
@@ -722,6 +739,17 @@ function openScheduledModal(id='') {
   if(naEl) naEl.value = sc?.notify_email_addr || '';
   if(ndEl) ndEl.value = sc?.notify_days_before ?? 1;
 
+  // Render family member multi-picker
+  if (typeof renderFmcMultiPicker === 'function') {
+    const preselected = sc?.family_member_ids?.length
+      ? sc.family_member_ids
+      : (sc?.family_member_id ? [sc.family_member_id] : []);
+    renderFmcMultiPicker('scFamilyMemberPicker', {
+      selected: preselected,
+      placeholder: '👨‍👩‍👧 Família (geral)',
+    });
+  }
+
   updateScPreview();
   openModal('scheduledModal');
 }
@@ -960,6 +988,16 @@ async function saveScheduled() {
     fx_mode:  fxVisible ? fxMode : null,
     fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
+    family_member_ids: typeof getFmcMultiPickerSelected === 'function'
+      ? getFmcMultiPickerSelected('scFamilyMemberPicker')
+      : [],
+    family_member_id: (() => {
+      if (typeof getFmcMultiPickerSelected === 'function') {
+        const ids = getFmcMultiPickerSelected('scFamilyMemberPicker');
+        return ids[0] || null;
+      }
+      return null;
+    })(),
   };
 
   if(!data.description) { toast('Informe a descrição', 'error'); return; }

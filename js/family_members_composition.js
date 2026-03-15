@@ -257,6 +257,19 @@ function refreshAllFamilyMemberSelects() {
   // Show/hide the txMemberPicker wrap
   const txWrap = document.getElementById('txMemberFilterWrap');
   if (txWrap) txWrap.style.display = hasMem ? '' : 'none';
+
+  // Render scFamilyMemberPicker in the scheduled modal (if open)
+  if (typeof renderFmcMultiPicker === 'function') {
+    const scPicker = document.getElementById('scFamilyMemberPicker');
+    if (scPicker) {
+      const scCurSel = typeof getFmcMultiPickerSelected === 'function'
+        ? getFmcMultiPickerSelected('scFamilyMemberPicker') : [];
+      renderFmcMultiPicker('scFamilyMemberPicker', {
+        selected: scCurSel,
+        placeholder: '👨‍👩‍👧 Família (geral)',
+      });
+    }
+  }
 }
 
 // ── Summary ─────────────────────────────────────────────────────────────────
@@ -669,7 +682,17 @@ CREATE INDEX IF NOT EXISTS idx_budgets_family_member
 ALTER TABLE public.transactions
   ADD COLUMN IF NOT EXISTS family_member_ids UUID[] DEFAULT '{}';
 CREATE INDEX IF NOT EXISTS idx_transactions_family_member_ids
-  ON public.transactions USING GIN (family_member_ids);`;
+  ON public.transactions USING GIN (family_member_ids);
+
+-- Member attribution on scheduled transactions
+ALTER TABLE public.scheduled_transactions
+  ADD COLUMN IF NOT EXISTS family_member_id UUID
+  REFERENCES public.family_composition(id) ON DELETE SET NULL;
+ALTER TABLE public.scheduled_transactions
+  ADD COLUMN IF NOT EXISTS family_member_ids UUID[] DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS idx_scheduled_tx_family_member
+  ON public.scheduled_transactions(family_member_id)
+  WHERE family_member_id IS NOT NULL;`;
 
   // Show in a simple overlay
   const existing = document.getElementById('fmcMigrationModal');
