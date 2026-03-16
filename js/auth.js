@@ -327,43 +327,25 @@ function applyLoginPlatformMode() {
     const body = document.body;
     const ls = document.getElementById('loginScreen');
 
-    [
-      'ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other',
-      'platform-windows','platform-ios','platform-android','platform-other'
-    ].forEach(cls => {
+    const classes = [
+      'platform-windows','platform-ios','platform-android','platform-other',
+      'ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other'
+    ];
+    classes.forEach(cls => {
       html?.classList.remove(cls);
       body?.classList.remove(cls);
       ls?.classList.remove(cls);
     });
 
-    const cls = `ft-platform-${info.os}`;
-    const legacyCls = `platform-${info.os}`;
-    html?.classList.add(cls, legacyCls);
-    body?.classList.add(cls, legacyCls);
-    ls?.classList.add(cls, legacyCls);
+    const cls = `platform-${info.os}`;
+    const ftCls = `ft-platform-${info.os}`;
+    html?.classList.add(cls, ftCls);
+    body?.classList.add(cls, ftCls);
+    ls?.classList.add(cls, ftCls);
 
     if (ls) {
       ls.dataset.platform = info.os;
       ls.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
-
-      if (info.isWindows) {
-        ls.querySelectorAll('[style]').forEach(el => {
-          const style = el.getAttribute('style') || '';
-          let next = style
-            .replace(/transition\s*:[^;]+;?/gi, '')
-            .replace(/animation\s*:[^;]+;?/gi, '')
-            .replace(/filter\s*:[^;]+;?/gi, '')
-            .replace(/backdrop-filter\s*:[^;]+;?/gi, '');
-          if (next !== style) el.setAttribute('style', next.trim());
-        });
-
-        ls.querySelectorAll('[onfocus],[onblur],[onmouseover],[onmouseout]').forEach(el => {
-          el.removeAttribute('onfocus');
-          el.removeAttribute('onblur');
-          el.removeAttribute('onmouseover');
-          el.removeAttribute('onmouseout');
-        });
-      }
     }
 
     return info;
@@ -686,15 +668,14 @@ async function onLoginSuccess() {
     toast('Configure o Supabase primeiro','error'); return;
   }
 
-  // ── Logo exit animation then show Cursor loader ───────────────────────
+  const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : { isWindows:false };
   const loginLogo = document.getElementById('loginLogoImg');
-  if (loginLogo) loginLogo.classList.add('exiting');
+  if (loginLogo && !platformInfo.isWindows) loginLogo.classList.add('exiting');
 
-  // Brief pause for exit animation, then show Cursor over the login screen
-  await new Promise(r => setTimeout(r, 380));
-
-  // Show logo cursor while app boots
-  if (typeof Cursor !== 'undefined') Cursor.show('A carregar…');
+  if (!platformInfo.isWindows) {
+    await new Promise(r => setTimeout(r, 380));
+    if (typeof Cursor !== 'undefined') Cursor.show('A carregar…');
+  }
 
   hideLoginScreen();
 
@@ -709,7 +690,7 @@ async function onLoginSuccess() {
     }
   }
   await bootApp();
-  if (typeof Cursor !== 'undefined') Cursor.hide();
+  if (!platformInfo.isWindows && typeof Cursor !== 'undefined') Cursor.hide();
 }
 
 // ── Magic-link post-auth gate ─────────────────────────────────────────────
