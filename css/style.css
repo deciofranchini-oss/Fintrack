@@ -7592,25 +7592,15 @@ tr.tx-row-new td:first-child {
 }
 
 .login-logo-anim {
-  animation:
-    loginLogoIn    .8s cubic-bezier(.34,1.56,.64,1) both,
-    loginLogoPulse  3s ease-in-out 1.2s infinite;
   transform-origin: center center;
-  will-change: transform, opacity, filter;
 }
 
 .login-logo-anim.exiting {
-  animation: loginLogoExit .5s ease-in forwards !important;
-}
-
-/* Login card entrance */
-@keyframes loginCardIn {
-  0%   { opacity: 0; transform: translateY(24px); }
-  100% { opacity: 1; transform: translateY(0); }
+  animation: none !important;
 }
 
 #loginScreen > div {
-  animation: loginCardIn .55s cubic-bezier(.22,1,.36,1) .15s both;
+  animation: none !important;
 }
 
 
@@ -7691,18 +7681,23 @@ html.platform-windows .auth-card * {
 }
 
 
-/* Windows login hard-stop for flicker */
+/* HARD STOP FOR WINDOWS LOGIN RENDER FLICKER */
 html.platform-windows #loginScreen,
-html.ft-platform-windows #loginScreen {
+html.ft-platform-windows #loginScreen,
+body.platform-windows #loginScreen,
+body.ft-platform-windows #loginScreen,
+#loginScreen.platform-windows,
+#loginScreen.ft-platform-windows {
   background: #16301f !important;
-  contain: layout paint style !important;
-  isolation: isolate !important;
+  background-image: none !important;
+  isolation: isolate;
 }
-
-html.platform-windows #loginScreen > div,
-html.ft-platform-windows #loginScreen > div,
 html.platform-windows #loginScreen *,
-html.ft-platform-windows #loginScreen * {
+html.ft-platform-windows #loginScreen *,
+body.platform-windows #loginScreen *,
+body.ft-platform-windows #loginScreen *,
+#loginScreen.platform-windows *,
+#loginScreen.ft-platform-windows * {
   animation: none !important;
   transition: none !important;
   transform: none !important;
@@ -7711,23 +7706,22 @@ html.ft-platform-windows #loginScreen * {
   -webkit-backdrop-filter: none !important;
   will-change: auto !important;
 }
-
-html.platform-windows #loginScreen input,
-html.ft-platform-windows #loginScreen input,
-html.platform-windows #loginScreen button,
-html.ft-platform-windows #loginScreen button {
-  caret-color: auto;
+html.platform-windows #loginScreen > div,
+html.ft-platform-windows #loginScreen > div,
+body.platform-windows #loginScreen > div,
+body.ft-platform-windows #loginScreen > div,
+#loginScreen.platform-windows > div,
+#loginScreen.ft-platform-windows > div {
+  box-shadow: 0 8px 24px rgba(0,0,0,.16) !important;
+  contain: layout paint;
 }
-
 html.platform-windows #loginScreen input:focus,
-html.ft-platform-windows #loginScreen input:focus {
-  outline: none !important;
-  border-color: #2a6049 !important;
+html.ft-platform-windows #loginScreen input:focus,
+body.platform-windows #loginScreen input:focus,
+body.ft-platform-windows #loginScreen input:focus,
+#loginScreen.platform-windows input:focus,
+#loginScreen.ft-platform-windows input:focus {
+  outline: 2px solid rgba(42,96,73,.18) !important;
+  outline-offset: 0 !important;
   box-shadow: none !important;
-}
-
-html.platform-windows #loginLogoImg,
-html.ft-platform-windows #loginLogoImg {
-  animation: none !important;
-  transition: none !important;
 }
