@@ -325,27 +325,23 @@ function applyLoginPlatformMode() {
 
     const html = document.documentElement;
     const body = document.body;
-    const loginScreen = document.getElementById('loginScreen');
-    const authScreen = document.getElementById('authScreen');
+    const ls = document.getElementById('loginScreen');
 
     ['ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other'].forEach(cls => {
       html?.classList.remove(cls);
       body?.classList.remove(cls);
-      loginScreen?.classList.remove(cls);
-      authScreen?.classList.remove(cls);
+      ls?.classList.remove(cls);
     });
 
     const cls = `ft-platform-${info.os}`;
     html?.classList.add(cls);
     body?.classList.add(cls);
-    loginScreen?.classList.add(cls);
-    authScreen?.classList.add(cls);
+    ls?.classList.add(cls);
 
-    [loginScreen, authScreen].forEach((el) => {
-      if (!el) return;
-      el.dataset.platform = info.os;
-      el.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
-    });
+    if (ls) {
+      ls.dataset.platform = info.os;
+      ls.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
+    }
 
     return info;
   } catch (_) {
@@ -373,6 +369,12 @@ function showLoginScreen() {
 
   const ls = document.getElementById('loginScreen');
   if (ls) {
+    const platformInfo = applyLoginPlatformMode();
+    if (platformInfo?.isWindows) {
+      ls.classList.add('windows-login-lite');
+    } else {
+      ls.classList.remove('windows-login-lite');
+    }
     ls.style.display = 'flex';
     // Fix logo: use same LOGO_URL used throughout the app
     const img = document.getElementById('loginLogoImg');
@@ -392,11 +394,13 @@ function showLoginScreen() {
       if (passEl)  passEl.value  = saved.password || '';
       if (remEl)   remEl.checked = true;
     }
-    setTimeout(() => {
+    const focusTarget = () => {
       const emailEl = document.getElementById('loginEmail');
+      if (platformInfo?.isWindows) return;
       if (emailEl && !emailEl.value) emailEl.focus();
       else document.getElementById('loginPassword')?.focus();
-    }, 100);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(focusTarget));
   }
 }
 function _saveRememberedCredentials(email, password) {
@@ -667,15 +671,12 @@ async function onLoginSuccess() {
     toast('Configure o Supabase primeiro','error'); return;
   }
 
-  // ── Transition to app with lightweight behavior on Windows ───────────────
-  const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : null;
+  // ── Logo exit animation then show Cursor loader ───────────────────────
   const loginLogo = document.getElementById('loginLogoImg');
-  if (loginLogo && !platformInfo?.isWindows) loginLogo.classList.add('exiting');
+  if (loginLogo) loginLogo.classList.add('exiting');
 
-  // Avoid a forced animation pause on Windows browsers, which can amplify flicker
-  if (!platformInfo?.isWindows) {
-    await new Promise(r => setTimeout(r, 380));
-  }
+  // Brief pause for exit animation, then show Cursor over the login screen
+  await new Promise(r => setTimeout(r, 380));
 
   // Show logo cursor while app boots
   if (typeof Cursor !== 'undefined') Cursor.show('A carregar…');
