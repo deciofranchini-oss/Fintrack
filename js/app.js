@@ -97,8 +97,31 @@ let _dailyAutoTimer = null;
 async function registerServiceWorkerSafe(){
   try{
     if(!('serviceWorker' in navigator)) return;
+
+    const ua = navigator.userAgent || '';
+    const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    const isWindows = /Windows/i.test(ua) || /Win/i.test(platform);
+
+    // Windows browsers were the main source of mixed-cache shell issues and login flicker.
+    // Keep them on network-only behavior by removing stale registrations/caches.
+    if(isWindows){
+      const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
+      for(const reg of regs || []){
+        try { await reg.unregister(); } catch(_) {}
+      }
+      if(window.caches?.keys){
+        const keys = await caches.keys().catch(()=>[]);
+        for(const key of keys || []){
+          if(/^fintrack-shell-/i.test(key)){
+            try { await caches.delete(key); } catch(_) {}
+          }
+        }
+      }
+      return;
+    }
+
     // GitHub Pages friendly path: sw.js at site root
-    await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    await navigator.serviceWorker.register('./sw.js?v=20260316b', { scope: './' });
   }catch(e){
     console.warn('[sw]', e.message);
   }

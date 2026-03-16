@@ -325,24 +325,27 @@ function applyLoginPlatformMode() {
 
     const html = document.documentElement;
     const body = document.body;
-    const platformInfo = applyLoginPlatformMode();
-  const ls = document.getElementById('loginScreen');
+    const loginScreen = document.getElementById('loginScreen');
+    const authScreen = document.getElementById('authScreen');
 
     ['ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other'].forEach(cls => {
       html?.classList.remove(cls);
       body?.classList.remove(cls);
-      ls?.classList.remove(cls);
+      loginScreen?.classList.remove(cls);
+      authScreen?.classList.remove(cls);
     });
 
     const cls = `ft-platform-${info.os}`;
     html?.classList.add(cls);
     body?.classList.add(cls);
-    ls?.classList.add(cls);
+    loginScreen?.classList.add(cls);
+    authScreen?.classList.add(cls);
 
-    if (ls) {
-      ls.dataset.platform = info.os;
-      ls.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
-    }
+    [loginScreen, authScreen].forEach((el) => {
+      if (!el) return;
+      el.dataset.platform = info.os;
+      el.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
+    });
 
     return info;
   } catch (_) {
@@ -662,6 +665,16 @@ async function onLoginSuccess() {
   updateUserUI();
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
+  }
+
+  // ── Transition to app with lightweight behavior on Windows ───────────────
+  const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : null;
+  const loginLogo = document.getElementById('loginLogoImg');
+  if (loginLogo && !platformInfo?.isWindows) loginLogo.classList.add('exiting');
+
+  // Avoid a forced animation pause on Windows browsers, which can amplify flicker
+  if (!platformInfo?.isWindows) {
+    await new Promise(r => setTimeout(r, 380));
   }
 
   // Show logo cursor while app boots

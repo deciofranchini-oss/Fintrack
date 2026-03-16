@@ -3,13 +3,14 @@
    - Enable notification display via reg.showNotification()
    - Provide a lightweight offline shell cache (best-effort)
 */
-const CACHE_NAME = 'fintrack-shell-v2';
+const CACHE_NAME = 'fintrack-shell-v3';
 const SHELL_FILES = [
   './',
   './index.html',
   './css/style.css',
   './css/app.css',
-  './js/app.js'
+  './js/app.js',
+  './js/auth.js'
 ];
 
 self.addEventListener('install', (event) => {
