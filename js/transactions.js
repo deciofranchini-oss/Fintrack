@@ -260,8 +260,9 @@ function filterTransactions(immediate = false){
   // Member filter: read selected IDs from multi-picker
   // Read selected member from compact select (empty string = all members)
   const _txMemberSel = document.getElementById('txMemberPicker');
-  const _txMemberVal = _txMemberSel?.value || '';
-  state.txFilter.memberIds = _txMemberVal ? [_txMemberVal] : [];
+  const _txMemberVal = (_txMemberSel?.value || '').trim();
+  const _txMemberUuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  state.txFilter.memberIds = (_txMemberVal && _txMemberUuidRx.test(_txMemberVal)) ? [_txMemberVal] : [];
   state.txPage=0;
   if(state.txView==='flat') document.getElementById('txSummaryBar').style.display='none';
   ['txMonth','txAccount','txType','txStatusFilter'].forEach(id => {
