@@ -664,13 +664,6 @@ async function onLoginSuccess() {
     toast('Configure o Supabase primeiro','error'); return;
   }
 
-  // ── Logo exit animation then show Cursor loader ───────────────────────
-  const loginLogo = document.getElementById('loginLogoImg');
-  if (loginLogo) loginLogo.classList.add('exiting');
-
-  // Brief pause for exit animation, then show Cursor over the login screen
-  await new Promise(r => setTimeout(r, 380));
-
   // Show logo cursor while app boots
   if (typeof Cursor !== 'undefined') Cursor.show('A carregar…');
 
