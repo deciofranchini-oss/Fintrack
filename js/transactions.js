@@ -853,7 +853,7 @@ function updateTxCurrencyPreview() {
   const targetCur = (txCur !== accountCur) ? accountCur : 'BRL';
 
   const rateVal = parseFloat(document.getElementById('txCurrencyRate')?.value?.replace(',', '.'));
-  const amtVal  = Math.abs(getAmtField('txAmount') || 0);
+  const amtVal  = getAmtField('txAmount') || 0;
   const preview = document.getElementById('txCurrencyPreview');
   const hint    = document.getElementById('txCurrencyBrlHint');
   if (!rateVal || isNaN(rateVal) || !amtVal) {
@@ -1105,10 +1105,10 @@ async function saveTransaction(){
       if (txCurrency !== accountCurrency) {
         // Case A: amount in txCurrency → accountCurrency; then if accountCurrency is also non-BRL we'd need another step,
         // but for now store the converted value (accountCur equivalent)
-        brlAmount = Math.abs(amount) * fxRate;
+        brlAmount = amount * fxRate;
       } else if (accountCurrency !== 'BRL') {
         // Case B: amount is in accountCurrency → multiply by rate to get BRL
-        brlAmount = Math.abs(amount) * fxRate;
+        brlAmount = amount * fxRate;
       }
     }
   }
