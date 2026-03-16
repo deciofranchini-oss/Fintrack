@@ -278,6 +278,81 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+
+function detectLoginPlatform() {
+  try {
+    const nav = window.navigator || {};
+    const ua  = String(nav.userAgent || '').toLowerCase();
+    const platform = String(nav.platform || '').toLowerCase();
+    const uaDataPlatform = String(nav.userAgentData?.platform || '').toLowerCase();
+    const touchPoints = Number(nav.maxTouchPoints || 0);
+
+    const isAndroid = /android/.test(ua);
+    const isIPhone = /iphone|ipod/.test(ua);
+    const isIPad = /ipad/.test(ua) || (/mac/.test(uaDataPlatform || platform) && touchPoints > 1);
+    const isIOS = isIPhone || isIPad;
+    const isWindows = /windows/.test(ua) || /win/.test(platform) || /windows/.test(uaDataPlatform);
+
+    let os = 'other';
+    if (isWindows) os = 'windows';
+    else if (isIOS) os = 'ios';
+    else if (isAndroid) os = 'android';
+
+    return {
+      os,
+      isWindows,
+      isIOS,
+      isAndroid,
+      isMobile: isIOS || isAndroid,
+      isDesktop: isWindows || (!isIOS && !isAndroid)
+    };
+  } catch (_) {
+    return {
+      os: 'other',
+      isWindows: false,
+      isIOS: false,
+      isAndroid: false,
+      isMobile: false,
+      isDesktop: true
+    };
+  }
+}
+
+function applyLoginPlatformMode() {
+  try {
+    const info = detectLoginPlatform();
+    window.__FT_LOGIN_PLATFORM__ = info;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const platformInfo = applyLoginPlatformMode();
+  const ls = document.getElementById('loginScreen');
+
+    ['ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other'].forEach(cls => {
+      html?.classList.remove(cls);
+      body?.classList.remove(cls);
+      ls?.classList.remove(cls);
+    });
+
+    const cls = `ft-platform-${info.os}`;
+    html?.classList.add(cls);
+    body?.classList.add(cls);
+    ls?.classList.add(cls);
+
+    if (ls) {
+      ls.dataset.platform = info.os;
+      ls.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
+    }
+
+    return info;
+  } catch (_) {
+    return detectLoginPlatform();
+  }
+}
+
+window.detectLoginPlatform = detectLoginPlatform;
+window.applyLoginPlatformMode = applyLoginPlatformMode;
+
 // ── Show / hide login screen ──
 function showLoginScreen() {
   // Ensure sb is initialized whenever login screen is shown —
@@ -347,6 +422,10 @@ function hideLoginScreen() {
   if (mainApp) mainApp.style.display = '';
   if (sidebar) sidebar.style.display = '';
 }
+document.addEventListener('DOMContentLoaded', () => {
+  applyLoginPlatformMode();
+});
+
 function toggleLoginPwd() {
   const inp = document.getElementById('loginPassword');
   if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
