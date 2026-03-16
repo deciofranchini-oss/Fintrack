@@ -2026,8 +2026,8 @@
 <!-- EMAILJS CONFIG MODAL -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <div id="loginScreen" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0d3d2b 0%,#1e5c42 60%,#0d3d2b 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
-    <div style="width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
+  <div id="loginScreen" class="login-screen-shell" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0d3d2b 0%,#1e5c42 60%,#0d3d2b 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
+    <div class="login-card" style="width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
       <div style="text-align:center;margin-bottom:28px">
         <img id="loginLogoImg" src="Logo.jpg" alt="Logo"  style="width:200px;height:auto;object-fit:contain;margin-bottom:12px">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af">Família inteligente,  Finanças sob controle</div>
@@ -2050,16 +2050,14 @@
         <div id="loginPanelPassword">
           <div class="form-group" style="margin-bottom:16px">
             <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
-            <input type="email" id="loginEmail" placeholder="seu@email.com"
+            <input type="email" id="loginEmail" class="login-input" placeholder="seu@email.com"
               style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-             
-              onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
+              onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
           </div>
           <div class="form-group" style="margin-bottom:20px;position:relative">
             <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Senha</label>
-            <input type="password" id="loginPassword" placeholder="••••••••"
+            <input type="password" id="loginPassword" class="login-input" placeholder="••••••••"
               style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box;padding-right:44px"
-             
               onkeydown="if(event.key==='Enter')doLogin()">
             <button onclick="toggleLoginPwd()" style="position:absolute;right:12px;bottom:11px;background:none;border:none;cursor:pointer;font-size:1rem;color:#9ca3af">👁</button>
           </div>
@@ -2067,7 +2065,7 @@
             <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
             <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none">Lembrar meu e-mail e senha</label>
           </div>
-          <button onclick="doLogin()" id="loginBtn"
+          <button onclick="doLogin()" id="loginBtn" class="login-btn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
             Entrar
           </button>
