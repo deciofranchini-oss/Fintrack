@@ -327,20 +327,43 @@ function applyLoginPlatformMode() {
     const body = document.body;
     const ls = document.getElementById('loginScreen');
 
-    ['ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other'].forEach(cls => {
+    [
+      'ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other',
+      'platform-windows','platform-ios','platform-android','platform-other'
+    ].forEach(cls => {
       html?.classList.remove(cls);
       body?.classList.remove(cls);
       ls?.classList.remove(cls);
     });
 
     const cls = `ft-platform-${info.os}`;
-    html?.classList.add(cls);
-    body?.classList.add(cls);
-    ls?.classList.add(cls);
+    const legacyCls = `platform-${info.os}`;
+    html?.classList.add(cls, legacyCls);
+    body?.classList.add(cls, legacyCls);
+    ls?.classList.add(cls, legacyCls);
 
     if (ls) {
       ls.dataset.platform = info.os;
       ls.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
+
+      if (info.isWindows) {
+        ls.querySelectorAll('[style]').forEach(el => {
+          const style = el.getAttribute('style') || '';
+          let next = style
+            .replace(/transition\s*:[^;]+;?/gi, '')
+            .replace(/animation\s*:[^;]+;?/gi, '')
+            .replace(/filter\s*:[^;]+;?/gi, '')
+            .replace(/backdrop-filter\s*:[^;]+;?/gi, '');
+          if (next !== style) el.setAttribute('style', next.trim());
+        });
+
+        ls.querySelectorAll('[onfocus],[onblur],[onmouseover],[onmouseout]').forEach(el => {
+          el.removeAttribute('onfocus');
+          el.removeAttribute('onblur');
+          el.removeAttribute('onmouseover');
+          el.removeAttribute('onmouseout');
+        });
+      }
     }
 
     return info;
@@ -369,12 +392,6 @@ function showLoginScreen() {
 
   const ls = document.getElementById('loginScreen');
   if (ls) {
-    const platformInfo = applyLoginPlatformMode();
-    if (platformInfo?.isWindows) {
-      ls.classList.add('windows-login-lite');
-    } else {
-      ls.classList.remove('windows-login-lite');
-    }
     ls.style.display = 'flex';
     // Fix logo: use same LOGO_URL used throughout the app
     const img = document.getElementById('loginLogoImg');
@@ -394,13 +411,11 @@ function showLoginScreen() {
       if (passEl)  passEl.value  = saved.password || '';
       if (remEl)   remEl.checked = true;
     }
-    const focusTarget = () => {
+    setTimeout(() => {
       const emailEl = document.getElementById('loginEmail');
-      if (platformInfo?.isWindows) return;
       if (emailEl && !emailEl.value) emailEl.focus();
       else document.getElementById('loginPassword')?.focus();
-    };
-    requestAnimationFrame(() => requestAnimationFrame(focusTarget));
+    }, 100);
   }
 }
 function _saveRememberedCredentials(email, password) {
