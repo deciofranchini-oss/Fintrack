@@ -7854,3 +7854,192 @@ body.ft-platform-windows .modal-close {
 
 /* ── Scheduled: badge pendente no upcoming ────────────────────── */
 .sup-pending-badge { display:inline-flex; align-items:center; gap:3px; font-size:.65rem; font-weight:700; padding:1px 6px; border-radius:10px; margin-left:5px; vertical-align:middle; background:rgba(251,191,36,.18); color:var(--amber,#b45309); border:1px solid rgba(251,191,36,.4); }
+
+/* ════════════════════════════════════════════════════════
+   Dashboard: linha inferior (categorias favoritas + transações)
+════════════════════════════════════════════════════════ */
+.dash-bottom-row {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.dash-fav-col  { min-width: 0; }
+.dash-tx-col   { min-width: 0; }
+
+@media (max-width: 1024px) {
+  .dash-bottom-row { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════
+   Dashboard: card de categorias favoritas
+════════════════════════════════════════════════════════ */
+.dfav-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.dfav-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.dfav-title {
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  flex: 1;
+}
+.dfav-manage {
+  font-size: .72rem;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.dfav-manage:hover { background: var(--bg2); color: var(--text2); }
+
+.dfav-section-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 5px;
+  border-bottom: 1px solid var(--border);
+}
+.dfav-section-label {
+  font-size: .67rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.dfav-section-pct-lbl {
+  font-size: .67rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.dfav-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px 5px;
+  cursor: pointer;
+  transition: background .12s;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.dfav-row:last-child { border-bottom: none; }
+.dfav-row:hover { background: var(--bg2); }
+.dfav-row--child { padding-left: 30px; }
+.dfav-row--child .dfav-connector {
+  position: absolute;
+  left: 18px; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.dfav-row--child .dfav-connector::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 8px; height: 1px;
+  background: var(--border);
+}
+.dfav-row--parent-ctx {
+  opacity: .65;
+  cursor: default;
+  background: var(--bg2);
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.dfav-icon { font-size: 1rem; line-height: 1; flex-shrink: 0; }
+.dfav-icon--sm { font-size: .88rem; }
+.dfav-name {
+  flex: 1;
+  font-size: .84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  color: var(--text);
+}
+.dfav-name--child { font-weight: 400; font-size: .8rem; color: var(--text2); }
+.dfav-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.dfav-val {
+  font-size: .82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dfav-pct {
+  font-size: .68rem;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dfav-bar-wrap {
+  width: 100%;
+  padding: 0 14px 7px;
+}
+.dfav-row--child .dfav-bar-wrap { padding-left: 30px; }
+.dfav-bar-bg {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.dfav-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .45s cubic-bezier(.4,0,.2,1);
+}
+.dfav-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+/* Dashboard custom toggle */
+.dash-custom-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: background .12s;
+  user-select: none;
+}
+.dash-custom-toggle:hover { background: var(--bg2); }
+.dash-custom-toggle-icon { font-size: 1.2rem; }
+.dash-custom-toggle-label { flex: 1; font-size: .85rem; font-weight: 500; }
+.dash-custom-toggle-sub { font-size: .75rem; color: var(--muted); margin-top: 1px; }
+.dash-toggle-switch {
+  width: 38px; height: 22px; border-radius: 11px;
+  background: var(--border); border: none; cursor: pointer;
+  position: relative; transition: background .2s; flex-shrink: 0;
+  outline: none;
+}
+.dash-toggle-switch.on { background: var(--accent); }
+.dash-toggle-switch::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.dash-toggle-switch.on::after { transform: translateX(16px); }
+
+/* Conector da última subcat — sem linha vertical além do meio */
+.dfav-connector--last {
+  bottom: 50% !important;
+}
