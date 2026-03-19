@@ -87,7 +87,7 @@ function _updateSidebarUserCard() {
   const nameEl  = document.getElementById('sbUserName');
   const roleEl  = document.getElementById('sbUserRole');
   if (!card || !currentUser) return;
-  card.style.display = '';
+  card.style.display = 'none';
   // Name
   if (nameEl) nameEl.textContent = currentUser.name || currentUser.email?.split('@')[0] || '—';
   // Role label
@@ -1958,7 +1958,7 @@ async function loadFamiliesList() {
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
   try {
     const flagKeys = visibleFamilies.flatMap(f =>
-      ['grocery_enabled_','prices_enabled_','investments_enabled_'].map(p => p + f.id));
+      ['grocery_enabled_','prices_enabled_','investments_enabled_','ai_analysis_enabled_','ai_chat_enabled_'].map(p => p + f.id));
     const { data: flagRows } = await sb.from('app_settings')
       .select('key,value').in('key', flagKeys);
     (flagRows||[]).forEach(r => {
@@ -2082,6 +2082,16 @@ async function loadFamiliesList() {
             onclick="_famToggleModule('${fid}','investments_enabled_','famInvestBtn-${fid}','applyInvestmentsFeature')">
             📈 Investimentos <span class="fam-mod-dot">${_investmentsOn?'●':'○'}</span>
           </button>
+          <button id="famAiAnalysisBtn-${fid}"
+            class="fam-mod-chip${!!(_fc['ai_analysis_enabled_' + fid])?' active':''}"
+            onclick="_famToggleModule('${fid}','ai_analysis_enabled_','famAiAnalysisBtn-${fid}','applyAIInsightsFeature')">
+            ✨ AI Analysis <span class="fam-mod-dot">${!!(_fc['ai_analysis_enabled_' + fid])?'●':'○'}</span>
+          </button>
+          <button id="famAiChatBtn-${fid}"
+            class="fam-mod-chip${!!(_fc['ai_chat_enabled_' + fid])?' active':''}"
+            onclick="_famToggleModule('${fid}','ai_chat_enabled_','famAiChatBtn-${fid}','applyAIInsightsFeature')">
+            💬 AI Chat <span class="fam-mod-dot">${!!(_fc['ai_chat_enabled_' + fid])?'●':'○'}</span>
+          </button>
         </div>
       </div>`;
 
@@ -2178,20 +2188,19 @@ async function loadFamiliesList() {
   setTimeout(() => {
     const fc = window._familyFeaturesCache || {};
     for (const f of visibleFamilies) {
-      const gBtn = document.getElementById('famGroceryBtn-' + f.id);
-      const pBtn = document.getElementById('famPricesBtn-'  + f.id);
-      if (gBtn) {
-        const on = !!fc['grocery_enabled_' + f.id];
-        gBtn.classList.toggle('active', on);
-        const dot = gBtn.querySelector('.fam-mod-dot');
+      const syncBtn = (prefix, keyPrefix) => {
+        const el = document.getElementById(prefix + f.id);
+        if (!el) return;
+        const on = !!fc[keyPrefix + f.id];
+        el.classList.toggle('active', on);
+        const dot = el.querySelector('.fam-mod-dot');
         if (dot) dot.textContent = on ? '●' : '○';
-      }
-      if (pBtn) {
-        const on = !!fc['prices_enabled_' + f.id];
-        pBtn.classList.toggle('active', on);
-        const dot = pBtn.querySelector('.fam-mod-dot');
-        if (dot) dot.textContent = on ? '●' : '○';
-      }
+      };
+      syncBtn('famGroceryBtn-', 'grocery_enabled_');
+      syncBtn('famPricesBtn-', 'prices_enabled_');
+      syncBtn('famInvestBtn-', 'investments_enabled_');
+      syncBtn('famAiAnalysisBtn-', 'ai_analysis_enabled_');
+      syncBtn('famAiChatBtn-', 'ai_chat_enabled_');
     }
   }, 100);
 }
@@ -3719,6 +3728,7 @@ async function switchFamily(familyId) {
     populateSelects();
     try { if (typeof applyPricesFeature === 'function') await applyPricesFeature(); } catch(e) {}
     try { if (typeof applyGroceryFeature === 'function') await applyGroceryFeature(); } catch(e) {}
+    try { if (typeof applyAIInsightsFeature === 'function') await applyAIInsightsFeature(); } catch(e) {}
     navigate(targetPage);
   } finally {
     // nothing to restore

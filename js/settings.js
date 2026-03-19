@@ -52,7 +52,7 @@ async function saveAppSetting(key, value) {
   _appSettingsCache[key] = value;
   if (!sb) return;
   try {
-    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_)(.+)$/);
+    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|ai_analysis_enabled_|ai_chat_enabled_)(.+)$/);
     const family_id = m ? m[2] : null;
     // Feature flags: try RPC SECURITY DEFINER first (bypasses RLS)
     if (family_id) {
@@ -908,6 +908,7 @@ async function applyUserFeatureFlags() {
   try { await applyPricesFeature?.(); } catch {}
   try { await applyGroceryFeature?.(); } catch {}
   try { await applyInvestmentsFeature?.(); } catch {}
+  try { await applyAIInsightsFeature?.(); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -937,6 +938,8 @@ function initFamModulesStandalone() {
     { key: 'investments_enabled_' + famId, label: 'Investimentos',    emoji: '📈', applyFn: 'applyInvestmentsFeature',  desc: 'Carteira de investimentos (requer conta do tipo Investimentos)' },
     { key: 'backup_enabled_'      + famId, label: 'Backup',           emoji: '☁️', applyFn: null,                       desc: 'Backup automático de dados' },
     { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',         emoji: '📸', applyFn: null,                       desc: 'Snapshots periódicos do estado financeiro' },
+    { key: 'ai_analysis_enabled_' + famId, label: 'AI Analysis', emoji: '✨', applyFn: 'applyAIInsightsFeature', desc: 'Análises explicativas com contexto financeiro da família' },
+    { key: 'ai_chat_enabled_' + famId, label: 'AI Chat', emoji: '💬', applyFn: 'applyAIInsightsFeature', desc: 'Assistente financeiro conversacional com o contexto atual' },
   ];
 
   function renderCards() {
@@ -1000,6 +1003,8 @@ function initFamModulesRow() {
     { key: 'investments_enabled_' + famId, label: 'Investimentos', emoji: '📈', applyFn: 'applyInvestmentsFeature' },
     { key: 'backup_enabled_'  + famId, label: 'Backup',   emoji: '☁️', applyFn: null },
     { key: 'snapshot_enabled_'+ famId, label: 'Snapshot', emoji: '📸', applyFn: null },
+    { key: 'ai_analysis_enabled_' + famId, label: 'AI Analysis', emoji: '✨', applyFn: 'applyAIInsightsFeature' },
+    { key: 'ai_chat_enabled_' + famId, label: 'AI Chat', emoji: '💬', applyFn: 'applyAIInsightsFeature' },
   ];
 
   function renderPills() {
