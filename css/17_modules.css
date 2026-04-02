@@ -1,17 +1,16 @@
-/* ════════════════════════════════════════════════════ */
-/* 17_modules.css */
-/* Super-TX, AI collapsible, feedback topbar, patrimônio, toast */
-/* Source: style.css L21431–22649 (1219 lines) */
-/* Braces: 218 open / 218 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   17_modules.css
+   Super-TX, AI collapsible, feedback topbar, patrimônio, toast
+   Source: style.css L21431–22649 (1219 lines)
+   Braces: 218 open / 218 close ✓
+════════════════════════════════════════════════════ */
 
-/* ══════════════════════════════════════════════════════════════════════════ */
-/* PROGRAMADOS — Mobile UX reformulado (≤640px) */
-/* Arquitetura: header ultra-compacto | KPIs inline | filtros em painel */
-/* ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   PROGRAMADOS — Mobile UX reformulado (≤640px)
+   Arquitetura: header ultra-compacto | KPIs inline | filtros em painel
+   ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Desktop header: visível só no desktop ── */
-
 .sc-desktop-header { display: flex; }
 .sc-mobile-header  { display: none; }
 .sc-mobile-filters { display: none; }
@@ -39,7 +38,7 @@
 
   /* ════════════════════════════════
      MOBILE HEADER
-/* ════════════════════════════════ */
+     ════════════════════════════════ */
   .sc-mobile-header {
     flex-direction: column;
     gap: 8px;
@@ -176,7 +175,7 @@
 
   /* ════════════════════════════════
      PAINEL DE FILTROS DESLIZANTE
-/* ════════════════════════════════ */
+     ════════════════════════════════ */
   .sc-mobile-filters {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -251,7 +250,7 @@
 
   /* ════════════════════════════════
      LAYOUT: COLUNA ÚNICA
-/* ════════════════════════════════ */
+     ════════════════════════════════ */
   .sc-list-view {
     display: flex !important;
     flex-direction: column !important;
@@ -260,7 +259,7 @@
 
   /* ════════════════════════════════
      PAINEL: PRÓXIMOS 10 DIAS
-/* ════════════════════════════════ */
+     ════════════════════════════════ */
   #scUpcomingPanel {
     background: var(--surface) !important;
     border: 1.5px solid color-mix(in srgb, var(--accent) 30%, var(--border)) !important;
@@ -347,7 +346,7 @@
 
   /* ════════════════════════════════
      PRÓXIMOS: grupos por data
-/* ════════════════════════════════ */
+     ════════════════════════════════ */
   .sup-group {
     border: none !important;
     border-radius: 0 !important;
@@ -464,7 +463,7 @@
 
   /* ════════════════════════════════
      CARDS DE PROGRAMADOS
-/* ════════════════════════════════ */
+     ════════════════════════════════ */
   #page-scheduled #scheduledList .sc-card {
     border-radius: 14px !important;
     margin-bottom: 8px !important;
@@ -679,9 +678,9 @@
   .sup-ignore-btn { width: 28px !important; height: 28px !important; }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
    FIX: Próximos 10 dias — contenção de overflow no mobile
-/* ══════════════════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
   /* Painel upcoming: contém tudo dentro dos limites da tela */
@@ -822,9 +821,9 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
    AI INSIGHTS — Collapsible blocks + redesigned results
-/* ══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 
 /* Params toggle button */
 .ai2-params-toggle {
@@ -991,9 +990,9 @@
 /* Accounts fav star always show (previously only showed when is_favorite) */
 .account-card-wrap { position: relative; }
 
-/* ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
    FEEDBACK TOPBAR — dark orange pulsing bubble
-/* ══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 #feedbackTopbarBtn,
 .feedback-topbar-bubble {
   display: inline-flex;
@@ -1058,29 +1057,29 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
    PATRIMÔNIO MODAL — bar chart row hover
-/* ══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 #patrimonioModal .modal { animation: slideUpFadeIn .22s ease both; }
 
-/* ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
    FORECAST DRILL MODAL
-/* ══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 #forecastDrillModal .modal,
 #rptDrillModal .modal {
   animation: slideUpFadeIn .22s ease both;
 }
 
-/* ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
    AI PARAMS — responsive collapse auto on mobile
-/* ══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
   .ai2-params-toggle { font-size: .75rem; padding: 7px 12px; }
 }
 
-/* ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
    ALERT DURATION OPTIONS — profile prefs
-/* ══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 .alert-dur-opt {
   display: inline-flex;
   align-items: center;
@@ -1225,3 +1224,29 @@
 /* MFM members list gap */
 .mfm-members-list { display: flex; flex-direction: column; gap: 8px; }
 
+
+
+/* ── Feedback type options (extracted from inline) ── */
+
+.feedback-type-opt {
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  padding:7px 14px;border:1.5px solid var(--border);border-radius:100px;
+  font-size:.82rem;font-weight:600;transition:all .18s;user-select:none;
+}
+.feedback-type-opt:hover { border-color:var(--accent);background:var(--accent-lt); }
+.feedback-type-opt input { display:none; }
+.feedback-type-opt.selected { border-color:var(--accent);background:var(--accent-lt);color:var(--accent); }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .module-card            { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .module-card:hover      { border-color: var(--accent); }
+[data-theme="dark"] .module-card-icon       { background: rgba(255,255,255,.06) !important; }
+[data-theme="dark"] .module-card-title      { color: var(--text); }
+[data-theme="dark"] .module-card-desc       { color: var(--muted); }
+[data-theme="dark"] .module-toggle-wrap     { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .grocery-item           { background: var(--surface); border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .grocery-item:hover     { background: var(--surface2); }
+[data-theme="dark"] .grocery-item.checked   { opacity: .55; }
+[data-theme="dark"] .grocery-section-header { background: var(--bg); color: var(--muted); border-color: var(--border); }
+[data-theme="dark"] .feedback-type-opt      { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .feedback-type-opt.active { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }

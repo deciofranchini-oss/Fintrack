@@ -1,15 +1,14 @@
-/* ════════════════════════════════════════════════════ */
-/* 04_budgets.css */
-/* Budgets v3 + dashboard snapshot */
-/* Source: style.css L2244–3291 (1048 lines) */
-/* Braces: 235 open / 235 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   04_budgets.css
+   Budgets v3 + dashboard snapshot
+   Source: style.css L2244–3291 (1048 lines)
+   Braces: 235 open / 235 close ✓
+════════════════════════════════════════════════════ */
 
-/* BUDGETS v3 */
-/* ===================================================== */
+   BUDGETS v3
+   ===================================================== */
 
 /* ── Grid de cards ───────────────────────────────── */
-
 .budget-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -570,9 +569,9 @@
 #budgetHistContainer tr:last-child td { border-bottom: none; }
 #budgetHistContainer tr:hover td { background: var(--bg2); }
 
-/* ════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════
    DASHBOARD BUDGET SNAPSHOT — grid of all active budgets
-/* ════════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════════ */
 
 #dashBudgetSnapshot { padding: 0; overflow: hidden; }
 #dashBudgetSnapshot .dash-budget-snap-inner {
@@ -581,11 +580,11 @@
 }
 #dashBudgetSnapshot .card-header { display: none; } /* header moved inside inner */
 
-/* ════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
    DASHBOARD BUDGET SNAPSHOT — Design v2 (2026)
    Card premium com header escuro, KPIs no topo e grid de categoria cards
    com indicadores visuais de progresso modernos.
-/* ════════════════════════════════════════════════════════════════════ */
+   ════════════════════════════════════════════════════════════════════ */
 
 /* ── Container do snapshot ────────────────────────────────────────── */
 #dashBudgetSnapshot {
@@ -909,9 +908,9 @@
   flex-shrink: 0;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
    MOBILE UX v2 — Programados, Categorias, geral
-/* ══════════════════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Scheduled: summary bar ────────────────────────────────────────────── */
 .sc-summary-bar {
@@ -1197,9 +1196,9 @@
   .sc-card-amount { font-size: .95rem; }
 }
 
-/* ══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
    RECEIPT AI — Botão, painel de resultado, spinner, modal
-/* ══════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════ */
 
 /* Botão "Ler com IA" */
 #receiptAiReadBtn {
@@ -1266,9 +1265,9 @@
   letter-spacing: .02em;
 }
 
-/* ════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
    AUDIT PAGE — counters, badges, search
-/* ════════════════════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════════════════════ */
 .audit-counters {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1286,3 +1285,16 @@
 }
 .audit-counter:hover { box-shadow: var(--shadow); }
 .audit-counter-total  { border-top-color: var(--accent); }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .bgt-card      { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .bgt-stripe    { opacity: .7; }
+[data-theme="dark"] .bgt-name      { color: var(--text); }
+[data-theme="dark"] .bgt-bar-bg    { background: var(--border); }
+[data-theme="dark"] .bgt-meta      { color: var(--muted); }
+[data-theme="dark"] .bgt-spent,
+[data-theme="dark"] .bgt-total     { color: var(--text2); }
+[data-theme="dark"] .bgt-modal-v2  { background: var(--surface); }
+[data-theme="dark"] .bgt-type-label { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .bgt-type-label:has(input:checked) { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+[data-theme="dark"] .bgt-paused-sep { color: var(--muted); }

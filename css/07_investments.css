@@ -1,13 +1,12 @@
-/* ════════════════════════════════════════════════════ */
-/* 07_investments.css */
-/* Investments module */
-/* Source: style.css L7440–8610 (1171 lines) */
-/* Braces: 193 open / 193 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   07_investments.css
+   Investments module
+   Source: style.css L7440–8610 (1171 lines)
+   Braces: 193 open / 193 close ✓
+════════════════════════════════════════════════════ */
 
-/* INVESTMENTS MODULE */
-/* ═══════════════════════════════════════════════════════════════════ */
-
+   INVESTMENTS MODULE
+═══════════════════════════════════════════════════════════════════ */
 .inv-summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -363,9 +362,9 @@
   .dash-fav-card__icon { width: 24px; height: 24px; border-radius: 7px; }
 }
 
-/* ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
    PRICES PAGE — Modern grid redesign
-/* ══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════ */
 
 /* Grid container */
 .px-grid {
@@ -577,15 +576,15 @@
   .px-grid { grid-template-columns: 1fr; }
 }
 
-/* ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
    SCHEDULED — Upcoming panel redesign (sup-*)
-/* ══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════ */
 
 /* Day group wrapper */
-/* ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
    SCHEDULED UPCOMING — Próximos 10 dias redesign 2026
    Layout: card por data com pill de dia + linha de items bem diagramada
-/* ══════════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════════ */
 
 .sup-group {
   margin-bottom: 8px;
@@ -1031,9 +1030,9 @@
   }
 }
 
-/* ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
    CATEGORIES — Modern redesign (cat-group / cat-sub-*)
-/* ══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════ */
 
 /* Wrapper per parent category */
 .cat-group {
@@ -1195,9 +1194,9 @@
   .cat-sub-name   { font-size: .8rem; }
 }
 
-/* ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
    REPORTS PAGE — Fintech redesign
-/* ══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════ */
 
 /* ── Page header ── */
 
@@ -1250,3 +1249,18 @@
   flex-shrink: 0;
   line-height: 1.4;
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .inv-kpi-card  { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-kpi-label { color: var(--muted); }
+[data-theme="dark"] .inv-kpi-value { color: var(--text); }
+[data-theme="dark"] .inv-portfolio-card { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-positions-table th { background: var(--surface2); color: var(--text2); }
+[data-theme="dark"] .inv-positions-table td { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .inv-positions-table tr:hover td { background: var(--surface2); }
+[data-theme="dark"] .inv-pos-card  { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-pos-ticker { color: var(--text); }
+[data-theme="dark"] .inv-pos-name  { color: var(--muted); }
+[data-theme="dark"] .inv-type-chip { background: var(--surface2); color: var(--text2); }
+[data-theme="dark"] .inv-actions-bar { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-empty     { color: var(--muted); }

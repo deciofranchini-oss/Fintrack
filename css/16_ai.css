@@ -1,29 +1,29 @@
-/* ════════════════════════════════════════════════════ */
-/* 16_ai.css  —  AI Insights 2 Redesign */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   16_ai.css
+   AI Insights 2 redesign
+   Source: style.css L20724–21430 (707 lines)
+   Braces: 116 open / 116 close ✓
+════════════════════════════════════════════════════ */
+
+   AI INSIGHTS 2 — Redesign moderno
+   ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── Tab bar: pill style ────────────────────────────────────────────────── */
-
 .ai2-tabbar {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 10px 16px 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  overflow-x: auto;
-  overflow-y: visible;
-  scrollbar-width: none;
-  flex-wrap: nowrap;
 }
-.ai2-tabbar::-webkit-scrollbar { display: none; }
 .ai2-tab {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px 10px;
+  padding: 8px 16px 10px;
   background: none;
   border: none;
   border-bottom: 2.5px solid transparent;
@@ -35,8 +35,6 @@
   margin-bottom: -1px;
   white-space: nowrap;
   border-radius: 8px 8px 0 0;
-  flex-shrink: 0;
-  font-family: var(--font-sans);
 }
 .ai2-tab svg { opacity: .65; transition: opacity .15s; }
 .ai2-tab.active {
@@ -229,9 +227,9 @@
   padding: 16px 16px 100px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
    PAYEES 2 — Layout moderno
-/* ═══════════════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════════ */
 
 /* Page header */
 .py2-header {
@@ -715,11 +713,11 @@ tr.payee-row[onclick] { cursor: pointer; }
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
    SCHEDULED — Mobile UX overhaul v2 (2026-04)
    Fixes: viewport overflow, card layout, upcoming items, action buttons,
           filter bar, KPI bar, currency panel, modal form
-/* ═══════════════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── 1. Root containment: page never wider than 100vw ────────────────── */
 @media (max-width: 767px) {
@@ -1116,4 +1114,26 @@ tr.payee-row[onclick] { cursor: pointer; }
   #page-scheduled .sup-right    { max-width: 38% !important; }
   #page-scheduled .sup-amt      { font-size: .78rem !important; }
   #page-scheduled .sup-register-btn { padding: 0 7px !important; font-size: .68rem !important; }
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .ai2-tabbar          { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .ai2-tab:not(.active) { color: var(--muted); }
+[data-theme="dark"] .ai2-tab:hover       { background: var(--surface2); }
+[data-theme="dark"] .ai2-filter-panel    { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .ai2-filter-label    { color: var(--muted); }
+[data-theme="dark"] .ai2-params-toggle   { color: var(--text2); }
+[data-theme="dark"] .ai2-context-input,
+[data-theme="dark"] .ai2-context-textarea { background: var(--surface2); border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .ai2-snapshot-card   { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .ai2-snapshot-title  { color: var(--text); }
+[data-theme="dark"] .ai2-snapshot-meta   { color: var(--muted); }
+
+/* ── BEM modifier for title context field ── */
+.ai2-context-field--title .ai2-filter-label {
+  font-size: var(--text-sm, .82rem);
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: none;
+  letter-spacing: 0;
 }

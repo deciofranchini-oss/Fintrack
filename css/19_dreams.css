@@ -1,9 +1,9 @@
-/* ════════════════════════════════════════════════════ */
-/* 19_dreams.css */
-/* Dreams module + AI insights premium polish */
-/* Source: style.css L22714–23506 (793 lines) */
-/* Braces: 210 open / 210 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   19_dreams.css
+   Dreams module + AI insights premium polish
+   Source: style.css L22714–23506 (793 lines)
+   Braces: 210 open / 210 close ✓
+════════════════════════════════════════════════════ */
 
 .drm-summary-bar {
   display: grid;
@@ -583,46 +583,46 @@
   .drm-type-emoji { font-size: 1.5rem; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    AI INSIGHTS — Premium visual polish (2026 update)
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
-/* Tab bar — glass premium (scoped to dreams page only) */
-#page-dreams .ai2-tabbar {
-  background: linear-gradient(135deg, #0f5132 0%, #166534 60%, #15803d 100%);
-  border-bottom: none;
-  padding: 12px 18px 0;
-  gap: 4px;
+/* Tab bar — glass premium */
+.ai2-tabbar {
+  background: linear-gradient(135deg, #0f5132 0%, #166534 60%, #15803d 100%) !important;
+  border-bottom: none !important;
+  padding: 12px 18px 0 !important;
+  gap: 4px !important;
 }
-#page-dreams .ai2-tab {
-  color: rgba(240,253,244,.7);
-  border-radius: 10px 10px 0 0;
-  padding: 9px 18px 11px;
-  font-size: .79rem;
-  font-weight: 600;
-  transition: all .18s;
+.ai2-tab {
+  color: rgba(240,253,244,.7) !important;
+  border-radius: 10px 10px 0 0 !important;
+  padding: 9px 18px 11px !important;
+  font-size: .79rem !important;
+  font-weight: 600 !important;
+  transition: all .18s !important;
 }
-#page-dreams .ai2-tab svg { opacity: .7; }
-#page-dreams .ai2-tab:hover:not(.active) {
-  background: rgba(255,255,255,.12);
-  color: #f0fdf4;
+.ai2-tab svg { opacity: .7 !important; }
+.ai2-tab:hover:not(.active) {
+  background: rgba(255,255,255,.12) !important;
+  color: #f0fdf4 !important;
 }
-#page-dreams .ai2-tab.active {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: 0 -2px 0 var(--accent) inset;
+.ai2-tab.active {
+  background: var(--surface) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 -2px 0 var(--accent) inset !important;
 }
-#page-dreams .ai2-tab.active svg { opacity: 1; }
+.ai2-tab.active svg { opacity: 1 !important; }
 
-/* Filter panel (scoped to dreams page) */
-#page-dreams .ai2-filter-panel {
-  border-radius: 0 0 14px 14px;
-  border: 1px solid var(--border);
+/* Filter panel */
+.ai2-filter-panel {
+  border-radius: 0 0 14px 14px !important;
+  border: 1px solid var(--border) !important;
   border-top: none !important;
   background: var(--surface) !important;
   margin-bottom: 18px !important;
 }
-#page-dreams .ai2-params-toggle {
+.ai2-params-toggle {
   font-size: .77rem !important;
   font-weight: 600 !important;
   color: var(--text2) !important;
@@ -635,7 +635,7 @@
 }
 
 /* Analyze button — premium gradient */
-#page-dreams .ai2-btn-analyze {
+.ai2-btn-analyze {
   background: linear-gradient(135deg, #0f5132, #16a34a) !important;
   border: none !important;
   box-shadow: 0 4px 14px rgba(22,163,74,.30), inset 0 1px 0 rgba(255,255,255,.08) !important;
@@ -648,13 +648,13 @@
   transform: translateY(-2px) !important;
   box-shadow: 0 8px 24px rgba(22,163,74,.38) !important;
 }
-#page-dreams .ai2-btn-icon {
+.ai2-btn-icon {
   border-radius: 9px !important;
   font-size: .74rem !important;
 }
 
 /* Result wrapper */
-#page-dreams .ai2-result-wrap {
+.ai2-result-wrap {
   animation: aiResultFadeIn .3s ease both !important;
 }
 @keyframes aiResultFadeIn {
@@ -689,9 +689,9 @@
   margin-bottom: 14px !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    PROGRAMADOS — Modal redesign (2026 update)
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* Context tab bar — pill style */
 #scContextTabBar {
@@ -799,10 +799,10 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    DREAMS v2 — Goal Engine, Linked Resources, Wizard Stepper
    Added: 2026-04 (patch_v2)
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* ── Goal Engine panel ───────────────────────────────────────────── */
 .drm-goal-engine {
@@ -1259,3 +1259,97 @@
   max-width: 130px;
   flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MEMBER CHIPS — Sonhos (associação de membros)
+   Renderizados em: card meta, detalhe modal, wizard revisão
+══════════════════════════════════════════════════════════════════ */
+
+/* Chip base */
+.drm-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .74rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  color: var(--accent);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Família (geral)" chip — slightly different style */
+.drm-member-chip--all {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+  color: var(--text2);
+  border-color: var(--border);
+  font-weight: 500;
+}
+
+/* Small variant used in card meta */
+.drm-member-chip--sm {
+  font-size: .67rem;
+  padding: 2px 7px;
+  max-width: 110px;
+}
+
+/* Container in dream card */
+.drm-card-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* Container in detail modal */
+.drm-members-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Members section in detail modal */
+.drm-members-section {
+  padding-bottom: 2px;
+}
+
+/* Review card members row in wizard step 4 */
+.drm-review-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: .78rem;
+}
+.drm-review-members-label {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .drm-summary-bar     { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .drm-summary-label   { color: var(--muted); }
+[data-theme="dark"] .drm-summary-value   { color: var(--text); }
+[data-theme="dark"] .drm-card            { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .drm-card:hover      { border-color: var(--accent); }
+[data-theme="dark"] .drm-card-title      { color: var(--text); }
+[data-theme="dark"] .drm-card-meta       { color: var(--muted); }
+[data-theme="dark"] .drm-card-progress-bg { background: var(--border); }
+[data-theme="dark"] .drm-detail-hero     { background: var(--surface2); }
+[data-theme="dark"] .drm-wizard-modal    { background: var(--surface); }
+[data-theme="dark"] .drm-wizard-step-label { color: var(--muted); }
+[data-theme="dark"] .drm-member-chip     { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .drm-member-chip.selected { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }

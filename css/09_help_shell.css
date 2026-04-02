@@ -1,9 +1,9 @@
-/* ════════════════════════════════════════════════════ */
-/* 09_help_shell.css */
-/* Help shell CSS */
-/* Source: style.css L10796–11305 (510 lines) */
-/* Braces: 104 open / 104 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   09_help_shell.css
+   Help shell CSS
+   Source: style.css L10796–11305 (510 lines)
+   Braces: 104 open / 104 close ✓
+════════════════════════════════════════════════════ */
 
 .help-shell {
   display: flex;
@@ -485,10 +485,10 @@
   .help-article-wrap { padding: 14px 14px 80px; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    BOTTOM NAV — collapsed state UX improvements
    Tap anywhere on the visible handle strip to expand (no drag needed)
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* Entire nav is clickable when collapsed — signal with pointer cursor */
 .bottom-nav.is-collapsed {
@@ -509,9 +509,24 @@
   animation: bn-handle-pulse .7s ease .1s 2;
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    RELATÓRIO — Tabela de transações: colunas otimizadas
    Data compacta · Descrição elástica · Valor fixo à direita
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* Column widths via colgroup */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .help-shell      { background: var(--bg); }
+[data-theme="dark"] .help-nav        { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .help-nav-title  { color: var(--text); }
+[data-theme="dark"] .help-nav-section-btn { color: var(--text2); }
+[data-theme="dark"] .help-nav-section-btn:hover { background: var(--surface2); }
+[data-theme="dark"] .help-nav-item   { color: var(--muted); }
+[data-theme="dark"] .help-nav-item:hover,
+[data-theme="dark"] .help-nav-item.active { background: var(--surface2); color: var(--accent); }
+[data-theme="dark"] .help-content    { background: var(--bg); color: var(--text); }
+[data-theme="dark"] .help-article h1,
+[data-theme="dark"] .help-article h2,
+[data-theme="dark"] .help-article h3 { color: var(--text); }
+[data-theme="dark"] .help-article p  { color: var(--text2); }

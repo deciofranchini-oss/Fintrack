@@ -1,17 +1,16 @@
-/* ════════════════════════════════════════════════════ */
-/* 12_categories.css */
-/* Categories page + investments page + prices */
-/* Source: style.css L15243–17779 (2537 lines) */
-/* Braces: 476 open / 476 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   12_categories.css
+   Categories page + investments page + prices
+   Source: style.css L15243–17779 (2537 lines)
+   Braces: 476 open / 476 close ✓
+════════════════════════════════════════════════════ */
 
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
-/* SCHEDULED PAGE — Mobile redesign */
-/* Replaces cramped header row / filter bar with stacked, touch-friendly layout */
-/* ═══════════════════════════════════════════════════════════════════════════ */
-
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCHEDULED PAGE — Mobile redesign
+   Replaces cramped header row / filter bar with stacked, touch-friendly layout
+═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
   /* ── Section header: stack vertically instead of cramming side by side ── */
@@ -172,10 +171,10 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    SCHEDULED MODAL — Automation section redesign
    Replaces bare checkbox labels with styled toggle cards
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Section divider: "Automação" heading ── */
 #scheduledModal .form-grid > .full[style*="border-top"] {
@@ -362,9 +361,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    INVESTMENTS PAGE — redesigned hero, portfolio card, position rows
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Hero header: total portfolio value ── */
 .inv-hero {
@@ -645,10 +644,10 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    PAYEES PAGE — Mobile redesign completo
    Transforma tabela em cards individuais, sem alterar JS
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
   /* ── Header: botões empilhados, + Novo em destaque ── */
@@ -849,10 +848,10 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    AI SMART SUGGESTIONS PANEL
    Shows inline chips for payee / category / account / member suggestions
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 .ai-suggest-panel {
   background: var(--surface2);
@@ -963,9 +962,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    PAYEES — Mobile edit action buttons always visible
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 /* Desktop: keep existing behaviour (hidden until hover) */
 .payee-row-actions .payee-delete-btn { opacity: .5; transition: opacity .15s; }
@@ -1054,12 +1053,12 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    TABLET / iPAD — Transactions page layout fix
    Breakpoint 641px–1024px: sidebar is hidden, content is full-width,
    but previous CSS only had desktop (>768) and phone (≤640) rules.
    This fills the gap so the transactions page uses the space correctly.
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 @media (min-width: 641px) and (max-width: 1024px) {
 
   /* ── Content area: use full width since sidebar is hidden ── */
@@ -1230,9 +1229,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    DEBTS — Hero header + redesigned cards (dbt-hero-*, dbt-card2-*)
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Hero header ── */
 .dbt-hero {
@@ -1452,9 +1451,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    PRICES — Hero summary strip + improved cards
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Hero strip ── */
 .px-hero-strip {
@@ -2543,3 +2542,15 @@ section[data-page="transactions"] .content {
 }
 
 
+
+/* ── Dark mode ── */
+[data-theme="dark"] .sc-view-toggle  { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .sc-view-btn:not(.active) { color: var(--muted); }
+[data-theme="dark"] .sc-filter-bar   { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .cat-section-header { background: var(--bg); border-color: var(--border); }
+[data-theme="dark"] .cat-section-title { color: var(--text); }
+[data-theme="dark"] .cat-item        { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .cat-item:hover  { background: var(--surface2); }
+[data-theme="dark"] .cat-name        { color: var(--text); }
+[data-theme="dark"] .cat-sub-item    { border-color: var(--border); }
+[data-theme="dark"] .cat-modal       { background: var(--surface); }

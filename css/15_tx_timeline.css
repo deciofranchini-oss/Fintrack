@@ -1,14 +1,13 @@
-/* ════════════════════════════════════════════════════ */
-/* 15_tx_timeline.css */
-/* TX timeline, scheduled new layout, AI investments, audit misc */
-/* Source: style.css L19631–20723 (1093 lines) */
-/* Braces: 196 open / 196 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   15_tx_timeline.css
+   TX timeline, scheduled new layout, AI investments, audit misc
+   Source: style.css L19631–20723 (1093 lines)
+   Braces: 196 open / 196 close ✓
+════════════════════════════════════════════════════ */
 
 /* ══ TX List — Timeline enhancements (Opção A) ═══════════════════════════ */
 
 /* Date separator: pill + trailing line + daily total */
-
 .tx-date-header-cell { position: relative; }
 .tx-date-label {
   display: inline-block;
@@ -1105,4 +1104,15 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 #payeeMapsResults > div:last-child { border-bottom: none; }
 
 
-/* ═══════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+
+/* ── Dark mode ── */
+[data-theme="dark"] .tx-date-header-cell { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .tx-date-label       { color: var(--muted); }
+[data-theme="dark"] .tx-date-day-total   { color: var(--text2); }
+[data-theme="dark"] .tx-v2-cat-bubble    { background: var(--surface2); }
+[data-theme="dark"] .tx-v2-title         { color: var(--text); }
+[data-theme="dark"] .tx-v2-meta          { color: var(--muted); }
+[data-theme="dark"] .tx-v2-amount        { color: var(--text); }
+[data-theme="dark"] .tx-v2-row           { border-color: var(--border); }
+[data-theme="dark"] .tx-v2-row:hover     { background: var(--surface2); }

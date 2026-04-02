@@ -1,9 +1,9 @@
-/* ════════════════════════════════════════════════════ */
-/* 08_rpt_ext.css */
-/* Reports extended, debts early, help-shell leading */
-/* Source: style.css L8611–10795 (2185 lines) */
-/* Braces: 464 open / 464 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   08_rpt_ext.css
+   Reports extended, debts early, help-shell leading
+   Source: style.css L8611–10795 (2185 lines)
+   Braces: 464 open / 464 close ✓
+════════════════════════════════════════════════════ */
 
 .rpt-page-header {
   display: flex;
@@ -202,9 +202,9 @@
   .rpt-export-btn { padding: 5px 9px; font-size: .72rem; }
 }
 
-/* ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
    LOGIN PAGE — Logo animations
-/* ══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════ */
 
 /* Entrance: drop in + fade */
 @keyframes loginLogoIn {
@@ -499,9 +499,9 @@ body.ft-platform-windows .modal-close {
 /* ── Scheduled: badge pendente no upcoming ────────────────────── */
 .sup-pending-badge { display:inline-flex; align-items:center; gap:3px; font-size:.65rem; font-weight:700; padding:1px 6px; border-radius:10px; margin-left:5px; vertical-align:middle; background:rgba(251,191,36,.18); color:var(--amber,#b45309); border:1px solid rgba(251,191,36,.4); }
 
-/* ════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
    Dashboard: linha inferior (categorias favoritas + transações)
-/* ════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════ */
 .dash-bottom-row {
   display: grid;
   grid-template-columns: 340px 1fr;
@@ -516,9 +516,9 @@ body.ft-platform-windows .modal-close {
 }
 
 
-/* ════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════
    Dashboard: Categorias Favoritas — redesign profissional
-/* ════════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════════ */
 .dfav-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -810,10 +810,10 @@ body.ft-platform-windows .modal-close {
 .forecast-run-bal.amount-pos { color: var(--green,#16a34a); }
 .forecast-balance-mobile { display: none !important; }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    WAVE 2 — DESKTOP UX: Transactions + Forecast
    Applies only on ≥ 1024px. Mobile layout is completely untouched.
-/* ═══════════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════ */
 
 /* ── #31 Transactions list — desktop refinement ─────────────────── */
 @media (min-width: 1024px) {
@@ -1103,10 +1103,10 @@ tr.reconcile-checked td { opacity: 1 !important; }
   padding: 6px 12px 2px;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
    FORECAST CARD PREMIUM v2 — dashboard previsão 90 dias (fcp-*)
    Design atualizado: visual mais rico, tipografia aprimorada, animações suaves
-/* ══════════════════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Container ───────────────────────────────────────────────────────────── */
 .fcp-card {
@@ -1128,11 +1128,14 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* ── Header escuro premium ───────────────────────────────────────────────── */
 .fcp-header {
   display: flex;
-  flex-direction: column;
-  padding: 0;
-  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 14px;
+  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%); /* alinhado com dbs-header */
   position: relative;
-  overflow: visible;
+  overflow: hidden;
+  flex-wrap: wrap;
 }
 /* Orbs decorativos */
 .fcp-header::before {
@@ -1162,17 +1165,6 @@ tr.reconcile-checked td { opacity: 1 !important; }
   flex-direction: column;
   gap: 2px;
 }
-/* Row 1 wrapper — title + controls */
-.fcp-header-row1 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 20px 12px;
-  position: relative;
-  z-index: 2;
-  flex-wrap: wrap;
-}
 .fcp-title {
   display: flex;
   align-items: center;
@@ -1199,7 +1191,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   gap: 8px;
   flex-wrap: wrap;
   position: relative;
-  z-index: 100;
+  z-index: 1;
 }
 
 /* Picker de conta */
@@ -1236,8 +1228,6 @@ tr.reconcile-checked td { opacity: 1 !important; }
   right: 0;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.10);
-  z-index: 9999;
-  z-index: 9999;
 }
 
 /* Toggle programados — pill switch */
@@ -1286,13 +1276,11 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* ── KPI strip ───────────────────────────────────────────────────────────── */
 .fcp-kpi-strip {
   display: flex;
-  align-items: center;
-  background: rgba(0,0,0,.18);
-  border-top: 1px solid rgba(255,255,255,.08);
+  align-items: stretch;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: none;
-  position: relative;
-  z-index: 1;
 }
 .fcp-kpi-strip::-webkit-scrollbar { display: none; }
 .fcp-kpi {
@@ -1300,8 +1288,8 @@ tr.reconcile-checked td { opacity: 1 !important; }
   flex-direction: column;
   gap: 2px;
   flex: 1;
-  padding: 10px 14px;
-  border-right: 1px solid rgba(255,255,255,.08);
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
   min-width: 0;
   position: relative;
 }
@@ -1315,36 +1303,36 @@ tr.reconcile-checked td { opacity: 1 !important; }
   background: var(--border);
   opacity: 0;
 }
-.fcp-kpi--accent::before { background: #4ade80; opacity: 1; }
+.fcp-kpi--accent::before { background: var(--accent); opacity: 1; }
 .fcp-kpi-lbl {
-  font-size: .58rem;
+  font-size: .60rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
-  color: rgba(255,255,255,.45);
+  color: var(--muted);
   white-space: nowrap;
 }
 .fcp-kpi-val {
-  font-size: .9rem;
+  font-size: .95rem;
   font-weight: 800;
   font-family: var(--font-serif);
-  color: rgba(255,255,255,.88);
+  color: var(--text);
   letter-spacing: -.02em;
   line-height: 1.2;
   white-space: nowrap;
 }
-.fcp-kpi--accent .fcp-kpi-val { color: #4ade80; }
-.fcp-kpi-val--min { color: #f87171 !important; }
-.fcp-kpi-val--max { color: #4ade80 !important; }
+.fcp-kpi--accent .fcp-kpi-val { color: var(--accent); }
+.fcp-kpi-val--min { color: var(--red, #dc2626) !important; }
+.fcp-kpi-val--max { color: var(--green, #16a34a) !important; }
 /* Seta entre inicial → final */
 .fcp-kpi-arrow {
   font-size: .8rem;
-  color: rgba(255,255,255,.25);
-  opacity: 1;
+  color: var(--muted);
+  opacity: .35;
   flex-shrink: 0;
   align-self: center;
   padding: 0 2px;
-  margin-top: 0;
+  margin-top: 10px;
 }
 /* Separadores — substituídos por border-right nos kpis */
 .fcp-kpi-sep { display: none; }
@@ -1533,10 +1521,10 @@ tr.reconcile-checked td { opacity: 1 !important; }
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    AI INSIGHTS — Estilos do módulo de análise e chat com IA
    Tema escuro profissional com distinção clara: app data vs IA vs sugestões
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* ── Badges de origem ───────────────────────────────────────────── */
 .ai-badge {
@@ -1992,9 +1980,9 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .ai-toolbar select, .ai-toolbar input[type="date"] { flex: 1 1 120px; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    I18N — Seletor de idioma + Admin de traduções
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* ── Seletor de idioma ───────────────────────────────────────────── */
 .i18n-lang-selector {
@@ -2184,9 +2172,9 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .i18n-table-wrap { max-height: 50vh; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    I18N — Topbar language picker
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 .i18n-topbar-picker { position: relative; }
 
@@ -2278,9 +2266,9 @@ tr.reconcile-checked td { opacity: 1 !important; }
 .login-lang-strip button:hover  { border-color: #2a6049; color: #2a6049; }
 .login-lang-strip button.active { border-color: #2a6049; background: #2a6049; color: #fff; }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    TRANSLATIONS ADMIN — tr-* classes used by translations_admin.js
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* ── Toolbar ───────────────────────────────────────────────── */
 .tr-toolbar {
@@ -2477,10 +2465,10 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .tr-edit-card { max-height: 95vh; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    USER MENU DROPDOWN — fixed positioning, mobile-safe
    Positioned dynamically via JS (toggleUserMenu), never clips viewport
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 #userMenuDropdown {
   /* position:fixed + top/left set by JS */
   animation: user-menu-in .14s cubic-bezier(.2,.8,.4,1);
@@ -2491,10 +2479,10 @@ tr.reconcile-checked td { opacity: 1 !important; }
   to   { opacity: 1; transform: scale(1)   translateY(0);    }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    TOPBAR LANGUAGE BADGE — green active-language indicator
    Sits at bottom-right of the globe topbar-icon-btn
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 .topbar-lang-badge {
   position: absolute;
   bottom: -3px;
@@ -2520,9 +2508,24 @@ tr.reconcile-checked td { opacity: 1 !important; }
   font-size: .58rem !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    HELP — Central de Ajuda
    Layout: sidebar + content area, mobile-first, totalmente responsivo
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 /* ── Shell ─────────────────────────────────────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rpt-page-header { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-view-tabs   { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .rpt-view-tab:not(.active) { color: var(--muted); }
+[data-theme="dark"] .rpt-filter-wrap { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-toolbar     { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-export-btn  { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .rpt-section-card { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-section-header { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .rpt-bar-bg      { background: var(--border); }
+[data-theme="dark"] .fcp-toggle-wrap { color: var(--text2); }
+[data-theme="dark"] .fcp-toggle-track { background: var(--border2); }
+[data-theme="dark"] .fcp-acct-chip   { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .fcp-acct-name   { color: var(--text2); }

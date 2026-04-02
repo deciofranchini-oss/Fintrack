@@ -1,21 +1,30 @@
-/* ════════════════════════════════════════════════════ */
-/* 10_rpt_tx.css */
-/* RPT-TX table + AI insights (early) */
-/* Source: style.css L11306–12481 (1176 lines) */
-/* Braces: 282 open / 282 close ✓ */
-/* ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   10_rpt_tx.css
+   RPT-TX table + AI insights (early)
+   Source: style.css L11306–12481 (1176 lines)
+   Braces: 282 open / 282 close ✓
+════════════════════════════════════════════════════ */
 
+/* ── Transactions mode: fixed % widths ─────────────────────────
+   Date 10% · Desc 40% · Acct 10% · Cat 10% · Pay 15% · Amt 10%
+   (remaining 5% absorbed by padding/scrollbar)
+────────────────────────────────────────────────────────────── */
 .rpt-tx-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
 
-/* Coluna de data: máximo 10% da largura total da tabela */
-.rpt-col-date { width: 10%; max-width: 90px; min-width: 62px; }
-.rpt-tx-table th:first-child,
-.rpt-tx-table td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rpt-col-desc { width: auto;  }
-.rpt-col-acct { width: 120px; }
-.rpt-col-cat  { width: 130px; }
-.rpt-col-pay  { width: 110px; }
-.rpt-col-amt  { width: 110px; }
+.rpt-col-date { width: 10%; min-width: 70px; }
+.rpt-col-desc { width: 40%; min-width: 120px; }
+.rpt-col-acct { width: 10%; min-width: 80px; }
+.rpt-col-cat  { width: 10%; min-width: 80px; }
+.rpt-col-pay  { width: 15%; min-width: 90px; }
+.rpt-col-amt  { width: 10%; min-width: 80px; }
+
+/* All cells clip gracefully */
+.rpt-tx-table th,
+.rpt-tx-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Clickable rows ───────────────────────────────────────────────── */
 .rpt-tx-row {
@@ -228,6 +237,9 @@
 /* ── Mobile: tabela de transações ocupa 100% sem scroll horizontal ── */
 @media (max-width: 640px) {
   .rpt-tx-table { table-layout: auto !important; width: 100% !important; }
+  .rpt-col-date, .rpt-col-desc, .rpt-col-acct, .rpt-col-cat, .rpt-col-pay, .rpt-col-amt {
+    width: auto !important; min-width: 0 !important;
+  }
   .rpt-col-acct, .rpt-col-pay          { display: none !important; }
   .rpt-td-acct,  .rpt-td-pay           { display: none !important; }
   thead .rpt-td-acct, thead .rpt-td-pay { display: none !important; }
@@ -251,9 +263,9 @@
   .rpt-td-date  { width: 76px; font-size: .72rem; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    AI INSIGHTS — Member cards with category/payee breakdown
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 
 .ai-member-cards { display: flex; flex-direction: column; gap: 8px; }
 
@@ -338,9 +350,9 @@
   border-radius: 8px; font-size: .79rem; color: #1e40af; line-height: 1.5;
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    REPORTS — Category chart toggle buttons
-/* ═══════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════ */
 .rpt-cat-toggle {
   display: flex;
   border: 1px solid var(--border);
@@ -409,9 +421,9 @@
   text-overflow: ellipsis;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    HELP HOME — Rich landing page  (.hh-*)
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Root scroll container ────────────────────────────────────────────── */
 .hh-root {
@@ -732,9 +744,9 @@
   .hh-topics { grid-template-columns: 1fr; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
    HELP HOME v2 — Immersive landing (.hh2-*)
-/* ═══════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 
 @keyframes hh2FadeUp {
   from { opacity:0; transform:translateY(14px); }
@@ -1183,4 +1195,16 @@
 }
 .dash-cat-back:hover { color: var(--text); border-color: var(--border2); }
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rpt-tx-wrap            { background: var(--surface); }
+[data-theme="dark"] .rpt-tx-table th        { background: var(--surface2); color: var(--text2); border-color: var(--border); }
+[data-theme="dark"] .rpt-tx-table td        { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .rpt-tx-row:hover td    { background: var(--surface2); }
+[data-theme="dark"] .rpt-tx-desc            { color: var(--text); }
+[data-theme="dark"] .rpt-tx-cat             { color: var(--muted); }
+[data-theme="dark"] .rpt-tx-acct            { color: var(--muted); }
+[data-theme="dark"] .rpt-tx-date            { color: var(--muted); }
+[data-theme="dark"] .rpt-tx-total-row td    { background: var(--surface2); font-weight: 700; }
+[data-theme="dark"] .rpt-date-band td       { background: var(--bg); border-color: var(--border); }
