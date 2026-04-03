@@ -690,6 +690,22 @@ async function doLogin() {
       return;
     }
 
+    // ── 2FA: verificar se usuário tem 2FA ativo e dispositivo não está trusted ──
+    if (appUser?.two_fa_enabled) {
+      // Buscar dados completos do usuário para 2FA (id, channel, telegram_chat_id)
+      const { data: appUserFull } = await sb
+        .from('app_users')
+        .select('id, email, name, two_fa_channel, telegram_chat_id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (appUserFull && !_is2FATrusted(appUserFull.id)) {
+        // Interromper login normal — iniciar fluxo 2FA
+        await _initiate2FA(authData, appUserFull);
+        return; // onLoginSuccess() será chamado após verificação do código
+      }
+    }
+
     // Upgrade legacy SHA-256 hash to PBKDF2 transparently on login
     try {
       const { data: _pwRow } = await sb.from('app_users')
@@ -899,6 +915,10 @@ async function onLoginSuccess() {
   updateUserUI();
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
+  }
+  // Aceitar convite pendente se o usuário veio via link ?invite=TOKEN
+  if (window._pendingInvite) {
+    await _acceptPendingInvite().catch(() => {});
   }
 
   const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : { isWindows:false };
@@ -1277,6 +1297,9 @@ function openMyProfile() {
     document.getElementById('myProfileFamilyRow')?.style.setProperty('display', 'none');
   }
 
+  // --- 2FA settings ---
+  if (typeof _load2FAIntoProfile === 'function') _load2FAIntoProfile();
+
   // --- Language preference ---
   const langSel = document.getElementById('myProfileLanguage');
   if (langSel && typeof i18nGetAvailableLanguages === 'function') {
@@ -1567,6 +1590,15 @@ async function saveMyProfile() {
       }
     }
 
+    // 1b. 2FA settings
+    if (appRow) {
+      try {
+        if (typeof _save2FASettings === 'function') await _save2FASettings(appRow.id);
+      } catch(e2fa) {
+        console.warn('[2FA save]', e2fa.message);
+      }
+    }
+
     // 2. Password
     if (pwd1) {
       const { error: pwdErr } = await sb.auth.updateUser({ password: pwd1 });
@@ -1677,7 +1709,7 @@ function showRegisterForm() {
   focusFieldSafely('regName');
 }
 function showLoginFormArea() {
-  ['registerFormArea','pendingApprovalArea','changePwdArea','forgotPwdArea','recoveryPwdArea']
+  ['registerFormArea','pendingApprovalArea','changePwdArea','forgotPwdArea','recoveryPwdArea','twoFaArea']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('loginFormArea').style.display = '';
   document.getElementById('loginError').style.display = 'none';
@@ -2920,40 +2952,62 @@ async function inviteToFamily(familyId, familyName) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
 
   try {
-    // Verificar se já é usuário cadastrado
-    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
+    // ── Caso 1: Usuário já cadastrado → adicionar direto à família ──
+    const { data: existing } = await sb
+      .from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
 
-    if (existing) {
-      // Usuário já existe: adicionar diretamente à família
+    if (existing?.approved && existing?.active) {
       const { error } = await sb.from('family_members').upsert(
         { user_id: existing.id, family_id: familyId, role },
         { onConflict: 'user_id,family_id' }
       );
       if (error) throw new Error(error.message);
-      toast(`✓ ${email} adicionado à família como ${role}`, 'success');
-    } else {
-      // Usuário novo: criar registro pendente com vínculo à família
-      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
-        email,
-        name:       email.split('@')[0],
-        role:       'user',
-        approved:   false,
-        active:     false,
-        family_id:  familyId,
-        must_change_pwd: true,
-      }).select().single();
-      if (insErr) throw new Error(insErr.message);
-
-      // Adicionar em family_members com role escolhido
-      await sb.from('family_members').insert({ user_id: newUser.id, family_id: familyId, role });
-
-      // Enviar e-mail de convite via EmailJS
-      await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email);
-      toast(`✓ Convite enviado para ${email}`, 'success');
+      // Enviar email de notificação (não-bloqueante)
+      _sendInviteEmail(email, familyName, currentUser.name || currentUser.email).catch(() => {});
+      toast(`✓ ${existing.name || email} adicionado à família como ${role}`, 'success');
+      if (emailEl) emailEl.value = '';
+      await loadFamiliesList();
+      return;
     }
 
+    // ── Caso 2: Novo usuário → criar convite via family_invites ──
+    // Gerar token único
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => b.toString(16).padStart(2,'0')).join('');
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 dias
+
+    // Invalidar convites anteriores para o mesmo email+família
+    await sb.from('family_invites')
+      .update({ used: true })
+      .eq('email', email)
+      .eq('family_id', familyId)
+      .eq('used', false);
+
+    // Inserir novo convite
+    const inviterAppId = currentUser?.app_user_id || null;
+    const { error: invErr } = await sb.from('family_invites').insert({
+      token,
+      email,
+      family_id:   familyId,
+      role,
+      invited_by:  inviterAppId,
+      expires_at:  expiresAt,
+      used:        false,
+    });
+    if (invErr) throw new Error('Erro ao criar convite: ' + invErr.message);
+
+    // Montar URL de convite
+    const appUrl  = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const inviteUrl = `${appUrl}?invite=${token}`;
+
+    // Enviar email de convite com link
+    await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl, role);
+
+    toast(`✓ Convite enviado para ${email} (válido por 7 dias)`, 'success');
     if (emailEl) emailEl.value = '';
     await loadFamiliesList();
+
   } catch(e) {
     toast('Erro ao convidar: ' + e.message, 'error');
   } finally {
@@ -2961,26 +3015,56 @@ async function inviteToFamily(familyId, familyName) {
   }
 }
 
-async function _sendInviteEmail(toEmail, familyName, inviterName) {
+async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl, role) {
   try {
     const { autoCheckConfig } = await _getAutoCheckConfig();
     const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
     const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
     const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
-    const appUrl     = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const appUrl     = inviteUrl || (typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname));
 
+    const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador', editor:'Editor' }[role] || role || 'Usuário';
+    const nameEsc   = (familyName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    const invEsc    = (inviterName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+    const body = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">
+<div style="max-width:540px;margin:0 auto;background:#fff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:22px 28px">
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">Family FinTrack</div>
+    <div style="font-size:20px;font-weight:700;color:#fff">📨 Você foi convidado!</div>
+  </div>
+  <div style="padding:24px 28px">
+    <p style="font-size:14px;color:#374151;margin:0 0 16px;line-height:1.6">
+      <strong>${invEsc}</strong> convidou você para participar da família <strong>${nameEsc}</strong> no Family FinTrack como <strong>${roleLabel}</strong>.
+    </p>
+    <div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:6px;padding:12px 16px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:4px">O que é o Family FinTrack?</div>
+      <div style="font-size:13px;color:#15803d;line-height:1.6">Um app de gestão financeira familiar com IA — controle de gastos, receitas, orçamentos, programados e muito mais.</div>
+    </div>
+    <div style="text-align:center;margin-bottom:20px">
+      <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700">
+        ✅ Aceitar Convite →
+      </a>
+    </div>
+    ${inviteUrl ? `<div style="font-size:11px;color:#9ca3af;text-align:center;margin-bottom:12px">Link válido por 7 dias</div>` : ''}
+    <p style="font-size:12px;color:#9ca3af;margin:0">Se você não esperava este convite, pode ignorar este e-mail.</p>
+  </div>
+  <div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">
+    <div style="font-size:11px;color:#9ca3af">Family FinTrack · Convite de família</div>
+  </div>
+</div></div>`;
+
+    emailjs.init(publicKey);
     await emailjs.send(serviceId, templateId, {
       to_email:       toEmail,
       report_subject: `[Family FinTrack] Convite para a família "${familyName}"`,
-      subject:        `[Family FinTrack] Convite para a família "${familyName}"`,
-      message:        `Você foi convidado por ${inviterName} para participar da família "${familyName}" no FinTrack.\n\nAcesse ${appUrl} e solicite acesso com este e-mail (${toEmail}).\n\nSeu acesso será aprovado automaticamente após o login.`,
-      family_name:    familyName,
-      inviter:        inviterName,
-      app_url:        appUrl,
+      Subject:        `[Family FinTrack] Convite para a família "${familyName}"`,
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content: body,
     }, publicKey);
   } catch(e) {
     console.warn('[InviteEmail]', e.message);
-    // Não falhar o fluxo por erro de e-mail
   }
 }
 
@@ -3981,6 +4065,476 @@ async function ensureMasterAdmin() {
   } catch(e) { console.warn('ensureMasterAdmin:', e.message); }
 }
 
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE — Toggle com persistência em localStorage
+══════════════════════════════════════════════════════════════════ */
+
+function _applyDarkMode(isDark) {
+  if (isDark) {
+    document.body.classList.add('dark');
+    document.documentElement.classList.add('dark');
+  } else {
+    document.body.classList.remove('dark');
+    document.documentElement.classList.remove('dark');
+  }
+  // Atualizar ícone e label no toggle do menu
+  const icon  = document.getElementById('darkModeIcon');
+  const label = document.getElementById('darkModeLabel');
+  if (icon)  icon.textContent  = isDark ? '☀️' : '🌙';
+  if (label) label.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+  try { localStorage.setItem('ft_dark_mode', isDark ? '1' : '0'); } catch(_) {}
+}
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.contains('dark');
+  _applyDarkMode(!isDark);
+}
+
+// Aplicar dark mode salvo ao carregar
+(function _initDarkMode() {
+  try {
+    const saved = localStorage.getItem('ft_dark_mode');
+    if (saved === '1') _applyDarkMode(true);
+  } catch(_) {}
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   2FA — Autenticação em Dois Fatores por usuário
+   Tabela: public.two_fa_codes (já existe no banco)
+   Canais: email (via EmailJS) | telegram
+   Trusted device: cookie/localStorage por 30 dias
+══════════════════════════════════════════════════════════════════ */
+
+// Estado do fluxo 2FA — guardado entre telas
+let _2fa = {
+  userId:     null,   // app_users.id do usuário que está autenticando
+  email:      null,   // para reenvio
+  channel:    null,   // 'email' | 'telegram'
+  tgChatId:   null,   // telegram_chat_id do usuário
+  sessionData: null,  // authData do signInWithPassword (para completar login após 2FA)
+};
+
+// ── Gera código aleatório de 6 dígitos ──
+function _gen2FACode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// ── Chave de trusted device para este usuário ──
+function _2faTrustKey(userId) {
+  return 'ft_2fa_trust_' + userId;
+}
+
+// ── Verifica se este dispositivo está trusted para o usuário ──
+function _is2FATrusted(userId) {
+  try {
+    const raw = localStorage.getItem(_2faTrustKey(userId));
+    if (!raw) return false;
+    const { until } = JSON.parse(raw);
+    return Date.now() < until;
+  } catch(_) { return false; }
+}
+
+// ── Salva trusted device por 30 dias ──
+function _set2FATrusted(userId) {
+  try {
+    const until = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(_2faTrustKey(userId), JSON.stringify({ until }));
+  } catch(_) {}
+}
+
+// ── Envia código por email via EmailJS ──
+async function _send2FAByEmail(email, code, name) {
+  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) {
+    console.warn('[2FA] EmailJS não configurado');
+    return;
+  }
+  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  if (!tplId) return;
+
+  const body = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">
+<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">
+<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:20px 28px">
+  <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">Family FinTrack</div>
+  <div style="font-size:20px;font-weight:700;color:#fff">🔐 Código de verificação</div>
+</div>
+<div style="padding:24px 28px">
+  <p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6">Olá${name ? ', ' + name : ''}! Use o código abaixo para acessar o Family FinTrack:</p>
+  <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px">
+    <div style="font-size:36px;font-weight:900;letter-spacing:.28em;color:#1e5c42;font-family:'Courier New',monospace">${code}</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:8px">Válido por 10 minutos</div>
+  </div>
+  <p style="font-size:12px;color:#9ca3af;margin:0">Se você não tentou fazer login, ignore este e-mail.</p>
+</div>
+</div></div>`;
+
+  try {
+    emailjs.init(EMAILJS_CONFIG.publicKey);
+    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+      to_email:       email,
+      report_subject: '[Family FinTrack] Seu código de verificação: ' + code,
+      Subject:        '[Family FinTrack] Código de verificação',
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content: body,
+    });
+  } catch(e) {
+    console.warn('[2FA] send email:', e.message);
+    throw e;
+  }
+}
+
+// ── Envia código por Telegram ──
+async function _send2FAByTelegram(chatId, code) {
+  try {
+    const msg = `🔐 *Family FinTrack — Verificação*
+
+Seu código: *${code}*
+
+Válido por 10 minutos.`;
+    const { data, error } = await sb.functions.invoke('send-telegram', {
+      body: { chat_id: chatId, message: msg }
+    });
+    if (error) throw new Error(error.message);
+  } catch(e) {
+    console.warn('[2FA] send telegram:', e.message);
+    throw e;
+  }
+}
+
+// ── Persiste código na tabela two_fa_codes ──
+async function _store2FACode(userId, code) {
+  // Expirar códigos antigos do mesmo usuário
+  try {
+    await sb.from('two_fa_codes')
+      .update({ used: true })
+      .eq('user_id', userId)
+      .eq('used', false);
+  } catch(_) {}
+  // Inserir novo
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const { error } = await sb.from('two_fa_codes').insert({
+    user_id:    userId,
+    code:       code,
+    channel:    _2fa.channel || 'email',
+    used:       false,
+    expires_at: expiresAt,
+  });
+  if (error) throw new Error('Erro ao salvar código 2FA: ' + error.message);
+}
+
+// ── Inicia fluxo 2FA após validação de senha bem-sucedida ──
+async function _initiate2FA(authData, appUserRow) {
+  _2fa.userId      = appUserRow.id;
+  _2fa.email       = appUserRow.email;
+  _2fa.channel     = appUserRow.two_fa_channel || 'email';
+  _2fa.tgChatId    = appUserRow.telegram_chat_id || null;
+  _2fa.sessionData = authData;
+
+  const code = _gen2FACode();
+  await _store2FACode(_2fa.userId, code);
+
+  let sent = false;
+  let errMsg = '';
+
+  if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+    try { await _send2FAByTelegram(_2fa.tgChatId, code); sent = true; } catch(e) { errMsg = e.message; }
+    // Fallback para email se telegram falhar
+    if (!sent) {
+      try { await _send2FAByEmail(_2fa.email, code, appUserRow.name); sent = true; } catch(e2) { errMsg = e2.message; }
+    }
+  } else {
+    try { await _send2FAByEmail(_2fa.email, code, appUserRow.name); sent = true; } catch(e) { errMsg = e.message; }
+  }
+
+  if (!sent) {
+    console.warn('[2FA] Falha ao enviar código, mostrando tela mesmo assim:', errMsg);
+  }
+
+  // Atualizar subtítulo com canal usado
+  const sub = document.getElementById('twoFaSub');
+  if (sub) {
+    if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+      sub.innerHTML = 'Enviamos um código de 6 dígitos para o seu <strong>Telegram</strong>.<br>Insira-o abaixo para continuar.';
+    } else {
+      sub.innerHTML = `Enviamos um código de 6 dígitos para <strong>${_2fa.email}</strong>.<br>Insira-o abaixo para continuar.`;
+    }
+  }
+
+  // Exibir tela 2FA
+  _show2FAScreen();
+}
+
+function _show2FAScreen() {
+  // Esconder todos os formulários de login
+  ['loginFormArea','registerFormArea','pendingApprovalArea',
+   'forgotPwdArea','changePwdArea','recoveryPwdArea']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  const area = document.getElementById('twoFaArea');
+  if (area) area.style.display = '';
+
+  const codeInput = document.getElementById('twoFaCode');
+  if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+
+  const errEl = document.getElementById('twoFaError');
+  if (errEl) errEl.style.display = 'none';
+}
+
+// ── Verificar código inserido pelo usuário ──
+async function doVerify2FA() {
+  const codeInput = document.getElementById('twoFaCode');
+  const errEl     = document.getElementById('twoFaError');
+  const btn       = document.getElementById('twoFaVerifyBtn');
+  const trust     = document.getElementById('twoFaTrust')?.checked;
+
+  const code = (codeInput?.value || '').trim();
+  if (errEl) errEl.style.display = 'none';
+
+  if (!code || code.length !== 6) {
+    if (errEl) { errEl.textContent = 'Digite o código de 6 dígitos.'; errEl.style.display = ''; }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verificando...'; }
+
+  try {
+    // Buscar código válido e não expirado para este usuário
+    const { data: codeRow, error: fetchErr } = await sb
+      .from('two_fa_codes')
+      .select('id, code, used, expires_at')
+      .eq('user_id', _2fa.userId)
+      .eq('used', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (fetchErr) throw new Error('Erro ao verificar código: ' + fetchErr.message);
+    if (!codeRow) {
+      if (errEl) { errEl.textContent = 'Código inválido ou expirado. Solicite um novo.'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Checar expiração
+    if (new Date(codeRow.expires_at) < new Date()) {
+      if (errEl) { errEl.textContent = 'Código expirado. Clique em "Reenviar código".'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Checar correspondência
+    if (codeRow.code !== code) {
+      if (errEl) { errEl.textContent = 'Código incorreto. Tente novamente.'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Marcar como usado
+    await sb.from('two_fa_codes').update({ used: true }).eq('id', codeRow.id);
+
+    // Salvar trusted device se solicitado
+    if (trust) _set2FATrusted(_2fa.userId);
+
+    // Continuar fluxo de login
+    await _loadCurrentUserContext(_2fa.sessionData);
+    await onLoginSuccess();
+
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Verificar'; }
+  }
+}
+
+// ── Reenviar código ──
+async function resend2FACode() {
+  const btn = document.getElementById('twoFaResendBtn');
+  const errEl = document.getElementById('twoFaError');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    if (!_2fa.userId) throw new Error('Sessão expirada. Faça login novamente.');
+    const code = _gen2FACode();
+    await _store2FACode(_2fa.userId, code);
+
+    if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+      await _send2FAByTelegram(_2fa.tgChatId, code).catch(async () => {
+        // Fallback email
+        const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
+        await _send2FAByEmail(_2fa.email, code, u?.name || '');
+      });
+    } else {
+      const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
+      await _send2FAByEmail(_2fa.email, code, u?.name || '');
+    }
+
+    if (errEl) { errEl.textContent = '✓ Novo código enviado!'; errEl.style.color = '#16a34a'; errEl.style.display = ''; }
+    setTimeout(() => { if (errEl) { errEl.style.display = 'none'; errEl.style.color = '#dc2626'; } }, 4000);
+
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Erro ao reenviar: ' + (e.message || e); errEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Reenviar código'; }
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   CONVITE DE FAMÍLIA — Processamento do token na URL
+   Fluxo: ?invite=TOKEN → valida → mostra banner → ao registrar/logar vincula
+══════════════════════════════════════════════════════════════════ */
+
+// Estado do convite ativo (se URL contiver ?invite=TOKEN)
+let _pendingInvite = null;
+
+// ── Verificar e processar token de convite na URL ──
+async function _checkInviteToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('invite');
+  if (!token) return;
+
+  // Limpar token da URL sem reload
+  try {
+    const cleanUrl = window.location.pathname + (window.location.hash || '');
+    history.replaceState(null, '', cleanUrl);
+  } catch(_) {}
+
+  try {
+    // Buscar convite no banco
+    const { data: invite, error } = await sb
+      .from('family_invites')
+      .select('id, token, email, family_id, role, invited_by, expires_at, used, families(name)')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (error || !invite) {
+      _showInviteBanner('❌ Link de convite inválido ou expirado.', 'error', null);
+      return;
+    }
+    if (invite.used) {
+      _showInviteBanner('⚠️ Este link de convite já foi utilizado.', 'warning', null);
+      return;
+    }
+    if (new Date(invite.expires_at) < new Date()) {
+      _showInviteBanner('⏱ Este link de convite expirou. Peça um novo ao administrador.', 'warning', null);
+      return;
+    }
+
+    // Convite válido — salvar em estado e mostrar banner
+    _pendingInvite = invite;
+    const famName = invite.families?.name || 'família';
+    const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[invite.role] || 'Usuário';
+    _showInviteBanner(
+      `🎉 Você foi convidado para a família <strong>${famName}</strong> como <strong>${roleLabel}</strong>.`,
+      'success',
+      invite
+    );
+
+    // Se email do convite corresponde a usuário logado — aceitar direto
+    if (currentUser?.email === invite.email) {
+      await _acceptPendingInvite();
+    }
+
+  } catch(e) {
+    console.warn('[invite]', e.message);
+  }
+}
+
+// ── Mostrar banner de convite na tela de login ──
+function _showInviteBanner(message, type, invite) {
+  document.getElementById('inviteBanner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'inviteBanner';
+  const bgColor = type === 'success' ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' :
+                  type === 'error'   ? 'linear-gradient(135deg,#fef2f2,#fee2e2)' :
+                  'linear-gradient(135deg,#fffbeb,#fef3c7)';
+  const borderColor = type === 'success' ? '#22c55e' : type === 'error' ? '#dc2626' : '#f59e0b';
+  banner.style.cssText = `
+    position:fixed;top:16px;left:50%;transform:translateX(-50%);
+    z-index:10001;max-width:min(440px,calc(100vw - 32px));width:100%;
+    background:${bgColor};border:1.5px solid ${borderColor};
+    border-radius:14px;padding:14px 18px;
+    box-shadow:0 8px 32px rgba(0,0,0,.16);
+    animation:slideDownFadeIn .3s ease;
+  `;
+  banner.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1;font-size:.84rem;color:#1a1714;line-height:1.55">${message}</div>
+      <button onclick="document.getElementById('inviteBanner')?.remove()"
+        style="background:none;border:none;cursor:pointer;font-size:.8rem;color:#9ca3af;flex-shrink:0;padding:2px">✕</button>
+    </div>
+    ${invite ? `
+    <div style="margin-top:10px;font-size:.78rem;color:#6b7280">
+      Faça login ou crie sua conta com o e-mail <strong>${invite.email}</strong> para aceitar.
+    </div>` : ''}`;
+  document.body.appendChild(banner);
+
+  // Injetar email no campo de login
+  if (invite?.email) {
+    const emailEl = document.getElementById('loginEmail');
+    if (emailEl && !emailEl.value) emailEl.value = invite.email;
+  }
+
+  // Keyframe da animação
+  if (!document.getElementById('_inviteBannerStyle')) {
+    const s = document.createElement('style');
+    s.id = '_inviteBannerStyle';
+    s.textContent = '@keyframes slideDownFadeIn{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+    document.head.appendChild(s);
+  }
+}
+
+// ── Aceitar convite pendente (após login bem-sucedido) ──
+async function _acceptPendingInvite() {
+  if (!_pendingInvite || !currentUser) return;
+  const invite = _pendingInvite;
+  _pendingInvite = null;
+
+  // Verificar se email bate
+  if (invite.email && currentUser.email !== invite.email) {
+    toast(`⚠️ Este convite é para ${invite.email}. Você está logado como ${currentUser.email}.`, 'warning');
+    return;
+  }
+
+  try {
+    const userId = currentUser.app_user_id || currentUser.id;
+
+    // Vincular à família
+    const { error: fmErr } = await sb.from('family_members').upsert(
+      { user_id: userId, family_id: invite.family_id, role: invite.role },
+      { onConflict: 'user_id,family_id' }
+    );
+    if (fmErr) throw new Error(fmErr.message);
+
+    // Atualizar family_id no app_users se não tiver
+    if (!currentUser.family_id) {
+      await sb.from('app_users').update({ family_id: invite.family_id }).eq('id', userId);
+    }
+
+    // Marcar convite como usado
+    await sb.from('family_invites').update({ used: true, used_at: new Date().toISOString() }).eq('id', invite.id);
+
+    // Recarregar contexto
+    await _loadCurrentUserContext();
+    updateUserUI();
+    _renderFamilySwitcher();
+
+    const famName = invite.families?.name || 'família';
+    const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[invite.role] || 'Usuário';
+    toast(`🎉 Bem-vindo à família "${famName}" como ${roleLabel}!`, 'success');
+
+    // Esconder banner
+    document.getElementById('inviteBanner')?.remove();
+
+  } catch(e) {
+    console.warn('[invite accept]', e.message);
+    toast('Erro ao aceitar convite: ' + e.message, 'error');
+  }
+}
+
+// Expor globalmente
+window._checkInviteToken  = _checkInviteToken;
+window._acceptPendingInvite = _acceptPendingInvite;
 tryAutoConnect();
 
 /* ══════════════════════════════════════════════════════════════════
