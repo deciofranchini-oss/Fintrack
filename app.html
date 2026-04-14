@@ -22,11 +22,11 @@
 <title>Family Fintrack · Família inteligente, Finanças sob controle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -429,14 +429,19 @@
 
 <!-- SUPABASE SETUP -->
 <div class="setup-screen" id="setupScreen" style="display:none">
-  <div class="setup-box">
+  <div class="setup-box" style="position:relative">
+    <!-- Dismiss button (for unexpected appearances) -->
+    <button id="setupScreenDismiss" onclick="_dismissSetupScreen()" title="Fechar"
+      style="position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>
     <div style="text-align:center;margin-bottom:16px">
       <img src="logo.jpg" style="height:130px;object-fit:contain;mix-blend-mode:normal" alt="Family FinTrack">
     </div>
+    <div id="setupScreenMsg" style="display:none;text-align:center;padding:10px 14px;background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;margin-bottom:12px;font-size:.82rem;color:#92400e"></div>
     <p style="text-align:center">Configure sua conexão com o Supabase para começar.</p>
     <div class="form-group"><label>Supabase URL</label><input type="url" id="supabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
     <div class="form-group"><label>Supabase Anon Key</label><input type="password" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiI..." autocomplete="off"></div>
     <button class="btn btn-primary" onclick="initSupabase()" style="width:100%;justify-content:center;padding:11px;margin-top:6px;font-size:.9rem">Conectar</button>
+    <button id="setupReloadBtn" onclick="window.location.reload()" style="display:none;width:100%;justify-content:center;padding:10px;margin-top:6px;font-size:.85rem;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);cursor:pointer">↺ Recarregar app</button>
     <p class="setup-hint">Credenciais salvas apenas no seu browser (localStorage).</p>
   </div>
 </div>
@@ -478,6 +483,11 @@
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         </span><span data-i18n="nav.accounts">Contas
+      </button>
+      <button class="nav-item" onclick="navigate('loyalty')" id="loyaltyNav" data-nav="loyalty">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </span><span>Fidelidades</span>
       </button>
     </div>
 
@@ -599,6 +609,17 @@
       <span class="topbar-title" id="pageTitle" style="display:none">Dashboard</span>
     </div>
     <div class="topbar-actions">
+      <!-- Chat pending transactions badge — shown when there are unvalidated chat transactions -->
+      <button id="chatPendingTopbarBtn" onclick="openChatValidation()" title="Transações por chat pendentes de validação"
+        style="display:none;position:relative;background:none;border:none;cursor:pointer;
+               padding:6px;border-radius:8px;color:var(--muted);touch-action:manipulation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span id="chatPendingTopbarCount" style="position:absolute;top:2px;right:2px;
+          background:#dc2626;color:#fff;font-size:.55rem;font-weight:800;
+          min-width:14px;height:14px;border-radius:7px;
+          display:flex;align-items:center;justify-content:center;padding:0 3px;
+          line-height:1;pointer-events:none"></span>
+      </button>
       <button id="privacyToggleBtn" onclick="togglePrivacy()" title="Ocultar valores" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--muted);display:flex;align-items:center;transition:color 0.2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
@@ -1160,7 +1181,14 @@
       <div id="tx-filterbar">
         <div class="tx-search-wrap">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="txSearch" placeholder="Buscar…" oninput="filterTransactions()" class="tx-search-input">
+          <div style="position:relative;display:flex;align-items:center">
+            <input type="text" id="txSearch" placeholder="Buscar… (Ctrl+F)" oninput="filterTransactions()" class="tx-search-input"
+              style="padding-right:28px"
+              title="Ctrl+F para focar · Busca por descrição e memo">
+            <button id="txSearchClear" style="display:none;position:absolute;right:6px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:0;line-height:1;touch-action:manipulation"
+              onclick="document.getElementById('txSearch').value='';filterTransactions(true)" title="Limpar busca">×</button>
+          </div>
+          <span id="txResultCount" style="display:none;font-size:.7rem;color:var(--accent);font-weight:700;white-space:nowrap;padding:3px 8px;background:rgba(42,117,80,.1);border-radius:8px"></span>
         </div>
         <div class="tx-fb-sep"></div>
         <!-- View toggle -->
@@ -1199,9 +1227,12 @@
             <option value="">Todas as contas</option>
           </select>
           <div id="txCatFilterWrap">
-            <select id="txCategoryFilter" onchange="filterTransactions(true)" class="tx-chip-select">
-              <option value="">Categoria</option>
-            </select>
+            <input type="hidden" id="txCategoryFilter" value="">
+            <button type="button" id="txCatPickBtn" class="tx-chip-select"
+              onclick="_txCatPickerOpen()"
+              style="cursor:pointer;display:flex;align-items:center;gap:5px;text-align:left">
+              <span id="txCatPickLabel" style="color:var(--muted)">Categoria</span>
+            </button>
           </div>
           <select id="txType" onchange="filterTransactions(true)" class="tx-chip-select">
             <option value="">Tipo</option>
@@ -1310,26 +1341,16 @@
 
       <div class="account-grid" id="accountGrid"></div>
 
-      <!-- ── Programas de Fidelidade ── -->
-      <div id="loyaltySectionCard" style="margin-top:28px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:1.1rem">⭐</span>
-            <span style="font-size:.88rem;font-weight:800;color:var(--text)">Programas de Fidelidade</span>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" onclick="openLoyaltyApiSettings()" title="Configurar integrações de API">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              API
-            </button>
-            <button class="btn btn-ghost btn-sm" onclick="openLoyaltyModal('')">+ Adicionar</button>
-          </div>
-        </div>
-        <div id="loyaltySectionWrap"></div>
-      </div>
     </div>
 
-    <!-- INVESTMENTS -->
+    <!-- ══ FIDELIDADES ══════════════════════════════════════════════════════ -->
+    <div class="page" id="page-loyalty">
+      <!-- page-header-bar and fxRatesBadge injected here by navigate() -->
+      <!-- loyalty content rendered into #lp-content by initLoyaltyPage() -->
+      <div id="lp-content"></div>
+    </div>
+
+        <!-- INVESTMENTS -->
     <div class="page" id="page-debts" style="display:none">
       <!-- Rendered by debts.js renderDebtsPage() -->
     </div>
@@ -1635,9 +1656,12 @@
         </div>
         <div>
           <label>Categoria</label>
-          <select id="rptCategory" onchange="loadCurrentReport()">
-            <option value="">Todas</option>
-          </select>
+          <input type="hidden" id="rptCategory" value="">
+          <button type="button" id="rptCatPickBtn"
+            onclick="_rptCatPickerOpen()"
+            style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);font-size:.82rem;font-family:var(--font-sans);cursor:pointer;display:flex;align-items:center;gap:5px;text-align:left">
+            <span id="rptCatPickLabel" style="color:var(--muted)">Todas</span>
+          </button>
         </div>
         <div>
           <label>Beneficiário</label>
@@ -1662,6 +1686,10 @@
           <button class="rpt-export-btn" onclick="exportReportPDF()" title="Baixar PDF">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             PDF
+          </button>
+          <button class="rpt-export-btn" onclick="exportReportXLSX()" title="Baixar Excel (.xlsx)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m8 13 2.5 4 1.5-2 1.5 2 2.5-4"/></svg>
+            <span>XLSX</span>
           </button>
           <button class="rpt-export-btn" onclick="exportReportCSV()" title="Baixar CSV">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1949,6 +1977,18 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
+        </button>
+      </div>
+
+      <!-- Chat bulk actions -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <span style="font-size:.76rem;color:var(--muted);align-self:center;flex:1;min-width:120px">
+          💬 <strong>Chat (Telegram/WhatsApp):</strong>
+        </span>
+        <button class="btn btn-ghost btn-sm" onclick="_catBulkChatToggle()"
+          id="catBulkChatBtn"
+          style="font-size:.75rem;padding:5px 12px;font-weight:600;gap:5px;display:flex;align-items:center">
+          💬 Alternar Chat (todas)
         </button>
       </div>
 
@@ -3378,6 +3418,10 @@
             Feedbacks<span id="cfgFeedbackBadge" style="display:none;position:absolute;top:6px;right:6px;min-width:14px;height:14px;border-radius:999px;background:#dc2626;color:#fff;font-size:.55rem;font-weight:700;padding:0 3px;line-height:14px;text-align:center"></span>
           </button>
 
+          <button class="cfg-tab" onclick="cfgShowPane('pane-assinaturas')" id="cfgNavBtn-assinaturas" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Assinaturas
+          </button>
           <button class="cfg-tab" onclick="cfgShowPane('pane-sobre')" id="cfgNavBtn-sobre" style="display:none">
             <div class="cfg-tab-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -3813,9 +3857,11 @@
             </div>
             <div class="cfg-pane-header-text">
               <div class="cfg-pane-header-title">Família &amp; Usuários</div>
-              <div class="cfg-pane-header-sub">Controle de acesso e permissões</div>
+              <div class="cfg-pane-header-sub">Membros, permissões e acesso ao app</div>
             </div>
           </div>
+
+          <div class="cfg-section-label">Usuários do sistema</div>
           <div class="cfg-card cfg-card-accent">
             <div class="cfg-row">
               <div class="cfg-row-icon" style="background:#e0f2fe">
@@ -3823,34 +3869,85 @@
               </div>
               <div class="cfg-row-info">
                 <div class="cfg-row-label">Gerenciar Usuários</div>
-                <div class="cfg-row-sub" id="userMgmtSub">Controle de acesso e permissões</div>
+                <div class="cfg-row-sub" id="userMgmtSub">Convites, roles e senhas</div>
               </div>
               <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
             </div>
           </div>
-          <div id="settingsVisibilitySection" style="display:none"></div>
 
-          <!-- ══ ZONA DE PERIGO — owner da família apenas ══════════════════════ -->
-          <div id="familyDangerZone" style="display:none">
-            <div class="cfg-section-label">⚠️ Zona de Perigo</div>
-            <div class="cfg-card" style="border-color:rgba(220,38,38,.25)">
-              <div style="padding:16px">
-                <div style="display:flex;align-items:flex-start;gap:12px">
-                  <div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🗑️</div>
-                  <div style="flex:1">
-                    <div style="font-size:.88rem;font-weight:800;color:#dc2626;margin-bottom:4px">Excluir Todos os Dados da Família</div>
-                    <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:12px">Remove permanentemente todas as transações, contas, categorias, orçamentos, programados, dívidas, objetivos, preços e outros dados desta família. <strong style="color:#dc2626">Esta ação não pode ser desfeita.</strong></div>
-                    <button class="btn btn-sm" onclick="deleteAllFamilyData()" style="background:#fee2e2;color:#dc2626;border:1.5px solid rgba(220,38,38,.3);font-weight:700;border-radius:9px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:.82rem">
-                      🗑️ Excluir Todos os Dados da Família
-                    </button>
+          <!-- Admin: seleção de família para gerir acesso/filtros -->
+          <div id="adminFamilyMgmtSection" style="display:none">
+            <div class="cfg-section-label">Configurações por família</div>
+            <div class="cfg-card" style="margin-bottom:12px">
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#f0f9ff">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                </div>
+                <div class="cfg-row-info">
+                  <div class="cfg-row-label">Família</div>
+                  <div class="cfg-row-sub">Selecione para gerenciar acesso e filtros</div>
+                </div>
+                <select id="adminFamilySelect" class="cfg-select" style="max-width:160px" onchange="_adminFamilyChanged(this.value)">
+                  <option value="">— Selecionar —</option>
+                </select>
+              </div>
+            </div>
+            <div id="adminFamilyActions" style="display:none">
+              <div class="cfg-card">
+                <div class="cfg-row">
+                  <div class="cfg-row-icon" style="background:#f0fdf4">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   </div>
+                  <div class="cfg-row-info">
+                    <div class="cfg-row-label">Controle de Acesso</div>
+                    <div class="cfg-row-sub" id="adminFamilyAcessoSub">Permissões por membro</div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" onclick="_adminOpenFamilyTab('acesso')">Abrir</button>
+                </div>
+                <div class="cfg-row" style="border-top:1px solid var(--border)">
+                  <div class="cfg-row-icon" style="background:#fefce8">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                  </div>
+                  <div class="cfg-row-info">
+                    <div class="cfg-row-label">Filtros de Análise</div>
+                    <div class="cfg-row-sub">Excluir dados de relatórios</div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" onclick="_adminOpenFamilyTab('filtros')">Abrir</button>
                 </div>
               </div>
             </div>
           </div>
 
-        </div>
+          <!-- Non-admin: link to family management modal -->
+          <div id="ownerFamilyMgmtSection" style="display:none">
+            <div class="cfg-section-label">Configurações da família</div>
+            <div class="cfg-card">
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#f0fdf4">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <div class="cfg-row-info">
+                  <div class="cfg-row-label">Controle de Acesso</div>
+                  <div class="cfg-row-sub">Permissões por membro da família</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="openMyFamilyMgmt().then(()=>setTimeout(()=>mfmSwitchTab('acesso'),200))">Abrir</button>
+              </div>
+              <div class="cfg-row" style="border-top:1px solid var(--border)">
+                <div class="cfg-row-icon" style="background:#fefce8">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                </div>
+                <div class="cfg-row-info">
+                  <div class="cfg-row-label">Filtros de Análise</div>
+                  <div class="cfg-row-sub">Excluir contas/categorias dos relatórios</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="openMyFamilyMgmt().then(()=>setTimeout(()=>mfmSwitchTab('filtros'),200))">Abrir</button>
+              </div>
+            </div>
+          </div>
 
+          <div id="settingsVisibilitySection" style="display:none"></div>
+
+        </div>
         <!-- ══ PANE: DADOS ══════════════════════════════════════════════════ -->
         <div class="cfg-pane" id="pane-dados">
           <div class="cfg-pane-header">
@@ -4137,6 +4234,48 @@
         </div>
 
         <!-- ══ PANE: SOBRE ══════════════════════════════════════════════════ -->
+        <!-- ══ PANE: ASSINATURAS ══════════════════════════════════════════ -->
+        <div class="cfg-pane" id="pane-assinaturas">
+          <div class="cfg-pane-header">
+            <div class="cfg-pane-header-icon" style="background:#f0fdf4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <div class="cfg-pane-header-text">
+              <div class="cfg-pane-header-title">Assinaturas</div>
+              <div class="cfg-pane-header-sub">Configurações de cobrança e planos</div>
+            </div>
+          </div>
+
+          <div id="subQuickStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
+
+          <div class="cfg-section-label">Modo atual</div>
+          <div class="cfg-card cfg-card-accent" id="subModeCard">
+            <div class="cfg-row">
+              <div class="cfg-row-icon" style="background:#f0fdf4">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="cfg-row-info">
+                <div class="cfg-row-label" id="subModeLabelShort">Carregando...</div>
+                <div class="cfg-row-sub" id="subModeDescShort">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cfg-section-label">Painel de gestão</div>
+          <div class="cfg-card">
+            <div class="cfg-row">
+              <div class="cfg-row-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div class="cfg-row-info">
+                <div class="cfg-row-label">Gerenciar Assinaturas</div>
+                <div class="cfg-row-sub">Configurar modo, preços e famílias</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="openSubscriptionAdmin()">Abrir</button>
+            </div>
+          </div>
+        </div>
+
         <div class="cfg-pane" id="pane-sobre">
           <div class="cfg-pane-header">
             <div class="cfg-pane-header-icon" style="background:#e8f5ee">
@@ -4326,9 +4465,14 @@
       <!-- Collapsible filters + group-by -->
       <div id="px-filters-panel">
         <div id="px-filters-inner">
-          <select id="pricesCatFilter" class="px-filter-select" onchange="pricesCatFilter(this.value); _pxUpdateFilterBadge()">
-            <option value="">Todas as categorias</option>
-          </select>
+          <input type="hidden" id="pricesCatFilter" value="">
+          <button type="button" id="pxCatPickBtn"
+            onclick="_pxCatPickerOpen()"
+            class="px-filter-select"
+            style="cursor:pointer;display:flex;align-items:center;gap:5px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span id="pxCatPickLabel">Categoria</span>
+          </button>
           <select id="pxSubcatFilter" class="px-filter-select" onchange="pricesSubcatFilter(this.value); _pxUpdateFilterBadge()">
             <option value="">Todas as subcategorias</option>
           </select>
@@ -4453,7 +4597,13 @@
             </div>
             <div class="ai2-filter-group">
               <label class="ai2-filter-label">Categoria</label>
-              <select id="aiCategoryFilter" class="ai2-select"></select>
+              <input type="hidden" id="aiCategoryFilter" value="">
+              <button type="button" id="aiCatPickBtn"
+                onclick="_aiCatPickerOpen()"
+                class="ai2-select"
+                style="cursor:pointer;display:flex;align-items:center;gap:5px;text-align:left">
+                <span id="aiCatPickLabel" style="color:var(--muted)">Todas</span>
+              </button>
             </div>
             <div class="ai2-filter-group">
               <label class="ai2-filter-label">Beneficiário</label>
@@ -4563,26 +4713,137 @@
 
 
     <!-- ══ DREAMS PAGE ══════════════════════════════════════════════════════ -->
-    <div class="page" id="page-dreams" style="display:none">
+    <div class="page" id="page-dreams">
 
-      <!-- Dreams intro banner -->
-      <div class="module-intro-banner" style="--intro-accent:#f59e0b;--intro-accent-lt:rgba(245,158,11,.08);margin-bottom:20px">
-        <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
-          <i class="mib-arr">▾</i> Recolher
-        </button>
-        <div class="module-intro-badge" style="background:rgba(245,158,11,.12);color:#b45309">🌟 Sonhos</div>
-        <div class="module-intro-body">
-        <h3 class="module-intro-headline">Transforme sonhos em metas financeiras reais</h3>
-        <p class="module-intro-text">Defina objetivos de vida, estime custos com IA e receba um plano personalizado de quanto poupar por mês para realizar cada sonho.</p>
-        <div class="module-intro-chips">
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🤖 IA estima custos</span>
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">📈 Progresso visual</span>
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">💡 Plano de poupança</span>
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🏆 Conquistas</span>
+      <!-- Dreams hero banner — style matches Fidelidades -->
+      <style>
+        .drm-hero {
+          background: linear-gradient(135deg, #1e5c42 0%, #2a7550 55%, #1a5c38 100%);
+          border-radius: 14px; padding: 20px 22px 18px;
+          position: relative; overflow: hidden; margin-bottom: 16px;
+        }
+        .drm-hero::after {
+          content: '🌟'; position: absolute; right: 18px; bottom: -12px;
+          font-size: 5.5rem; opacity: .08; line-height: 1; pointer-events: none;
+        }
+        .drm-hero-top {
+          display: flex; align-items: flex-start;
+          justify-content: space-between; position: relative; z-index: 1;
+        }
+        .drm-hero-label {
+          font-size: .63rem; font-weight: 800; text-transform: uppercase;
+          letter-spacing: .12em; color: rgba(255,255,255,.5); margin-bottom: 4px;
+        }
+        .drm-hero-title {
+          font-size: 1.22rem; font-weight: 800; color: #fff; letter-spacing: -.02em;
+        }
+        .drm-hero-kpis {
+          display: flex; gap: 22px; margin-top: 16px;
+          flex-wrap: wrap; position: relative; z-index: 1;
+        }
+        .drm-hero-kpi-lbl {
+          font-size: .6rem; font-weight: 700; text-transform: uppercase;
+          letter-spacing: .08em; color: rgba(255,255,255,.5); margin-bottom: 2px;
+        }
+        .drm-hero-kpi-val {
+          font-size: 1.12rem; font-weight: 800; color: #fff;
+          font-family: var(--font-serif); line-height: 1;
+        }
+        .drm-hero-kpi-sub {
+          font-size: .62rem; color: rgba(255,255,255,.42); margin-top: 2px;
+        }
+        .drm-hero-btn {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 7px 13px; border-radius: 9px; font-size: .76rem; font-weight: 700;
+          border: 1.5px solid rgba(255,255,255,.25);
+          background: rgba(255,255,255,.12); color: #fff;
+          cursor: pointer; font-family: inherit;
+          transition: background .15s; touch-action: manipulation;
+        }
+        .drm-hero-btn:hover { background: rgba(255,255,255,.22); }
+        .drm-hero-btn-primary {
+          background: rgba(255,255,255,.95); color: #1e5c42; border-color: transparent;
+        }
+        .drm-hero-btn-primary:hover { background: #fff; }
+        .drm-hero-progress {
+          margin-top: 14px; position: relative; z-index: 1;
+        }
+        .drm-hero-progress-bar {
+          height: 6px; background: rgba(255,255,255,.18); border-radius: 3px; overflow: hidden;
+        }
+        .drm-hero-progress-fill {
+          height: 100%; border-radius: 3px;
+          background: linear-gradient(90deg, rgba(255,255,255,.7), rgba(255,255,255,.95));
+          transition: width .6s ease;
+        }
+        .drm-hero-progress-lbl {
+          display: flex; justify-content: space-between;
+          font-size: .64rem; color: rgba(255,255,255,.55); margin-top: 5px;
+        }
+      </style>
+
+      <div class="drm-hero" id="drmHeroBanner">
+        <div class="drm-hero-top">
+          <div>
+            <div class="drm-hero-label">Meus Sonhos</div>
+            <div class="drm-hero-title" id="drmHeroTitle">Objetivos &amp; Realizações</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-shrink:0">
+            <button class="drm-hero-btn drm-hero-btn-primary" onclick="openDreamWizard()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Sonho
+            </button>
+          </div>
+        </div>
+        <div class="drm-hero-kpis">
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Sonhos ativos</div>
+            <div class="drm-hero-kpi-val" id="drmKpiActive">—</div>
+          </div>
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Total planejado</div>
+            <div class="drm-hero-kpi-val" id="drmKpiTotal">—</div>
+            <div class="drm-hero-kpi-sub">em metas ativas</div>
+          </div>
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Acumulado</div>
+            <div class="drm-hero-kpi-val" id="drmKpiAcc">—</div>
+            <div class="drm-hero-kpi-sub" id="drmKpiAccSub">—</div>
+          </div>
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Conquistados</div>
+            <div class="drm-hero-kpi-val" id="drmKpiAchieved">—</div>
+          </div>
+        </div>
+        <div class="drm-hero-progress" id="drmHeroProgress" style="display:none">
+          <div class="drm-hero-progress-bar">
+            <div class="drm-hero-progress-fill" id="drmHeroProgressFill" style="width:0%"></div>
+          </div>
+          <div class="drm-hero-progress-lbl">
+            <span>Progresso geral</span>
+            <span id="drmHeroProgressPct">0%</span>
+          </div>
         </div>
       </div>
 
+      <!-- Intro colapsável — explica o módulo para novos usuários -->
+      <div class="module-intro-banner" style="--intro-accent:#1e5c42;--intro-accent-lt:rgba(30,92,66,.08);margin-bottom:16px">
+        <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
+          <i class="mib-arr">▾</i> Recolher
+        </button>
+        <div class="module-intro-badge" style="background:rgba(30,92,66,.12);color:#1e5c42">🌟 Como funciona</div>
+        <div class="module-intro-body">
+          <h3 class="module-intro-headline">Transforme sonhos em metas financeiras reais</h3>
+          <p class="module-intro-text">Defina objetivos de vida, estime custos com IA e receba um plano personalizado de quanto poupar por mês para realizar cada sonho.</p>
+          <div class="module-intro-chips">
+            <span class="module-intro-chip" style="background:rgba(30,92,66,.1);color:#1e5c42">🤖 IA estima custos</span>
+            <span class="module-intro-chip" style="background:rgba(30,92,66,.1);color:#1e5c42">📈 Progresso visual</span>
+            <span class="module-intro-chip" style="background:rgba(30,92,66,.1);color:#1e5c42">💡 Plano de poupança</span>
+            <span class="module-intro-chip" style="background:rgba(30,92,66,.1);color:#1e5c42">🏆 Conquistas</span>
+          </div>
         </div>
+      </div>
+
       <div id="dreams-list-container" style="padding:0 0 100px">
         <!-- Rendered by dreams.js renderDreamsPage() -->
         <div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
@@ -7239,13 +7500,38 @@ Se você não solicitou isso, ignore este e-mail.`,
       </div>
 
       <!-- OBSERVAÇÃO -->
-      <div style="margin-bottom:4px">
+      <div style="margin-bottom:14px">
         <label class="field-label" style="display:flex;align-items:center;gap:5px">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>
           OBSERVAÇÃO (OPCIONAL)
         </label>
         <input type="text" id="occMemo" class="field-input"
           placeholder="Ex: Recebido com juros de mora, parcela 3/6…">
+      </div>
+
+      <!-- PONTOS DE FIDELIDADE -->
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0" id="occLoyaltyToggleRow">
+          <input type="checkbox" id="occLoyaltyEnabled" style="accent-color:var(--accent);width:15px;height:15px"
+            onchange="_occToggleLoyalty()">
+          <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">🌟 Creditar pontos de fidelidade</div>
+            <div style="font-size:.7rem;color:var(--muted)">Registre pontos ganhos junto com esta transação</div>
+          </div>
+        </label>
+        <div id="occLoyaltyFields" style="display:none;margin-top:12px;display:none">
+          <div style="margin-bottom:10px">
+            <label class="field-label">Programa de Fidelidade</label>
+            <select id="occLoyaltyProgram" class="field-input" style="margin-top:4px">
+              <option value="">— Selecionar programa —</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Pontos a creditar</label>
+            <input type="number" id="occLoyaltyPoints" class="field-input" style="margin-top:4px"
+              placeholder="Ex: 250" min="1" step="1">
+          </div>
+        </div>
       </div>
     </div>
 
@@ -7377,7 +7663,12 @@ Se você não solicitou isso, ignore este e-mail.`,
       <div class="tx-detail-footer-main">
         <button class="btn btn-ghost tx-detail-close-btn" onclick="closeModal('txDetailModal')">✕ Fechar</button>
         <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDelBtn" onclick="_txDetailAction('del')" style="color:var(--red)" title="Excluir">🗑️</button>
+          <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDelBtn"
+            onclick="_txDetailAction('del')"
+            title="Excluir transação definitivamente"
+            style="color:var(--red);gap:5px;display:inline-flex;align-items:center;white-space:nowrap;font-size:.78rem;font-weight:700;padding:6px 10px;border:1.5px solid rgba(220,38,38,.25);border-radius:8px">
+            🗑️ Excluir
+          </button>
           <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDupBtn" onclick="_txDetailAction('dup')" title="Duplicar">📋</button>
           <button class="btn btn-ghost tx-detail-action-btn" id="txDetailSchedBtn" onclick="_txDetailAction('makeScheduled')" title="Programar">📅</button>
           <button class="btn btn-ghost tx-detail-action-btn" id="txDetailUnrecvBtn" onclick="_txDetailAction('makeUnreceived')" title="Mover para A Receber" style="display:none">📬</button>
@@ -8089,6 +8380,20 @@ Se você não solicitou isso, ignore este e-mail.`,
             </label>
           </div>
 
+          <!-- Chat habilitado -->
+          <div class="acm-field acm-field--full">
+            <label class="acm-toggle-row">
+              <div class="acm-toggle-info">
+                <span class="acm-toggle-label">💬 Disponível no Chat (Telegram/WhatsApp)</span>
+                <span class="acm-toggle-sub">Aparece como opção ao registrar transação pelo chat</span>
+              </div>
+              <div class="acm-switch-wrap">
+                <input type="checkbox" id="accountChatEnabled" class="acm-switch-input" checked>
+                <span class="acm-switch"></span>
+              </div>
+            </label>
+          </div>
+
         </div>
       </div><!-- /pane-basic -->
 
@@ -8478,6 +8783,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div class="form-group full"><label>Nome *</label><input type="text" id="categoryName" placeholder="Ex: Alimentação"></div>
         <div class="form-group"><label>Tipo *</label><select id="categoryType"><option value="despesa">Despesa</option><option value="receita">Receita</option><option value="transferencia">Transferência</option></select></div>
         <div class="form-group"><label>Categoria Pai</label><select id="categoryParent"><option value="">— Nenhuma —</option></select></div>
+
         <div class="form-group full">
           <label>Ícone</label>
           <div class="icon-picker" id="categoryIconPicker" style="max-height:220px">
@@ -8936,22 +9242,39 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
         </div>
 
-        <!-- Month picker (monthly) -->
+        <!-- Month picker (monthly, only when NOT recurring) -->
         <div class="form-group full" id="budgetModalMonthGroup">
           <label>Mês *</label>
           <input type="month" id="budgetModalMonth">
         </div>
 
-        <!-- Year picker (annual) -->
+        <!-- Year picker (annual, only when NOT recurring) -->
         <div class="form-group full" id="budgetModalYearGroup" style="display:none">
           <label>Ano *</label>
           <select id="budgetModalYear" style="width:100%"></select>
         </div>
 
+        <!-- Recurring notice (shown when recurring is checked) -->
+        <div class="form-group full" id="budgetRecurringNotice" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(42,96,73,.08);border:1px solid rgba(42,96,73,.2);border-radius:10px">
+            <span style="font-size:1.2rem">🔄</span>
+            <div style="font-size:.8rem;color:var(--text);line-height:1.5">
+              <strong>Orçamento recorrente</strong> — não precisa indicar mês.<br>
+              <span style="color:var(--muted)">Aplica-se automaticamente a <strong id="budgetRecurringPeriodLabel">todos os meses</strong>.</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Category: parents + indented children -->
         <div class="form-group full">
           <label>Categoria *</label>
-          <select id="budgetCategory"></select>
+          <input type="hidden" id="budgetCategory" value="">
+          <button type="button" id="budgetCatPickBtn"
+            onclick="_budgetCatPickerOpen()"
+            style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:.85rem;font-family:var(--font-sans);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left">
+            <span id="budgetCatPickLabel" style="color:var(--muted);flex:1">— Selecionar categoria —</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
           <div id="budgetCatHint" style="font-size:.72rem;color:var(--muted);margin-top:4px;display:none">
             💡 Orçamento de categoria pai inclui gastos de todas as subcategorias.
           </div>
@@ -8977,10 +9300,11 @@ Se você não solicitou isso, ignore este e-mail.`,
         <!-- Auto-reset (monthly only) -->
         <div class="form-group full" id="budgetAutoResetGroup">
           <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
-            <input type="checkbox" id="budgetAutoReset" checked style="width:16px;height:16px;margin-top:2px;cursor:pointer">
+            <input type="checkbox" id="budgetAutoReset" checked style="width:16px;height:16px;margin-top:2px;cursor:pointer"
+              onchange="_onBudgetRecurringChange()">
             <div>
-              <div style="font-weight:600;font-size:.88rem">🔄 Recorrente — repete todo mês</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">O orçamento se repete automaticamente todo mês, contabilizando apenas as transações do período</div>
+              <div style="font-weight:600;font-size:.88rem">🔄 Recorrente — repete automaticamente</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Não precisa indicar mês. O orçamento se aplica a todos os períodos automaticamente</div>
             </div>
           </label>
         </div>
@@ -9192,6 +9516,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/import.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/subscriptions.js"></script>
   <script src="js/access_control.js"></script>
   <script src="js/feedback.js"></script>
   <script src="js/admin.js"></script>
@@ -10236,6 +10561,14 @@ Se você não solicitou isso, ignore este e-mail.`,
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
           IA
         </button>
+        <button class="mfm-tab" id="mfmNavAcesso" onclick="mfmSwitchTab('acesso')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Acesso
+        </button>
+        <button class="mfm-tab" id="mfmNavFiltros" onclick="mfmSwitchTab('filtros')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filtros
+        </button>
         <button class="mfm-tab" id="mfmNavNova"        onclick="mfmSwitchTab('nova')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           Nova
@@ -10446,6 +10779,82 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
 
         <div style="height:16px"></div>
+        <!-- ── PANE: Acesso ── -->
+        <div class="mfm-pane" id="mfmPaneAcesso">
+          <div class="mfm-pane-intro">
+            <div class="mfm-pane-intro-title">🔐 Controle de Acesso</div>
+            <div class="mfm-pane-intro-sub">Defina permissões por membro da família</div>
+          </div>
+          <div style="padding:0 16px 16px">
+            <div style="font-size:.74rem;color:var(--muted);margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:10px;line-height:1.6">
+              🔑 Configure o que cada membro pode ver e usar. Somente o proprietário (👑) pode alterar estas configurações.
+            </div>
+            <div id="mfmAcessoCards">
+              <div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">⏳ Carregando membros…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PANE: Filtros de Análise ── -->
+        <div class="mfm-pane" id="mfmPaneFiltros">
+          <div class="mfm-pane-intro" style="padding:16px 16px 0">
+            <div class="mfm-pane-intro-title">📊 Filtros de Análise</div>
+            <div class="mfm-pane-intro-sub">Defina o que não entra em relatórios, dashboard e IA</div>
+          </div>
+          <div style="padding:12px 16px 16px">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:10px;line-height:1.6">
+              📊 <strong>Filtros de Análise</strong> — Defina o que <em>não</em> deve entrar em relatórios,
+              dashboard, gráficos e análises com IA. Ideal para excluir transações internas ou categorias específicas.
+            </div>
+
+            <!-- Transaction type toggles -->
+            <div class="cfg-section-label" style="margin-bottom:8px;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Tipos de transação a excluir</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden">
+              <div style="padding:4px 0" id="statsExcludeToggles">
+                <!-- Rendered by settings.js -->
+              </div>
+            </div>
+
+            <!-- Category exclusion -->
+            <div class="cfg-section-label" style="margin-bottom:8px;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Categorias a excluir</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px">
+              <div style="padding:12px 14px">
+                <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+                  Categorias ignoradas em todos os totais, relatórios e análises com IA.
+                </div>
+                <div id="fmgExcludedCatChips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:10px"></div>
+                <div style="position:relative">
+                  <button type="button" onclick="_fmgOpenCatChooser()"
+                    style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);font-size:.82rem;font-family:var(--font-sans);cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--muted)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Selecionar categoria para excluir…
+                  </button>
+                  <div id="fmgCatDrop" style="display:none"><div id="fmgCatDropList"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Account exclusion -->
+            <div class="cfg-section-label" style="margin-bottom:8px;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Contas a excluir</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px">
+              <div style="padding:12px 14px">
+                <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+                  Transações dessas contas não aparecerão nos totais, relatórios e IA.
+                  Útil para contas de investimento ou contas compartilhadas.
+                </div>
+                <div id="fmgExcludedAccChips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:10px"></div>
+                <div id="fmgAccList" style="display:flex;flex-direction:column;gap:6px"></div>
+              </div>
+            </div>
+
+            <!-- Save button -->
+            <button class="btn btn-primary" onclick="_fmgSaveFilters()"
+              style="width:100%;padding:11px;font-size:.85rem;font-weight:700">
+              💾 Salvar Filtros de Análise
+            </button>
+          </div>
+        </div>
+
       </div><!-- /mfm2-body -->
 
       <!-- Scoped styles -->
@@ -11194,13 +11603,14 @@ Se você não solicitou isso, ignore este e-mail.`,
       <div class="wz-progress-bar"><div class="wz-progress-fill" id="wzProgress" style="width:0%"></div></div>
       <div class="wz-dots">
         <div class="wz-dot" title="Família"></div>
+        <div class="wz-dot" title="Perfil"></div>
         <div class="wz-dot" title="Membros"></div>
-        <div class="wz-dot" title="Convites"></div>
-        <div class="wz-dot" title="Gastos"></div>
-        <div class="wz-dot" title="Módulos"></div>
+        <div class="wz-dot" title="Renda"></div>
+        <div class="wz-dot" title="Categorias"></div>
         <div class="wz-dot" title="Contas"></div>
-        <div class="wz-dot" title="Transações"></div>
-        <div class="wz-dot" title="Relatórios"></div>
+        <div class="wz-dot" title="Sonhos"></div>
+        <div class="wz-dot" title="Telegram"></div>
+        <div class="wz-dot" title="Módulos"></div>
         <div class="wz-dot" title="Concluído"></div>
       </div>
     </div>
@@ -11289,9 +11699,16 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="dark-mode-toggle-thumb"></div>
         </div>
       </button>
-      <button class="user-menu-item" id="chatTxLogBtn" style="display:none"
-        onclick="closeUserMenu();openChatTxLog()">
-        <span>📋</span><span>Histórico via Chat</span>
+
+      <button class="user-menu-item" id="chatValidateBtn"
+        onclick="closeUserMenu();openChatValidation()">
+        <span>✅</span>
+        <span>Validar transações por chat</span>
+        <span id="chatValidateBadge" style="display:none;margin-left:auto;
+          background:#dc2626;color:#fff;font-size:.65rem;font-weight:800;
+          min-width:18px;height:18px;border-radius:9px;
+          display:inline-flex;align-items:center;justify-content:center;
+          padding:0 5px;"></span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="user-menu-item" onclick="closeUserMenu();navigate('help')">
@@ -11304,6 +11721,20 @@ Se você não solicitou isso, ignore este e-mail.`,
       <button class="user-menu-item" onclick="doLogout()" style="color:var(--red,#dc2626)">
         <span>↩</span><span data-i18n="topbar.logout">Sair</span>
       </button>
+    </div>
+  </div>
+
+  <!-- ══ Modal: Validar Transações por Chat ═══════════════════════════════════ -->
+  <div class="modal-overlay" id="chatValidationModal" onclick="if(event.target===this)closeModal('chatValidationModal')">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">✅ Validar Transações por Chat</span>
+        <button class="modal-close" onclick="closeModal('chatValidationModal')">✕</button>
+      </div>
+      <div class="modal-body" id="chatValidationBody" style="padding:0">
+        <div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>
+      </div>
     </div>
   </div>
 
@@ -12152,5 +12583,57 @@ window.openMyProfile = function(...args) {
 </div>
 
 <script src="js/loyalty.js"></script>
+  <!-- Investment Portfolio Detail Modal -->
+  <style>
+    .inv-pf-pos-vals { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+    .inv-pf-pos-btns { display:flex; gap:4px; }
+    .inv-pf-pos-btns .btn-icon { padding:3px 6px; font-size:.75rem; }
+  </style>
+  <div id="invPortfolioDetailModal" class="modal-overlay" onclick="if(event.target===this)closeModal('invPortfolioDetailModal')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+      <div class="modal-header">
+        <span class="modal-title">💼 Carteira</span>
+        <button class="modal-close" onclick="closeModal('invPortfolioDetailModal')">✕</button>
+      </div>
+      <div class="modal-body" id="invPfDetailBody" style="min-height:120px"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('invPortfolioDetailModal')">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+<!-- ══ SUBSCRIPTION ADMIN MODAL ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="subscriptionAdminModal" onclick="if(event.target===this)closeModal('subscriptionAdminModal')">
+  <div class="modal" style="max-width:520px;max-height:90dvh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div class="modal-handle"></div>
+    <!-- Header -->
+    <div style="padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-size:.95rem;font-weight:800;color:var(--text)">💳 Assinaturas</div>
+        <div style="font-size:.72rem;color:var(--muted)">Configuração e gestão de planos</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('subscriptionAdminModal')">✕</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;padding:12px 16px;flex-shrink:0">
+      <button id="subAdmTab-config" onclick="_subAdminSwitchTab('config')"
+        class="btn" style="flex:1;font-size:.76rem;font-weight:700;padding:7px 6px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff">⚙️ Config</button>
+      <button id="subAdmTab-subs" onclick="_subAdminSwitchTab('subs')"
+        class="btn" style="flex:1;font-size:.76rem;font-weight:700;padding:7px 6px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--muted)">👥 Famílias</button>
+      <button id="subAdmTab-payments" onclick="_subAdminSwitchTab('payments')"
+        class="btn" style="flex:1;font-size:.76rem;font-weight:700;padding:7px 6px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--muted)">💰 Pagamentos</button>
+    </div>
+    <!-- Panes -->
+    <div style="flex:1;overflow-y:auto">
+      <div id="subAdmPane-config"></div>
+      <div id="subAdmPane-subs"     style="display:none"></div>
+      <div id="subAdmPane-payments" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAYWALL OVERLAY (dinâmico via JS) ══════════════════════════════════ -->
+
+
 </body>
 </html>
