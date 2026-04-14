@@ -39,6 +39,7 @@ const KNOWN_BROKERS = [
 const _inv = {
   positions:    [],   // investment_positions rows
   transactions: [],   // investment_transactions rows
+  portfolios:   [],   // investment_portfolios rows
   loaded:       false,
 };
 
@@ -81,11 +82,25 @@ function invAccountMarketValue(accountId) {
     .reduce((s, p) => s + _invMarketValue(p), 0);
 }
 
-// Total market value across ALL investment accounts for this family
+// Total market value across ALL investment accounts for this family (always BRL for consolidation)
 function invTotalPortfolioValue() {
   return _inv.positions
     .filter(p => (+(p.quantity) || 0) > 0)
     .reduce((s, p) => s + _invMarketValue(p), 0);
+}
+
+// Native-currency market value for an account's positions (e.g., EUR for EUR accounts)
+function invAccountNativeValue(accountId) {
+  return _inv.positions
+    .filter(p => p.account_id === accountId && (+(p.quantity) || 0) > 0)
+    .reduce((s, p) => s + (+(p.quantity) || 0) * (+(p.current_price) || 0), 0);
+}
+
+// Native-currency cost basis for an account's positions
+function invAccountNativeCost(accountId) {
+  return _inv.positions
+    .filter(p => p.account_id === accountId && (+(p.quantity) || 0) > 0)
+    .reduce((s, p) => s + (+(p.quantity) || 0) * (+(p.avg_cost) || 0), 0);
 }
 
 // ── Data load ───────────────────────────────────────────────────────────────
@@ -95,17 +110,17 @@ async function loadInvestments(force = false) {
   if (!force && _inv.loaded) return;
 
   try {
-    const [posRes, txRes] = await Promise.all([
-      famQ(sb.from('investment_positions')
-        .select('*')
-      ).order('ticker'),
+    const [posRes, txRes, pfRes] = await Promise.all([
+      famQ(sb.from('investment_positions').select('*')).order('ticker'),
       famQ(sb.from('investment_transactions')
         .select('*, investment_positions(ticker,name,asset_type)')
       ).order('date', { ascending: false }),
+      (async () => { try { return await famQ(sb.from('investment_portfolios').select('*').order('name')); } catch(_) { return { data: [] }; } })(),
     ]);
 
     _inv.positions    = posRes.data    || [];
     _inv.transactions = txRes.data     || [];
+    _inv.portfolios   = pfRes?.data    || [];
     _inv.loaded       = true;
 
     // Augment account balances with market value
@@ -117,21 +132,31 @@ async function loadInvestments(force = false) {
 
 function _invAugmentAccountBalances() {
   // Called after loadInvestments() and after DB.accounts.load()
-  // Adds market value of positions to each investment account's balance
+  // _totalPortfolioBalance is stored in the account's NATIVE currency (EUR for EUR accounts,
+  // BRL for BRL accounts). Dashboard/patrimônio uses toBRL(rawBal, acc.currency) ONCE.
+  // This avoids double-conversion (native→BRL here, then BRL×FX again in dashboard).
   _invAccounts().forEach(acc => {
-    const mv = invAccountMarketValue(acc.id);
-    acc._investmentMarketValue = mv; // store separately for display
-    // Don't double-add: subtract transaction amounts already counted
-    // The transactions that bought assets already debited the cash from the account,
-    // so we add back the current market value of those positions
+    const isFx = acc.currency && acc.currency !== 'BRL';
+
+    // Market value in native currency
+    // BRL accounts: sum(qty × current_price_brl) — already BRL
+    // FX accounts:  sum(qty × current_price_native) — kept in native (EUR/USD)
+    const mv = isFx
+      ? invAccountNativeValue(acc.id)    // native currency (EUR/USD) — no conversion
+      : invAccountMarketValue(acc.id);   // BRL
+
+    acc._investmentMarketValue = mv;     // native currency, for display
+
+    // Cost basis in native currency (qty × avg_cost, both in native)
     const invested = _inv.positions
       .filter(p => p.account_id === acc.id && (+(p.quantity) || 0) > 0)
-      .reduce((s, p) => s + _invCost(p), 0);
-    // balance = cash_balance + (market_value - cost_basis)  →  unrealised gain
-    // cash_balance is initial_balance + sum(transactions) which already deducted the cost
-    acc._unrealisedPnL = mv - invested;
-    // The "true" balance the user sees = what's in cash + what positions are worth
-    acc._totalPortfolioBalance = acc.balance + mv;
+      .reduce((s, p) => s + _invCost(p), 0);  // _invCost = qty × avg_cost (native)
+
+    acc._unrealisedPnL = mv - invested;  // native currency ✓
+
+    // Total = cash balance + market value, both in native currency
+    // Dashboard: toBRL(_totalPortfolioBalance, acc.currency) converts ONCE to BRL
+    acc._totalPortfolioBalance = (+(acc.balance) || 0) + mv;
   });
 }
 
@@ -139,7 +164,11 @@ function _invAugmentAccountBalances() {
 
 async function loadInvestmentsPage() {
   if (!sb) return;
-  await loadInvestments();
+  // Always reload accounts to pick up type changes (e.g. poupanca → investimento)
+  if (typeof DB !== 'undefined' && DB.accounts) {
+    try { await DB.accounts.load(true); } catch(_) {}
+  }
+  await loadInvestments(true);
   _renderInvestmentsPage();
 }
 
@@ -164,7 +193,14 @@ function _renderInvestmentsPage() {
   }
 
   const totalMV     = invTotalPortfolioValue();
-  const totalCost   = _inv.positions.reduce((s,p)=>(+(p.quantity)>0 ? s+_invCost(p) : s), 0);
+  // totalCost in BRL: convert FX positions' native cost to BRL for a consistent total
+  const totalCost = _inv.positions.reduce((s,p) => {
+    if (!(+(p.quantity)>0)) return s;
+    const costNative = _invCost(p); // qty × avg_cost (native currency)
+    const cur = p.currency || 'BRL';
+    const costBRL = (cur !== 'BRL' && typeof toBRL === 'function') ? toBRL(costNative, cur) : costNative;
+    return s + costBRL;
+  }, 0);
   const totalReturn = totalCost ? (totalMV - totalCost) / totalCost * 100 : 0;
   const totalPnL    = totalMV - totalCost;
   const isPnLPos    = totalPnL >= 0;
@@ -203,13 +239,65 @@ function _renderInvestmentsPage() {
           <div class="inv-kpi-value">${_inv.positions.filter(p=>+(p.quantity)>0).length}</div>
         </div>
         <div class="inv-kpi-card">
-          <div class="inv-kpi-label">Contas</div>
-          <div class="inv-kpi-value">${invAccs.length}</div>
-        </div>
-        <div class="inv-kpi-card">
-          <div class="inv-kpi-label">Custo médio</div>
+          <div class="inv-kpi-label">Custo Total (BRL)</div>
           <div class="inv-kpi-value">${fmt(totalCost)}</div>
         </div>
+        ${(()=>{
+          // Split accounts by currency
+          const brlAccs = invAccs.filter(a=>!a.currency||a.currency==='BRL');
+          const fxAccs2 = invAccs.filter(a=>a.currency&&a.currency!=='BRL');
+          const brlMV   = brlAccs.reduce((s,a)=>s+invAccountMarketValue(a.id),0);
+          // FX: accumulate native values per currency
+          const fxGroups = {}; // { EUR: { native: 0, brl: 0, costNative: 0 } }
+          fxAccs2.forEach(a=>{
+            const cur = a.currency;
+            if (!fxGroups[cur]) fxGroups[cur] = { native: 0, brl: 0, costNative: 0 };
+            fxGroups[cur].native += invAccountNativeValue(a.id);
+            fxGroups[cur].brl   += invAccountMarketValue(a.id);
+            // Native cost for this currency
+            _inv.positions.filter(p=>p.account_id===a.id&&+(p.quantity)>0).forEach(p=>{
+              fxGroups[cur].costNative += (+(p.quantity)||0)*(+(p.avg_cost)||0);
+            });
+          });
+          const hasFX = Object.keys(fxGroups).length > 0;
+          if (!hasFX) return '';
+          const fxHtml = Object.entries(fxGroups).map(([cur,g])=>{
+            const pnlNat = g.native - g.costNative;
+            const pnlPct = g.costNative > 0 ? (pnlNat/g.costNative*100) : 0;
+            const pnlPos = pnlNat >= 0;
+            const brlPct = totalMV > 0 ? (g.brl/totalMV*100).toFixed(1)+'%' : '';
+            return `
+            <div class="inv-kpi-card inv-kpi-fx">
+              <div class="inv-kpi-label">🌍 ${cur}</div>
+              <div class="inv-kpi-value">${fmt(g.native, cur)}</div>
+              <div class="inv-kpi-pnl ${pnlPos?'pos':'neg'}" style="font-size:.68rem;font-weight:700;margin-top:3px">
+                ${pnlPos?'▲':'▼'} ${pnlPos?'+':''}${fmt(Math.abs(pnlNat),cur)}
+                <span style="opacity:.75">(${pnlPos?'+':''}${pnlPct.toFixed(1)}%)</span>
+              </div>
+              <div style="font-size:.62rem;color:var(--muted);margin-top:1px">≈ ${fmt(g.brl)}${brlPct?' · '+brlPct+' cart.':''}</div>
+            </div>`;
+          }).join('');
+          // BRL accounts P&L
+          const brlCost = brlAccs.reduce((s,a) => {
+            return s + _inv.positions.filter(p=>p.account_id===a.id&&+(p.quantity)>0).reduce((ss,p)=>ss+_invCost(p),0);
+          }, 0);
+          const brlPnl = brlMV - brlCost;
+          const brlPnlPct = brlCost > 0 ? (brlPnl/brlCost*100) : 0;
+          const brlPnlPos = brlPnl >= 0;
+          const brlPct = totalMV > 0 ? (brlMV/totalMV*100).toFixed(1)+'%' : '';
+          if (!brlMV && !brlCost) return fxHtml;
+          return `
+            <div class="inv-kpi-card inv-kpi-brl">
+              <div class="inv-kpi-label">🇧🇷 BRL</div>
+              <div class="inv-kpi-value">${fmt(brlMV)}</div>
+              <div class="inv-kpi-pnl ${brlPnlPos?'pos':'neg'}" style="font-size:.68rem;font-weight:700;margin-top:3px">
+                ${brlPnlPos?'▲':'▼'} ${brlPnlPos?'+':''}${fmt(Math.abs(brlPnl))}
+                <span style="opacity:.75">(${brlPnlPos?'+':''}${brlPnlPct.toFixed(1)}%)</span>
+              </div>
+              <div style="font-size:.62rem;color:var(--muted);margin-top:1px">${brlPct ? brlPct+' carteira' : ''}</div>
+            </div>
+            ${fxHtml}`;
+        })()}
       </div>
       ${typeBar ? `
       <div class="inv-type-bar-wrap">
@@ -229,11 +317,17 @@ function _renderInvestmentsPage() {
     <div class="inv-actions-bar">
       <div class="inv-actions-left">
         <button class="btn btn-primary" onclick="openInvTransactionModal()">+ Movimentação</button>
+        <button class="btn btn-ghost" onclick="openInvPortfolioModal()">💼 Carteiras</button>
       </div>
       <div class="inv-actions-right">
         <button class="btn btn-ghost" id="invUpdatePricesBtn" onclick="updateAllPrices()">🔄 Cotações</button>
         <span id="invPriceUpdateStatus" class="inv-price-update-status"></span>
       </div>
+    </div>
+
+    <!-- Portfolios section (rendered if any exist) -->
+    <div id="invPortfoliosSection">
+      ${_renderPortfoliosSection()}
     </div>
 
     <!-- Performance charts section -->
@@ -270,12 +364,26 @@ function _renderInvestmentsPage() {
 
 function _renderPortfolioCard(acc) {
   const positions = _inv.positions.filter(p => p.account_id === acc.id && (+(p.quantity) || 0) > 0);
-  const mv        = invAccountMarketValue(acc.id);
-  const cost      = positions.reduce((s,p) => s + _invCost(p), 0);
-  const pnl       = mv - cost;
-  const ret       = cost ? pnl / cost * 100 : 0;
-  // Cash available = account balance (transactions already deducted purchases)
+  const isFx      = acc.currency && acc.currency !== 'BRL';
+  const mv        = invAccountMarketValue(acc.id);  // always BRL
   const cash      = +(acc.balance) || 0;
+
+  // P&L: for FX accounts compare native currency (consistent, no FX noise)
+  // For BRL accounts compare in BRL
+  let pnl, ret, pnlFx = 0, mvFx = 0;
+  if (isFx) {
+    mvFx  = positions.reduce((s,p) => s + (+(p.quantity)||0) * (+p.current_price||0), 0);
+    const costFx = positions.reduce((s,p) => s + (+(p.quantity)||0) * (+p.avg_cost||0), 0);
+    pnlFx = mvFx - costFx;
+    ret   = costFx ? pnlFx / costFx * 100 : 0;
+    // BRL P&L for reference
+    const costBRL = typeof toBRL === 'function' ? toBRL(costFx, acc.currency) : costFx;
+    pnl = mv - costBRL;
+  } else {
+    const cost = positions.reduce((s,p) => s + _invCost(p), 0);
+    pnl  = mv - cost;
+    ret  = cost ? pnl / cost * 100 : 0;
+  }
 
   // Group by asset type
   const byType = {};
@@ -287,7 +395,7 @@ function _renderPortfolioCard(acc) {
 
   const typeRows = Object.entries(byType).map(([type, ps]) => {
     const t = _invAssetType(type);
-    const typeRows = ps.map(p => _renderPositionRow(p, mv)).join('');
+    const typeRows = ps.map(p => _renderPositionRow(p, mv, acc.currency)).join('');
     return `
       <div class="inv-type-group">
         <div class="inv-type-label">${t.emoji} ${t.label}</div>
@@ -295,30 +403,65 @@ function _renderPortfolioCard(acc) {
       </div>`;
   }).join('');
 
+  // Ensure currency is always a valid string
+  const _cur = acc.currency || 'BRL';
+  // BRL cost for FX accounts (to compute BRL P&L)
+  const costBRLForHeader = isFx
+    ? (typeof toBRL === 'function' ? toBRL(positions.reduce((s,p)=>s+(+(p.quantity)||0)*(+(p.avg_cost)||0),0), _cur) : 0)
+    : positions.reduce((s,p) => s + _invCost(p), 0);
+
   return `
     <div class="card inv-portfolio-card">
       <div class="inv-portfolio-header">
         <div class="inv-portfolio-header-left">
-          <div class="inv-portfolio-account-name">${esc(acc.name)}</div>
+          <div class="inv-portfolio-account-name">
+            ${esc(acc.name)}
+            ${isFx
+              ? `<span style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:2px 7px;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;border-radius:5px;font-size:.62rem;font-weight:800;letter-spacing:.04em">🌍 ${esc(_cur)}</span>`
+              : `<span style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:2px 7px;background:rgba(22,163,74,.12);color:#16a34a;border-radius:5px;font-size:.62rem;font-weight:800;border:1px solid rgba(22,163,74,.2)">🇧🇷 BRL</span>`
+            }
+          </div>
           <div class="inv-portfolio-meta">
-            <span class="inv-portfolio-meta-item">💵 Caixa: <strong>${fmt(cash, acc.currency)}</strong></span>
-            <span class="inv-portfolio-meta-item">📊 Mercado: <strong>${fmt(mv)}</strong></span>
+            ${isFx ? `
+              <span class="inv-portfolio-meta-item">
+                💵 <span style="color:var(--muted)">Caixa:</span>
+                <strong>${fmt(cash, _cur)}</strong>
+              </span>
+              <span class="inv-portfolio-meta-item" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                📊 <span style="color:var(--muted)">Mercado:</span>
+                <strong>${fmt(mvFx, _cur)}</strong>
+                <span style="font-size:.68rem;color:var(--muted)">→</span>
+                <span style="font-size:.76rem;font-weight:700;color:var(--accent)">${fmt(typeof toBRL==='function'?toBRL(mvFx,_cur):mvFx)}</span>
+              </span>
+            ` : `
+              <span class="inv-portfolio-meta-item">💵 Caixa: <strong>${fmt(cash)}</strong></span>
+              <span class="inv-portfolio-meta-item">📊 Mercado: <strong>${fmt(mv)}</strong></span>
+            `}
           </div>
         </div>
-        <div class="inv-portfolio-pnl ${pnl>=0?'pos':'neg'}">
-          <div class="inv-portfolio-pnl-amt">${pnl>=0?'+':''}${fmt(pnl)}</div>
+        <div class="inv-portfolio-pnl ${ret>=0?'pos':'neg'}">
+          ${isFx ? `
+            <div class="inv-portfolio-pnl-amt">${pnlFx>=0?'+':''}${fmt(pnlFx, _cur)}</div>
+            <div style="font-size:.7rem;color:var(--muted);text-align:right;margin-top:1px">
+              ≈ ${(mv - costBRLForHeader) >= 0 ? '+' : ''}${fmt(Math.abs(mv - costBRLForHeader))} BRL
+            </div>
+          ` : `
+            <div class="inv-portfolio-pnl-amt">${pnl>=0?'+':''}${fmt(pnl)}</div>
+          `}
           <div class="inv-portfolio-pnl-pct">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
         </div>
       </div>
-      ${positions.length === 0
+            ${positions.length === 0
         ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">
              Sem posições abertas.
              <a href="#" onclick="event.preventDefault();openInvTransactionModal('${acc.id}')">Registrar compra</a>
            </div>`
         : `<div class="inv-positions-table">
              <div class="inv-pos-header">
-               <span>Ativo</span><span>Qtd</span><span>Custo Médio</span>
-               <span>Preço Atual</span><span>Valor</span><span>Retorno</span><span></span>
+               <span>Ativo</span><span>Qtd</span>
+               <span>Custo Médio${isFx ? `<div style="font-size:.6rem;color:var(--muted);font-weight:400">(${esc(_cur)})</div>` : ''}</span>
+               <span>Preço Atual${isFx ? `<div style="font-size:.6rem;color:var(--muted);font-weight:400">(${esc(_cur)})</div>` : ''}</span>
+               <span>Valor</span><span>Retorno</span><span></span>
              </div>
              ${typeRows}
            </div>`
@@ -326,11 +469,20 @@ function _renderPortfolioCard(acc) {
     </div>`;
 }
 
-function _renderPositionRow(p, totalMV) {
-  const mv   = _invMarketValue(p);
-  const cost = +p.avg_cost || 0;
-  const cur  = _invBrlPrice(p);
-  const ret  = cost ? (cur - cost) / cost * 100 : 0;
+function _renderPositionRow(p, totalMV, accCurrency) {
+  // Use position's own currency; fall back to account currency (handles legacy positions
+  // created before the currency column was added — p.currency may be null)
+  const dispCur   = (p.currency && p.currency !== 'BRL') ? p.currency
+                  : ((accCurrency && accCurrency !== 'BRL') ? accCurrency : (p.currency || 'BRL'));
+  const isFx      = dispCur !== 'BRL';
+  const mv        = _invMarketValue(p);           // always BRL
+  const avgCost   = +p.avg_cost || 0;             // native currency
+  const curNative = +p.current_price || 0;        // native currency
+  const curBRL    = _invBrlPrice(p);              // BRL (for value cell)
+  const mvNative  = isFx ? (+(p.quantity)||0) * curNative : mv;
+
+  // Return in native currency — consistent, no FX noise
+  const ret  = avgCost > 0 ? (curNative - avgCost) / avgCost * 100 : 0;
   const pct  = totalMV ? mv / totalMV * 100 : 0;
   const t    = _invAssetType(p.asset_type);
   const stale= p.price_updated_at
@@ -340,20 +492,32 @@ function _renderPositionRow(p, totalMV) {
   return `
     <div class="inv-pos-row" id="invPos-${p.id}">
       <div class="inv-pos-name">
-        <span class="inv-pos-ticker">${esc(p.ticker)}</span>
+        <span class="inv-pos-ticker">${esc(p.ticker)}
+          ${isFx
+            ? `<span style="font-size:.55rem;font-weight:800;padding:1px 4px;background:#1e3a8a;color:#fff;border-radius:3px;margin-left:3px;vertical-align:middle">${esc(dispCur)}</span>`
+            : ''}
+        </span>
         <span class="inv-pos-desc">${esc(p.name || '')} <span class="inv-pos-type-badge">${t.emoji} ${t.label}</span></span>
       </div>
       <span class="inv-pos-cell">${(+(p.quantity)).toFixed(4).replace(/\.?0+$/, '') || '0'}</span>
-      <span class="inv-pos-cell">${fmt(cost)}</span>
+      <span class="inv-pos-cell">
+        ${fmt(avgCost, dispCur)}
+        ${isFx ? `<div style="font-size:.65rem;color:var(--muted)">≈ ${fmt(typeof toBRL==='function'?toBRL(avgCost, dispCur):avgCost)}</div>` : ''}
+      </span>
       <span class="inv-pos-cell ${stale ? 'inv-price-stale' : ''}">
-        ${cur ? fmt(cur, p.currency) : '—'}${stale ? ' <span title="Cotação desatualizada" style="font-size:.8rem">⚠️</span>' : ''}
+        ${curNative ? fmt(curNative, dispCur) : '—'}${stale ? ' <span title="Cotação desatualizada" style="font-size:.8rem">⚠️</span>' : ''}
+        ${isFx && curBRL ? `<div style="font-size:.65rem;color:var(--muted)">≈ ${fmt(curBRL)}</div>` : ''}
       </span>
       <span class="inv-pos-cell">
-        <div style="font-weight:700">${fmt(mv)}</div>
+        ${isFx
+          ? `<div style="font-weight:700">${fmt(mvNative, dispCur)}</div><div style="font-size:.7rem;color:var(--muted)">≈ ${fmt(mv)}</div>`
+          : `<div style="font-weight:700">${fmt(mv)}</div>`
+        }
         <div class="inv-pos-alloc-wrap"><div class="inv-pos-alloc-bar" style="width:${Math.min(pct,100).toFixed(1)}%"></div><span class="inv-pos-alloc-pct">${pct.toFixed(1)}%</span></div>
       </span>
       <span class="inv-pos-return ${ret >= 0 ? 'pos' : 'neg'}">
         ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%
+        ${isFx ? `<div style="font-size:.65rem;opacity:.8">${dispCur}</div>` : ''}
       </span>
       <span class="inv-pos-actions">
         <button class="btn-icon" onclick="openInvPositionDetail('${p.id}')" title="Histórico">📋</button>
@@ -380,7 +544,7 @@ async function updateAllPrices() {
   const brapi   = positions.filter(p => ['acao_br','fii','etf_br','bdr'].includes(p.asset_type));
   const usStocks= positions.filter(p => ['acao_us','etf_us'].includes(p.asset_type));
   const crypto  = positions.filter(p => p.asset_type === 'crypto');
-  const manual  = positions.filter(p => p.asset_type === 'renda_fixa' || p.asset_type === 'outro');
+  const manual  = positions.filter(p => ['renda_fixa','outro','fundo'].includes(p.asset_type));
 
   let updated = 0, failed = 0;
   const today = new Date().toISOString().slice(0, 10);
@@ -443,9 +607,14 @@ async function updateAllPrices() {
     } catch(e) { console.warn('[inv] coingecko error:', e.message); failed += crypto.length; }
   }
 
-  // 4 — Manual / renda fixa: show count
+  // 4 — Manual / renda fixa / fundos: show actionable list
   if (manual.length) {
-    if (status) status.textContent = `${manual.length} ativo(s) precisam de atualização manual.`;
+    const manualList = manual.map(p =>
+      `<a href="#" onclick="event.preventDefault();openInvPositionDetail('${p.id}')" ` +
+      `style="color:var(--accent);font-weight:700;text-decoration:none">${p.ticker}</a>`
+    ).join(', ');
+    if (status) status.innerHTML =
+      `<span style="color:var(--amber,#b45309)">⚠️ Atualização manual necessária: ${manualList}</span>`;
   }
 
   // Persist to DB + reload
@@ -609,14 +778,14 @@ function openInvTransactionModal(accountId = null, positionId = null) {
               oninput="_invCalcTotal();_invFmtQty(this)" onblur="_invFmtQtyBlur(this)">
           </div>
           <div class="form-group">
-            <label>Preço Unitário (BRL) *</label>
+            <label id="invTxPriceLabel">Preço Unitário (BRL) *</label>
             <input type="text" id="invTxPrice" inputmode="decimal" placeholder="0,00"
               oninput="_invFmtPrice(this)" onblur="_invFmtPriceBlur(this)">
           </div>
           <div class="form-group full">
             <div style="display:flex;justify-content:space-between;align-items:center;
               padding:10px 14px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border)">
-              <span style="font-size:.82rem;font-weight:600">Total da operação:</span>
+              <span id="invTxTotalLabel" style="font-size:.82rem;font-weight:600">Total da operação:</span>
               <span id="invTxTotal" style="font-size:1rem;font-weight:700;color:var(--accent)">R$ 0,00</span>
             </div>
             <div id="invTxCashWarning" style="display:none;font-size:.78rem;color:var(--amber,#b45309);margin-top:6px;
@@ -635,7 +804,7 @@ function openInvTransactionModal(accountId = null, positionId = null) {
         </div>
         <div class="form-grid">
           <div class="form-group full">
-            <label>Valor Total Aportado (BRL) *</label>
+            <label id="invSimpleTotalLabel">Valor Total Aportado (BRL) *</label>
             <input type="text" id="invSimpleTotal" inputmode="decimal" placeholder="0,00"
               style="font-size:1.1rem;font-weight:700;text-align:right"
               oninput="_invFmtBalanceInput(this)" onblur="_invFmtPriceBlur(this)">
@@ -667,7 +836,7 @@ function openInvTransactionModal(accountId = null, positionId = null) {
             </select>
           </div>
           <div class="form-group">
-            <label>Valor (BRL) *</label>
+            <label id="invTaxAmountLabel">Valor (BRL) *</label>
             <input type="text" id="invTaxAmount" inputmode="decimal" placeholder="0,00"
               style="text-align:right"
               oninput="_invFmtBalanceInput(this)" onblur="_invFmtPriceBlur(this)">
@@ -762,6 +931,8 @@ function openInvTransactionModal(accountId = null, positionId = null) {
   document.getElementById('invTxAssetType')?.addEventListener('change', function() {
     _invToggleFundoPanel(this.value);
   });
+  // Update currency labels based on selected account
+  setTimeout(() => _invOnAccountChange(), 20);
 }
 
 // ── Toggle fundo enrichment panel ──
@@ -784,8 +955,14 @@ function _invFmtQty(el) {
   el.value = v;
 }
 function _invFmtQtyBlur(el) {
-  const v = parseFloat(el.value.replace(',', '.'));
-  if (!isNaN(v) && v > 0) el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+  // Keep value as plain number (no thousands separator) so parseFloat reads it correctly
+  // e.g. 150000 stays "150000" not "150.000" which parseFloat would read as 150
+  const raw = el.value.replace(/\./g, '').replace(',', '.');
+  const v = parseFloat(raw);
+  if (!isNaN(v) && v > 0) {
+    // Show with comma decimal separator only, no thousands separator
+    el.value = v % 1 === 0 ? String(v) : v.toFixed(6).replace('.', ',').replace(/0+$/, '');
+  }
 }
 
 // Mascara de preco: entrada automatica de 2 casas decimais (estilo centavos).
@@ -903,24 +1080,59 @@ function _invSetTxType(type) {
   _invCalcTotal();
 }
 
+function _invGetAccountCurrency() {
+  const accId = document.getElementById('invTxAccount')?.value;
+  const acc   = _invAccounts().find(a => a.id === accId);
+  return acc?.currency || 'BRL';
+}
+
+function _invUpdateCurrencyLabels() {
+  const cur = _invGetAccountCurrency();
+  const isNative = cur !== 'BRL';
+  // Update all price/value labels in the modal
+  const priceLabel = document.querySelector('label[for-el="invTxPrice"], #invTxPriceLabel');
+  const simpleLabel = document.querySelector('#invSimpleTotalLabel');
+  const taxLabel = document.querySelector('#invTaxAmountLabel');
+  const totalEl = document.getElementById('invTxTotal');
+  const totalLabel = document.getElementById('invTxTotalLabel');
+
+  if (priceLabel)  priceLabel.textContent  = `Preço Unitário (${cur}) *`;
+  if (simpleLabel) simpleLabel.textContent = `Valor Total Aportado (${cur}) *`;
+  if (taxLabel)    taxLabel.textContent    = `Valor (${cur}) *`;
+  if (totalLabel)  totalLabel.textContent  = `Total da operação (${cur}):`;
+
+  // Show/hide BRL conversion hint
+  const convHint = document.getElementById('invTxConvHint');
+  if (convHint) convHint.style.display = isNative ? '' : 'none';
+}
+
 function _invOnAccountChange() {
+  _invUpdateCurrencyLabels();
   _invCalcTotal();
 }
 
 function _invCalcTotal() {
-  const qty   = parseFloat(document.getElementById('invTxQty')?.value?.replace(',','.')) || 0;
+  const qty   = parseFloat((document.getElementById('invTxQty')?.value||'').replace(/\./g,'').replace(',','.')) || 0;
   const price = _invReadPrice(document.getElementById('invTxPrice'));
   const total = qty * price;
+  const cur   = _invGetAccountCurrency();
   const el    = document.getElementById('invTxTotal');
-  if (el) el.textContent = fmt(total);
+  if (el) {
+    const totalBRL = cur !== 'BRL' && typeof toBRL === 'function' ? toBRL(total, cur) : total;
+    if (cur !== 'BRL') {
+      el.innerHTML = `<span>${fmt(total, cur)}</span><span style="font-size:.75rem;color:var(--muted);margin-left:6px">≈ ${fmt(totalBRL, 'BRL')}</span>`;
+    } else {
+      el.textContent = fmt(total, 'BRL');
+    }
+  }
 
   // Cash warning for buys
   const type  = document.getElementById('invTxType')?.value;
   const accId = document.getElementById('invTxAccount')?.value;
   const warn  = document.getElementById('invTxCashWarning');
   if (warn && type === 'buy' && accId) {
-    const acc   = _invAccounts().find(a => a.id === accId);
-    const cash  = acc ? (+(acc.balance) || 0) : 0;
+    const acc  = _invAccounts().find(a => a.id === accId);
+    const cash = acc ? (+(acc.balance) || 0) : 0;
     warn.style.display = (total > 0 && cash < total) ? '' : 'none';
   }
 }
@@ -934,7 +1146,7 @@ async function saveInvTransaction() {
   const ticker  = document.getElementById('invTxTicker').value.trim().toUpperCase();
   const assetT  = document.getElementById('invTxAssetType').value;
   const name    = document.getElementById('invTxName').value.trim();
-  const qtyRaw  = parseFloat(document.getElementById('invTxQty').value.replace(',','.'));
+  const qtyRaw  = parseFloat(document.getElementById('invTxQty').value.replace(/\./g,'').replace(',','.'));
   const priceRaw= _invReadPrice(document.getElementById('invTxPrice'));
   const notesRaw  = document.getElementById('invTxNotes').value.trim();
   const brokerSel = document.getElementById('invTxBroker')?.value || '';
@@ -964,6 +1176,9 @@ async function saveInvTransaction() {
 
     if (!position) {
       // New position
+      // Inherit account currency (EUR accounts keep positions in EUR)
+      const _accForCur = _invAccounts().find(a => a.id === accId);
+      const _accCur = _accForCur?.currency || (['acao_us','etf_us'].includes(assetT) ? 'USD' : 'BRL');
       const { data: newPos, error: posErr } = await sb.from('investment_positions').insert({
         family_id:   famId(),
         account_id:  accId,
@@ -972,7 +1187,7 @@ async function saveInvTransaction() {
         name:        name || ticker,
         quantity:    0,
         avg_cost:    0,
-        currency:    ['acao_us','etf_us'].includes(assetT) ? 'USD' : 'BRL',
+        currency:    _accCur,
       }).select().single();
       if (posErr) throw posErr;
       position = newPos;
@@ -1012,14 +1227,20 @@ async function saveInvTransaction() {
     if (updErr) throw updErr;
 
     // 3. Create financial transaction (debit for buy, credit for sell)
-    const txAmount = type === 'buy' ? -total : total;
-    const txDesc   = `${type === 'buy' ? 'Compra' : 'Venda'}: ${ticker} ${qtyRaw}x @ ${fmt(priceRaw)}`;
+    // Keep amount in account's native currency
+    const _txAcc    = _invAccounts().find(a => a.id === accId);
+    const _txCur    = _txAcc?.currency || 'BRL';
+    const txAmount  = type === 'buy' ? -total : total;
+    const txAmtBRL  = _txCur !== 'BRL' && typeof toBRL === 'function' ? toBRL(Math.abs(total), _txCur) : Math.abs(total);
+    const txDesc    = `${type === 'buy' ? 'Compra' : 'Venda'}: ${ticker} ${qtyRaw}x @ ${fmt(priceRaw, _txCur)}`;
     const { data: txData, error: txErr } = await sb.from('transactions').insert({
       family_id:   famId(),
       account_id:  accId,
       date,
       description: txDesc,
       amount:      txAmount,
+      brl_amount:  type === 'buy' ? -txAmtBRL : txAmtBRL,
+      currency:    _txCur,
       category_id: null,
       memo:        notes || null,
       status:      'confirmed',
@@ -1028,6 +1249,9 @@ async function saveInvTransaction() {
     if (txErr) throw txErr;
 
     // 4. Record investment transaction
+    const _invTxCur  = _txAcc?.currency || 'BRL';
+    const _totalBRL  = _invTxCur !== 'BRL' && typeof toBRL === 'function'
+      ? toBRL(total, _invTxCur) : total;
     await sb.from('investment_transactions').insert({
       family_id:   famId(),
       position_id: position.id,
@@ -1036,7 +1260,7 @@ async function saveInvTransaction() {
       type,
       quantity:    qtyRaw,
       unit_price:  priceRaw,
-      total_brl:   total,
+      total_brl:   _totalBRL,
       date,
       notes:       notes || null,
     });
@@ -1048,7 +1272,7 @@ async function saveInvTransaction() {
       family_id:   famId(),
       date:        date || today,
       price:       priceRaw,
-      currency:    position.currency || 'BRL',
+      currency:    _invTxCur,
       source:      'manual',
     }, { onConflict: 'position_id,date' });
 
@@ -1146,15 +1370,30 @@ async function openInvPositionDetail(positionId) {
             ${pnl>=0?'+':''}${fmt(pnl)} (${ret.toFixed(2)}%)</div></div>
       </div>
 
-      <!-- Manual price update for renda_fixa / outro -->
-      ${['renda_fixa','outro'].includes(pos.asset_type) ? `
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;
-        padding:10px 14px;background:var(--surface2);border-radius:var(--r-sm)">
-        <span style="font-size:.82rem;font-weight:600;flex:1">Atualizar cotação manualmente:</span>
-        <input type="text" id="invManualPrice" value="${pos.current_price || ''}"
-          style="width:120px;padding:6px 10px" inputmode="decimal" placeholder="0,00">
-        <button class="btn btn-primary btn-sm" onclick="updateManualPrice('${pos.id}')">Salvar</button>
-      </div>` : ''}
+      <!-- Manual price update — all asset types, currency-aware -->
+      ${(()=>{
+        const _mpc = pos.currency || 'BRL';
+        const _mps = _mpc === 'EUR' ? '€' : _mpc === 'USD' ? 'US$' : 'R$';
+        const _mpv = pos.current_price
+          ? (+pos.current_price).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:6})
+          : '';
+        const _isFxPos = _mpc !== 'BRL';
+        return `
+        <div style="margin-bottom:16px;padding:12px 14px;background:var(--surface2);border-radius:var(--r-sm)">
+          <div style="font-size:.8rem;font-weight:700;margin-bottom:8px;color:var(--text)">✏️ Atualizar cotação (${_mps})</div>
+          ${_isFxPos ? `<div style="font-size:.72rem;color:#1d4ed8;margin-bottom:8px;padding:6px 10px;background:rgba(29,78,216,.07);border-radius:6px;border:1px solid rgba(29,78,216,.18)">
+            💡 Preço unitário em <strong>${_mpc}</strong>. Conversão para BRL automática.
+          </div>` : ''}
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:.78rem;color:var(--muted);white-space:nowrap">Preço por unidade (${_mps}):</span>
+            <input type="text" id="invManualPrice" value="${_mpv}"
+              style="flex:1;min-width:90px;padding:6px 10px;font-weight:700;text-align:right" inputmode="decimal" placeholder="0,00"
+              oninput="_invManualPricePreview('${pos.id}',this.value)">
+            <button class="btn btn-primary btn-sm" style="white-space:nowrap" onclick="updateManualPrice('${pos.id}')">💾 Salvar</button>
+          </div>
+          <div id="invManualPricePreview" style="display:none;margin-top:8px;font-size:.76rem;color:var(--muted)"></div>
+        </div>`;
+      })()}
 
       <!-- Gain/Loss Chart -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1184,18 +1423,58 @@ async function openInvPositionDetail(positionId) {
   document.body.appendChild(modal);
 }
 
+/** Live preview while typing the new price */
+function _invManualPricePreview(positionId, raw) {
+  const preview = document.getElementById('invManualPricePreview');
+  if (!preview) return;
+  const val = parseFloat(raw.replace(/\./g,'').replace(',','.'));
+  if (!val || val <= 0) { preview.style.display = 'none'; return; }
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) return;
+  const _mpAccObj = (state?.accounts || []).find(a => a.id === pos.account_id);
+  const cur  = (pos.currency && pos.currency !== 'BRL')
+               ? pos.currency
+               : (_mpAccObj?.currency && _mpAccObj.currency !== 'BRL' ? _mpAccObj.currency : (pos.currency || 'BRL'));
+  const qty  = +(pos.quantity) || 0;
+  const totalNative = val * qty;
+  const totalBrl = cur !== 'BRL' && typeof toBRL === 'function' ? toBRL(totalNative, cur) : totalNative;
+  const curSym = cur === 'EUR' ? '€' : cur === 'USD' ? 'US$' : 'R$';
+  const costNative = qty * (+(pos.avg_cost) || 0);
+  const pnl  = totalNative - costNative;
+  const pct  = costNative ? (pnl / costNative * 100) : 0;
+  const pnlColor = pnl >= 0 ? 'var(--green,#16a34a)' : 'var(--danger,#dc2626)';
+  let html = `Valor total: <strong>${fmt(totalNative, cur)}</strong>`;
+  if (cur !== 'BRL') html += ` <span style="color:var(--muted)">≈ ${fmt(totalBrl)}</span>`;
+  html += ` | P&L: <strong style="color:${pnlColor}">${pnl>=0?'+':''}${fmt(pnl, cur)} (${pct.toFixed(2)}%)</strong>`;
+  preview.innerHTML = html;
+  preview.style.display = '';
+}
+window._invManualPricePreview = _invManualPricePreview;
+
 async function updateManualPrice(positionId) {
-  const val = parseFloat(document.getElementById('invManualPrice')?.value?.replace(',','.'));
+  const raw = document.getElementById('invManualPrice')?.value || '';
+  const val = parseFloat(raw.replace(/\./g,'').replace(',','.'));
   if (!val || val <= 0) { toast('Preço inválido', 'error'); return; }
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) return;
+  // Use position's native currency; fall back to account currency
+  const _manAccObj = (state?.accounts || []).find(a => a.id === pos.account_id);
+  const cur   = (pos.currency && pos.currency !== 'BRL')
+                ? pos.currency
+                : (_manAccObj?.currency && _manAccObj.currency !== 'BRL' ? _manAccObj.currency : (pos.currency || 'BRL'));
   const today = new Date().toISOString().slice(0, 10);
-  await _invSavePrice(pos, val, 'BRL', today, 'manual');
-  await loadInvestments(true);
-  _invAugmentAccountBalances();
-  closeModal('invDetailModal');
-  _renderInvestmentsPage();
-  toast('Cotação atualizada', 'success');
+  const curSym = cur === 'EUR' ? '€' : cur === 'USD' ? 'US$' : 'R$';
+  try {
+    await _invSavePrice(pos, val, cur, today, 'manual');
+    await loadInvestments(true);
+    _invAugmentAccountBalances();
+    closeModal('invDetailModal');
+    _renderInvestmentsPage();
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+    toast(`Cotação de ${esc(pos.ticker)} atualizada: ${curSym}${val.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:6})}`, 'success');
+  } catch(e) {
+    toast('Erro ao salvar cotação: ' + (e.message || e), 'error');
+  }
 }
 
 // ── Module activation ───────────────────────────────────────────────────────
@@ -1574,11 +1853,19 @@ async function deleteInvTransaction(txId, positionId) {
 function openInvBalanceModal(positionId) {
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) return;
-  const t      = _invAssetType(pos.asset_type);
-  const mv     = _invMarketValue(pos);
-  const cost   = _invCost(pos);
-  const qty    = +(pos.quantity) || 0;
-  const curPnl = mv - cost;
+  const t       = _invAssetType(pos.asset_type);
+  // Use position currency; fall back to account currency (handles positions saved with wrong BRL default)
+  const _posAccObj = (state?.accounts || []).find(a => a.id === pos.account_id);
+  const cur     = (pos.currency && pos.currency !== 'BRL')
+                  ? pos.currency
+                  : (_posAccObj?.currency && _posAccObj.currency !== 'BRL' ? _posAccObj.currency : (pos.currency || 'BRL'));
+  const isFx    = cur !== 'BRL';
+  const qty     = +(pos.quantity) || 0;
+  // Show costs and values in native currency (not BRL) for FX positions
+  const costNative = (+(pos.quantity) || 0) * (+(pos.avg_cost) || 0);
+  const mvNative   = isFx ? (+(pos.quantity) || 0) * (+(pos.current_price) || 0) : _invMarketValue(pos);
+  const mvBRL      = _invMarketValue(pos);
+  const curSymbol  = cur === 'EUR' ? '€' : cur === 'USD' ? 'US$' : 'R$';
 
   document.getElementById('invBalanceModal')?.remove();
   const d = document.createElement('div');
@@ -1586,24 +1873,38 @@ function openInvBalanceModal(positionId) {
   d.id = 'invBalanceModal';
   d.style.zIndex = '10015';
   d.innerHTML = `
-  <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
+  <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title">${t.emoji} Atualizar Saldo — ${esc(pos.ticker)}</span>
       <button class="modal-close" onclick="closeModal('invBalanceModal')">✕</button>
     </div>
     <div class="modal-body">
       <div style="background:var(--surface2);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:.83rem;line-height:1.7">
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Posição atual:</span> <strong>${qty.toLocaleString('pt-BR',{maximumFractionDigits:6})} ${esc(pos.ticker)}</strong></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Custo total:</span> <strong>${fmt(cost)}</strong></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Valor de mercado atual:</span> <strong>${mv ? fmt(mv) : '—'}</strong></div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)">Posição atual:</span>
+          <strong>${qty.toLocaleString('pt-BR',{maximumFractionDigits:6})} ${esc(pos.ticker)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)">Custo total:</span>
+          <strong>${fmt(costNative, cur)}${isFx ? ' <span style="font-size:.72rem;color:var(--muted)">≈ ' + fmt(typeof toBRL==='function'?toBRL(costNative,cur):costNative) + '</span>' : ''}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)">Mercado atual:</span>
+          <strong>${mvNative > 0 ? fmt(mvNative, cur) : '—'}${isFx && mvNative > 0 ? ' <span style="font-size:.72rem;color:var(--muted)">≈ ' + fmt(mvBRL) + '</span>' : ''}</strong>
+        </div>
       </div>
+      ${isFx ? `<div style="background:rgba(29,78,216,.07);border:1px solid rgba(29,78,216,.18);border-radius:8px;padding:9px 12px;font-size:.78rem;color:#1d4ed8;margin-bottom:12px">
+        💡 Esta posição está em <strong>${cur}</strong>. Informe o valor em <strong>${cur} (${curSymbol})</strong>.<br>
+        A conversão para BRL será feita automaticamente pela cotação atual.
+      </div>` : ''}
       <div class="form-group">
-        <label style="font-weight:700">Saldo atual da posição (R$) *</label>
+        <label style="font-weight:700">Saldo atual da posição (${curSymbol}) *</label>
         <input type="text" id="invBalanceInput" inputmode="decimal" placeholder="0,00"
           style="font-size:1.1rem;font-weight:700;text-align:right"
           oninput="_invFmtBalanceInput(this)" onblur="_invFmtPriceBlur(this)">
         <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
-          Informe o valor financeiro total atual desta posição.
+          Informe o valor total atual em <strong>${cur}</strong>.
+          ${isFx ? 'Ex: se a posição vale €' + (mvNative > 0 ? mvNative.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0,00') + ', escreva esse valor.' : ''}
         </div>
       </div>
       <div id="invBalancePreview" style="display:none;margin-top:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:.83rem;line-height:1.8"></div>
@@ -1634,25 +1935,35 @@ function _invUpdateBalancePreview() {
   if (!preview) return;
   const rawVal = document.getElementById('invBalanceInput')?.value || '';
   const newBalance = parseFloat(rawVal.replace(/\./g,'').replace(',','.')) || 0;
-  // Find the position via the save button's onclick attribute
   const btn = document.getElementById('invBalanceSaveBtn');
   if (!btn) return;
   const posId = btn.getAttribute('onclick').match(/'([^']+)'/)?.[1];
   const pos = posId ? _inv.positions.find(p => p.id === posId) : null;
   if (!pos || newBalance <= 0) { preview.style.display = 'none'; return; }
-  const qty    = +(pos.quantity) || 0;
-  const cost   = _invCost(pos);
-  const pnl    = newBalance - cost;
-  const pct    = cost ? (pnl / cost * 100) : 0;
+  const _prvAccObj = (state?.accounts || []).find(a => a.id === pos.account_id);
+  const cur      = (pos.currency && pos.currency !== 'BRL')
+                   ? pos.currency
+                   : (_prvAccObj?.currency && _prvAccObj.currency !== 'BRL' ? _prvAccObj.currency : (pos.currency || 'BRL'));
+  const isFx     = cur !== 'BRL';
+  const qty      = +(pos.quantity) || 0;
+  // cost and balance are in native currency for FX positions
+  const costNative = qty * (+(pos.avg_cost) || 0);
+  const pnl      = newBalance - costNative;
+  const pct      = costNative ? (pnl / costNative * 100) : 0;
   const newPrice = qty > 0 ? newBalance / qty : 0;
   const pnlColor = pnl >= 0 ? 'var(--green,#16a34a)' : 'var(--danger,#dc2626)';
+  // BRL equivalent for FX
+  const newBalBRL = isFx && typeof toBRL === 'function' ? toBRL(newBalance, cur) : newBalance;
+  const pnlBRL    = isFx && typeof toBRL === 'function' ? toBRL(pnl, cur) : pnl;
   preview.style.display = '';
   preview.innerHTML = `
     <div style="font-weight:700;margin-bottom:6px;font-size:.85rem">Resumo da consolidação:</div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Novo preço unitário calculado:</span><strong>${fmt(newPrice)}</strong></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Novo preço unitário:</span>
+      <strong>${fmt(newPrice, cur)}${isFx ? '<span style="font-size:.68rem;color:var(--muted)"> ≈ '+fmt(typeof toBRL==='function'?toBRL(newPrice,cur):newPrice)+'</span>' : ''}</strong></div>
     <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Ganho / Perda:</span>
-      <strong style="color:${pnlColor}">${pnl >= 0 ? '+' : ''}${fmt(pnl)} (${pct.toFixed(2)}%)</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Novo valor de mercado:</span><strong>${fmt(newBalance)}</strong></div>
+      <strong style="color:${pnlColor}">${pnl>=0?'+':''}${fmt(pnl,cur)} (${pct.toFixed(2)}%)${isFx ? '<span style="font-size:.68rem;color:var(--muted)"> ≈ '+(pnlBRL>=0?'+':'')+fmt(Math.abs(pnlBRL))+'</span>' : ''}</strong></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Novo valor total:</span>
+      <strong>${fmt(newBalance, cur)}${isFx ? '<span style="font-size:.68rem;color:var(--muted)"> ≈ '+fmt(newBalBRL)+'</span>' : ''}</strong></div>
   `;
 }
 
@@ -1671,12 +1982,18 @@ async function saveInvBalance(positionId) {
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) return;
   const qty = +(pos.quantity) || 0;
-  if (qty <= 0) {
-    if (errEl) { errEl.textContent = 'Esta posicao tem quantidade zero — registre uma compra primeiro.'; errEl.style.display = ''; }
+
+  // For fundo/renda_fixa in "simple" mode (qty=1), the total IS the price
+  const isSimpleMode = ['fundo','renda_fixa','outro'].includes(pos.asset_type) && qty <= 1;
+
+  if (qty <= 0 && !isSimpleMode) {
+    if (errEl) { errEl.textContent = 'Esta posicao tem quantidade zero — registre um aporte primeiro.'; errEl.style.display = ''; }
     return;
   }
 
-  const newPrice = newBalance / qty;
+  // qty=1 for simple mode positions means current_price = total value
+  const effectiveQty = isSimpleMode ? 1 : qty;
+  const newPrice = newBalance / effectiveQty;
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   try {
@@ -1800,11 +2117,16 @@ async function saveInvSimple() {
       ? _inv.positions.find(p => p.id === posId)
       : _inv.positions.find(p => p.account_id === accId && p.ticker === ticker);
 
+    // Inherit account currency
+    const _smpAcc  = _invAccounts().find(a => a.id === accId);
+    const _smpCur  = _smpAcc?.currency || 'BRL';
+    const _smpBRL  = _smpCur !== 'BRL' && typeof toBRL === 'function' ? toBRL(total, _smpCur) : total;
+
     if (!position) {
       const { data: newPos, error: posErr } = await sb.from('investment_positions').insert({
         family_id:  famId(), account_id: accId, ticker,
         asset_type: assetT, name: name || ticker,
-        quantity: 0, avg_cost: 0, currency: 'BRL',
+        quantity: 0, avg_cost: 0, currency: _smpCur,
       }).select().single();
       if (posErr) throw posErr;
       position = newPos;
@@ -1825,11 +2147,12 @@ async function saveInvSimple() {
     }).eq('id', position.id);
     if (updErr) throw updErr;
 
-    // Transacao financeira
-    const txDesc = `Aporte: ${ticker} — ${fmt(total)}`;
+    // Transacao financeira em moeda nativa da conta
+    const txDesc = `Aporte: ${ticker} — ${fmt(total, _smpCur)}`;
     const { data: txData, error: txErr } = await sb.from('transactions').insert({
       family_id: famId(), account_id: accId, date,
       description: txDesc, amount: -total,
+      brl_amount: -_smpBRL, currency: _smpCur,
       memo: notes || null, status: 'confirmed', is_transfer: false,
     }).select().single();
     if (txErr) throw txErr;
@@ -1838,13 +2161,13 @@ async function saveInvSimple() {
     await sb.from('investment_transactions').insert({
       family_id: famId(), position_id: position.id, account_id: accId,
       tx_id: txData.id, type: 'buy',
-      quantity: 1, unit_price: total, total_brl: total,
+      quantity: 1, unit_price: total, total_brl: _smpBRL,
       date, notes: (notes ? notes + ' · ' : '') + '[aporte simplificado]',
     });
 
-    await _invSavePrice(position, total, 'BRL', date, 'manual');
+    await _invSavePrice(position, total, _smpCur, date, 'manual');
 
-    toast(`✅ Aporte de ${fmt(total)} em ${ticker} registrado!`, 'success');
+    toast(`✅ Aporte de ${fmt(total, _smpCur)} em ${ticker} registrado!`, 'success');
     closeModal('invTxModal');
     await loadInvestments(true);
     DB.accounts.bust(); await DB.accounts.load(true);
@@ -1910,7 +2233,7 @@ async function saveEditInvTransaction(originalTxId, positionId) {
   const btn    = document.getElementById('invTxSaveBtn');
   const type   = document.getElementById('invTxType').value;
   const date   = document.getElementById('invTxDate').value;
-  const qtyRaw = parseFloat(document.getElementById('invTxQty').value.replace(',','.'));
+  const qtyRaw = parseFloat(document.getElementById('invTxQty').value.replace(/\./g,'').replace(',','.'));
   const priceRaw = _invReadPrice(document.getElementById('invTxPrice'));
   const notesRaw = document.getElementById('invTxNotes').value.trim();
   const brokerSel = document.getElementById('invTxBroker')?.value || '';
@@ -2061,3 +2384,296 @@ window._invMarketValue                     = _invMarketValue;
 window.applyInvestmentsFeature             = applyInvestmentsFeature;
 window.invTotalPortfolioValue              = invTotalPortfolioValue;
 window.loadInvestments                     = loadInvestments;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARTEIRAS DE INVESTIMENTO (Investment Portfolios)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function _renderPortfoliosSection() {
+  const portfolios = _inv.portfolios || [];
+  if (!portfolios.length) return '';
+
+  return `
+  <div class="inv-pf-section">
+    <div class="inv-pf-section-hdr">
+      <span class="inv-pf-section-title">💼 Carteiras</span>
+      <button class="btn btn-ghost btn-sm" onclick="openInvPortfolioModal()">Gerenciar</button>
+    </div>
+    <div class="inv-pf-cards">
+      ${portfolios.map(pf => _renderPortfolioCard(pf)).join('')}
+    </div>
+  </div>`;
+}
+
+function _renderPortfolioCard(pf) {
+  const positions = _inv.positions.filter(p => p.portfolio_id === pf.id && +(p.quantity) > 0);
+  const cur  = pf.currency || 'BRL';
+  const isFx = cur !== 'BRL';
+
+  // Market value in portfolio currency
+  const mvNative = positions.reduce((s,p) => {
+    const pCur = (p.currency && p.currency !== 'BRL') ? p.currency
+               : ((state.accounts||[]).find(a=>a.id===p.account_id)?.currency || 'BRL');
+    const price = +(p.current_price || 0);
+    const qty   = +(p.quantity || 0);
+    // convert to portfolio currency if needed
+    if (pCur === cur) return s + qty * price;
+    // cross-currency: go through BRL
+    const brl = _invMarketValue(p);
+    return s + (typeof fromBRL === 'function' ? fromBRL(brl, cur) : (isFx ? brl : brl));
+  }, 0);
+
+  const costNative = positions.reduce((s,p) => {
+    const pCur = (p.currency && p.currency !== 'BRL') ? p.currency
+               : ((state.accounts||[]).find(a=>a.id===p.account_id)?.currency || 'BRL');
+    const cost = (+(p.quantity||0)) * (+(p.avg_cost||0));
+    if (pCur === cur) return s + cost;
+    const costBRL = (pCur !== 'BRL' && typeof toBRL === 'function') ? toBRL(cost, pCur) : cost;
+    return s + (isFx ? (typeof fromBRL === 'function' ? fromBRL(costBRL, cur) : costBRL) : costBRL);
+  }, 0);
+
+  const pnl    = mvNative - costNative;
+  const pnlPct = costNative > 0 ? (pnl / costNative * 100) : 0;
+  const pnlPos = pnl >= 0;
+  const col    = pf.color || '#2a6049';
+
+  // Mini allocation bar
+  const totalMVBRL = positions.reduce((s,p) => s + _invMarketValue(p), 0);
+  const byType = {};
+  positions.forEach(p => {
+    const k = p.asset_type || 'outro';
+    byType[k] = (byType[k]||0) + _invMarketValue(p);
+  });
+  const COLORS = {acao_br:'#2a6049',fii:'#7c3aed',etf_br:'#0891b2',acao_us:'#dc2626',etf_us:'#ea580c',bdr:'#d97706',crypto:'#f59e0b',renda_fixa:'#16a34a',outro:'#94a3b8'};
+  const miniBar = totalMVBRL > 0
+    ? `<div class="inv-pf-minibar">${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div style="flex:${(v/totalMVBRL*100).toFixed(1)};background:${COLORS[k]||'#94a3b8'};min-width:3px"></div>`).join('')}</div>` : '';
+
+  return `
+  <div class="inv-pf-card" style="--pf-col:${col}" onclick="_openPortfolioDetail('${pf.id}')">
+    <div class="inv-pf-card-top">
+      <span class="inv-pf-card-icon">${(pf.icon||'💼').replace(/^emoji-/,'')}</span>
+      <div class="inv-pf-card-info">
+        <div class="inv-pf-card-name">${esc(pf.name)}</div>
+        <div class="inv-pf-card-meta">${positions.length} ativo${positions.length!==1?'s':''} · ${cur}</div>
+      </div>
+    </div>
+    ${miniBar}
+    <div class="inv-pf-card-mv">${fmt(mvNative, cur)}</div>
+    <div class="inv-pf-card-pnl ${pnlPos?'pos':'neg'}">
+      ${pnlPos?'▲':'▼'} ${pnlPos?'+':''}${fmt(Math.abs(pnl),cur)}
+      <span class="inv-pf-card-pct">(${pnlPos?'+':''}${pnlPct.toFixed(1)}%)</span>
+    </div>
+  </div>`;
+}
+
+// ── Portfolio detail modal ────────────────────────────────────────────────────
+function _openPortfolioDetail(pfId) {
+  const pf = (_inv.portfolios||[]).find(p=>p.id===pfId);
+  if (!pf) return;
+
+  const positions = _inv.positions.filter(p => p.portfolio_id === pfId && +(p.quantity)>0);
+  const cur = pf.currency || 'BRL';
+  const col = pf.color || '#2a6049';
+
+  const rows = positions.sort((a,b)=>_invMarketValue(b)-_invMarketValue(a)).map(p => {
+    const acc    = (state.accounts||[]).find(a=>a.id===p.account_id);
+    const pCur   = (p.currency&&p.currency!=='BRL') ? p.currency : (acc?.currency||'BRL');
+    const isFxP  = pCur !== 'BRL';
+    const qty    = +(p.quantity||0);
+    const price  = +(p.current_price||0);
+    const avgc   = +(p.avg_cost||0);
+    const mvNat  = qty * price;
+    const mvBRL  = _invMarketValue(p);
+    const pnlNat = mvNat - qty*avgc;
+    const pnlPct = avgc>0 ? (pnlNat/(qty*avgc)*100) : 0;
+    const pnlPos = pnlNat >= 0;
+    return `
+    <div class="inv-pf-pos-row">
+      <div class="inv-pf-pos-left">
+        <span class="inv-pf-pos-tick">${esc(p.ticker||'—')}</span>
+        <span class="inv-pf-pos-name">${esc(p.name||'')} · ${acc?esc(acc.name):''}</span>
+      </div>
+      <div class="inv-pf-pos-vals">
+        <span class="inv-pf-pos-mv">${isFxP?fmt(mvNat,pCur):fmt(mvBRL)}</span>
+        <span class="inv-pf-pos-pnl ${pnlPos?'pos':'neg'}">${pnlPos?'+':''}${pnlPct.toFixed(1)}%</span>
+        <span class="inv-pf-pos-btns">
+          <button class="btn-icon" onclick="openInvBalanceModal('${p.id}')" title="Atualizar cotação" style="font-size:.8rem">💰</button>
+          <button class="btn-icon" onclick="openInvTransactionModal(null,'${p.id}')" title="Nova movimentação">+</button>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+
+  openModal('invPortfolioDetailModal');
+  const body = document.getElementById('invPfDetailBody');
+  if (body) body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="font-size:2rem">${(pf.icon||'💼').replace(/^emoji-/,'')}</span>
+      <div>
+        <div style="font-size:1rem;font-weight:800;color:var(--text)">${esc(pf.name)}</div>
+        <div style="font-size:.75rem;color:var(--muted)">${positions.length} posições · ${cur}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="updateAllPrices()" title="Atualizar cotações de todos os ativos">🔄</button>
+        <button class="btn btn-ghost btn-sm" onclick="openInvPortfolioModal('${pfId}')">✏️ Editar</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="_deleteInvPortfolio('${pfId}')">🗑️</button>
+      </div>
+    </div>
+    ${rows || '<div style="color:var(--muted);text-align:center;padding:20px">Nenhuma posição vinculada</div>'}`;
+}
+window._openPortfolioDetail = _openPortfolioDetail;
+
+// ── Create / Edit portfolio modal ─────────────────────────────────────────────
+function openInvPortfolioModal(editId = null) {
+  const pf = editId ? (_inv.portfolios||[]).find(p=>p.id===editId) : null;
+  const existing = _inv.portfolios || [];
+
+  // Build position checkboxes grouped by account
+  const openPositions = _inv.positions.filter(p=>+(p.quantity)>0);
+  const posHtml = openPositions.length ? openPositions.map(p => {
+    const acc = (state.accounts||[]).find(a=>a.id===p.account_id);
+    const checked = pf && p.portfolio_id === pf.id ? 'checked' : '';
+    return `<label class="inv-pf-pos-check">
+      <input type="checkbox" name="invPfPos" value="${p.id}" ${checked}>
+      <span class="inv-pf-pos-chk-info">
+        <strong>${esc(p.ticker)}</strong>
+        <span>${esc(p.name||'')}${acc?' · '+esc(acc.name):''}</span>
+      </span>
+    </label>`;
+  }).join('') : '<div style="color:var(--muted);font-size:.84rem;padding:8px">Nenhuma posição aberta encontrada.</div>';
+
+  // Color picker
+  const PALETTE = ['#2a6049','#1d4ed8','#7c3aed','#dc2626','#ea580c','#d97706','#16a34a','#0891b2','#94a3b8','#374151'];
+  const colorPicker = PALETTE.map(c=>`<button type="button" class="inv-pf-color-swatch${(pf?.color||'#2a6049')===c?' active':''}" style="background:${c}" onclick="_invPfSelectColor('${c}',this)" data-color="${c}"></button>`).join('');
+
+  const html = `
+  <div id="invPortfolioFormModal" class="modal-overlay open" onclick="if(event.target===this)closeModal('invPortfolioFormModal')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+      <div class="modal-header">
+        <span class="modal-title">${pf?'✏️ Editar Carteira':'💼 Nova Carteira'}</span>
+        <button class="modal-close" onclick="closeModal('invPortfolioFormModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="invPfEditId" value="${pf?.id||''}">
+        <div class="form-group">
+          <label class="form-label">Nome da carteira *</label>
+          <input type="text" id="invPfName" class="form-input" placeholder="Ex: Renda Variável Brasil" value="${esc(pf?.name||'')}">
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="form-group">
+            <label class="form-label">Moeda</label>
+            <select id="invPfCurrency" class="form-input">
+              <option value="BRL" ${(!pf||pf.currency==='BRL')?'selected':''}>BRL 🇧🇷</option>
+              <option value="EUR" ${pf?.currency==='EUR'?'selected':''}>EUR 🇪🇺</option>
+              <option value="USD" ${pf?.currency==='USD'?'selected':''}>USD 🇺🇸</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ícone</label>
+            <input type="text" id="invPfIcon" class="form-input" placeholder="💼" maxlength="4" value="${esc((pf?.icon||'💼').replace(/^emoji-/,''))}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cor</label>
+          <div class="inv-pf-color-row" id="invPfColorRow">${colorPicker}</div>
+          <input type="hidden" id="invPfColor" value="${pf?.color||'#2a6049'}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição (opcional)</label>
+          <input type="text" id="invPfDesc" class="form-input" placeholder="Descrição breve" value="${esc(pf?.description||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Posições vinculadas</label>
+          <div class="inv-pf-pos-list">${posHtml}</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('invPortfolioFormModal')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveInvPortfolio()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('invPortfolioFormModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.openInvPortfolioModal = openInvPortfolioModal;
+
+function _invPfSelectColor(color, btn) {
+  document.getElementById('invPfColor').value = color;
+  document.querySelectorAll('.inv-pf-color-swatch').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+window._invPfSelectColor = _invPfSelectColor;
+
+async function saveInvPortfolio() {
+  const id    = document.getElementById('invPfEditId')?.value;
+  const name  = document.getElementById('invPfName')?.value?.trim();
+  if (!name) { toast('Informe o nome da carteira', 'error'); return; }
+
+  const data = {
+    family_id:   famId(),
+    name,
+    currency:    document.getElementById('invPfCurrency')?.value || 'BRL',
+    icon:        (document.getElementById('invPfIcon')?.value?.trim() || '💼').replace(/^emoji-/,''),
+    color:       document.getElementById('invPfColor')?.value || '#2a6049',
+    description: document.getElementById('invPfDesc')?.value?.trim() || null,
+    updated_at:  new Date().toISOString(),
+  };
+
+  let pfId = id;
+  try {
+    if (id) {
+      const { error } = await sb.from('investment_portfolios').update(data).eq('id', id);
+      if (error) throw error;
+    } else {
+      data.created_by = currentUser?.app_user_id || currentUser?.id;
+      const { data: row, error } = await sb.from('investment_portfolios').insert(data).select().single();
+      if (error) throw error;
+      pfId = row.id;
+    }
+
+    // Update position links
+    const checked   = [...document.querySelectorAll('input[name="invPfPos"]:checked')].map(el=>el.value);
+    const unchecked = [...document.querySelectorAll('input[name="invPfPos"]:not(:checked)')].map(el=>el.value);
+
+    const updates = [];
+    if (checked.length)   updates.push(sb.from('investment_positions').update({ portfolio_id: pfId   }).in('id', checked));
+    if (unchecked.length) updates.push(sb.from('investment_positions').update({ portfolio_id: null   }).in('id', unchecked));
+    await Promise.all(updates.map(q => q));
+
+    toast(id ? '✓ Carteira atualizada!' : '✓ Carteira criada!', 'success');
+    closeModal('invPortfolioFormModal');
+    await loadInvestments(true);
+    _renderInvestmentsPage();
+    // Refresh portfolio section
+    const pfs = document.getElementById('invPortfoliosSection');
+    if (pfs) pfs.innerHTML = _renderPortfoliosSection();
+  } catch(e) {
+    toast('Erro ao salvar carteira: ' + (e.message||e), 'error');
+  }
+}
+window.saveInvPortfolio = saveInvPortfolio;
+
+async function _deleteInvPortfolio(pfId) {
+  const pf = (_inv.portfolios||[]).find(p=>p.id===pfId);
+  if (!confirm(`Excluir carteira "${pf?.name}"? Os ativos não serão excluídos, apenas desvinculados.`)) return;
+  try {
+    // Unlink positions first
+    await sb.from('investment_positions').update({ portfolio_id: null }).eq('portfolio_id', pfId);
+    const { error } = await sb.from('investment_portfolios').delete().eq('id', pfId);
+    if (error) throw error;
+    toast('Carteira excluída', 'info');
+    closeModal('invPortfolioDetailModal');
+    closeModal('invPortfolioFormModal');
+    await loadInvestments(true);
+    _renderInvestmentsPage();
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+window._deleteInvPortfolio = _deleteInvPortfolio;
+

@@ -1007,6 +1007,43 @@ window._geminiInjectThinking = _geminiInjectThinking;
  */
 const _geminiRawFetch = window.fetch.bind(window);  // capture BEFORE any wrapper is added
 
+// ── Gemini model fallback chain ──────────────────────────────────────────
+// When a model returns 404 or "not found / no longer available / deprecated",
+// geminiRetryFetch automatically tries each model in this list in order.
+const GEMINI_MODEL_CHAIN = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-001',
+  'gemini-1.5-flash-001',  // last resort
+];
+
+/** Extract the model name from a Gemini URL */
+function _geminiModelFromUrl(url) {
+  const m = url.match(/models\/([^:?]+)/);
+  return m ? m[1] : null;
+}
+
+/** Replace model name in a Gemini URL */
+function _geminiReplaceModel(url, newModel) {
+  return url.replace(/models\/[^:?]+/, 'models/' + newModel);
+}
+
+/** Returns true if the error message indicates the model is unavailable/deprecated */
+function _isGeminiModelUnavailable(status, msg) {
+  if (status === 404) return true;
+  const lower = (msg || '').toLowerCase();
+  return (
+    lower.includes('not found') ||
+    lower.includes('no longer available') ||
+    lower.includes('deprecated') ||
+    lower.includes('does not exist') ||
+    lower.includes('not supported for') ||
+    lower.includes('is not supported') ||
+    lower.includes('new users') ||     // "no longer available to new users"
+    lower.includes('unsupported model')
+  );
+}
+
 async function geminiRetryFetch(url, body, opts = {}) {
   const maxRetries = opts.maxRetries ?? 3;
   const backoff    = opts.backoffMs  ?? [5000, 12000, 25000];
@@ -1043,6 +1080,24 @@ async function geminiRetryFetch(url, body, opts = {}) {
     const errBody = await resp.json().catch(() => ({}));
     const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
 
+    // ── Model unavailable / deprecated / not found ──────────────────────
+    // Automatically try the next model in the fallback chain
+    if (_isGeminiModelUnavailable(resp.status, errMsg)) {
+      const currentModel = _geminiModelFromUrl(url);
+      const chainIdx     = GEMINI_MODEL_CHAIN.indexOf(currentModel);
+      const nextModel    = chainIdx >= 0 && chainIdx + 1 < GEMINI_MODEL_CHAIN.length
+                           ? GEMINI_MODEL_CHAIN[chainIdx + 1]
+                           : (currentModel !== GEMINI_MODEL_CHAIN[0] ? GEMINI_MODEL_CHAIN[0] : null);
+
+      if (nextModel && nextModel !== currentModel) {
+        console.warn(`[Gemini] model "${currentModel}" unavailable (${resp.status}: ${errMsg}). Trying "${nextModel}"…`);
+        const nextUrl = _geminiReplaceModel(url, nextModel);
+        // Reinject thinking config for the new model
+        const nextBody = _geminiInjectThinking(body, nextUrl);
+        return geminiRetryFetch(nextUrl, nextBody, { ...opts, maxRetries: Math.max(1, maxRetries - 1) });
+      }
+    }
+
     // Retryable errors
     if ((resp.status === 429 || resp.status === 503) && attempt < maxRetries) {
       lastErr = new Error(resp.status === 429
@@ -1065,7 +1120,7 @@ async function geminiRetryFetch(url, body, opts = {}) {
     if (resp.status === 429)
       throw new Error('Limite de requisições atingido. Aguarde 1 minuto e tente novamente.');
     if (resp.status === 503)
-      throw new Error('Modelo indisponível (alta demanda). Tente outro modelo em Configurações → IA.');
+      throw new Error('Modelo indisponível (alta demanda). Tente novamente em alguns minutos.');
 
     throw new Error(errMsg);
   }

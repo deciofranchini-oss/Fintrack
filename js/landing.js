@@ -102,6 +102,123 @@ document.addEventListener('DOMContentLoaded', () => {
   if (wlR) wlR.addEventListener('change', () => _lTelTrack('waitlist_role_select', { role: wlR.value }));
 });
 
+/* ── Modo de assinatura — adapta landing dinamicamente ─────────── */
+let _subCfg = null;
+
+async function _landingLoadSubConfig() {
+  try {
+    const { data } = await _sb.from('app_settings')
+      .select('value').eq('key', 'subscription_config').maybeSingle();
+    _subCfg = data?.value || { mode: 'beta' };
+  } catch(_) { _subCfg = { mode: 'beta' }; }
+  _landingApplyMode();
+}
+
+function _landingApplyMode() {
+  const cfg = _subCfg || { mode: 'beta' };
+  const isProd = cfg.mode === 'production';
+  const priceBrl = Number(cfg.price_brl || 29.90).toFixed(2).replace('.', ',');
+  const trialDays = cfg.trial_days || 30;
+
+  // ── Ribbon ────────────────────────────────────────────────────────────
+  const ribbonBadge = document.getElementById('ribbonBadge');
+  const ribbonText  = document.getElementById('ribbonText');
+  if (ribbonBadge && isProd) ribbonBadge.textContent = 'PRODUÇÃO';
+  if (ribbonText && isProd) ribbonText.innerHTML = `Trial <strong>${trialDays} dias grátis</strong> · R$ ${priceBrl}/mês após · <strong>Toda a família incluída.</strong>`;
+
+  // Nav badge
+  const navBadge = document.getElementById('navBadge');
+  if (navBadge && isProd) navBadge.textContent = `✦ Trial ${trialDays} dias grátis`;
+
+  // ── Badge no hero ────────────────────────────────────────────────────
+  const badge = document.querySelector('.badge');
+  if (badge) badge.innerHTML = isProd
+    ? `<div class="bdot"></div>PLANO FAMÍLIA · R$ ${priceBrl}/MÊS<div class="bdot"></div>`
+    : badge.innerHTML;
+
+  // ── CTA principal ────────────────────────────────────────────────────
+  document.querySelectorAll('a.ctp').forEach(a => {
+    if (isProd) {
+      a.textContent = '🚀 Começar ' + trialDays + ' dias grátis';
+      a.href = 'app.html';
+    }
+  });
+
+  // ── Texto do hero sub ────────────────────────────────────────────────
+  const hsub = document.querySelector('.hsub');
+  if (hsub && isProd) {
+    const small = hsub.querySelector('small') || document.createElement('small');
+    small.style.cssText = 'display:block;margin-top:10px;font-size:.78rem;opacity:.65';
+    small.textContent = `✓ ${trialDays} dias grátis · R$ ${priceBrl}/mês após o trial · Cancele quando quiser`;
+    if (!hsub.querySelector('small')) hsub.appendChild(small);
+  }
+
+  // ── Seção de preço ───────────────────────────────────────────────────
+  let pricingSection = document.getElementById('pricingSection');
+  if (isProd) {
+    if (!pricingSection) {
+      pricingSection = document.createElement('section');
+      pricingSection.id = 'pricingSection';
+      pricingSection.style.cssText = 'padding:80px 24px;background:var(--cream,#f9f6f0)';
+      pricingSection.innerHTML = `
+        <div style="max-width:480px;margin:0 auto;text-align:center">
+          <div style="font-size:.65rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#2a6049;margin-bottom:14px">Plano único · Sem surpresas</div>
+          <h2 style="font-family:var(--serif,Georgia);font-size:clamp(1.8rem,4vw,2.6rem);font-weight:600;color:#0a1e12;margin-bottom:8px">Simples e transparente</h2>
+          <p style="color:#4a6359;font-size:.92rem;margin-bottom:36px;line-height:1.7">Um único plano que inclui toda a família — sem cobrar por membro adicional.</p>
+
+          <div style="background:#fff;border-radius:24px;padding:40px 32px;box-shadow:0 12px 40px rgba(10,30,18,.08);border:1px solid rgba(42,96,73,.1)">
+            <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#2a6049;margin-bottom:8px">Plano Família</div>
+            <div id="lndPrice" style="font-size:3rem;font-weight:800;color:#0a1e12;line-height:1">R$ ${priceBrl}<span style="font-size:1rem;font-weight:400;color:#4a6359">/mês</span></div>
+            <div style="font-size:.8rem;color:#4a6359;margin-top:6px;margin-bottom:28px">${trialDays} dias grátis para começar</div>
+            <div style="display:flex;flex-direction:column;gap:10px;text-align:left;margin-bottom:28px">
+              ${['Família inteira incluída (sem custo adicional)','IA embarcada — insights automáticos','Telegram Bot para registro por mensagem','40+ funcionalidades completas','Suporte dedicado','Cancele a qualquer momento'].map(f=>`<div style="display:flex;align-items:center;gap:10px;font-size:.85rem;color:#1a3a28"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>${f}</div>`).join('')}
+            </div>
+            <a href="app.html" style="display:block;padding:15px;background:linear-gradient(135deg,#2a6049,#1a3d2d);color:#fff;border-radius:14px;text-decoration:none;font-weight:700;font-size:.95rem;letter-spacing:-.01em">
+              🚀 Começar ${trialDays} dias grátis →
+            </a>
+            <p style="font-size:.72rem;color:#4a6359;margin-top:10px">Sem cartão necessário durante o trial</p>
+          </div>
+        </div>`;
+      // Insert before the waitlist section
+      const waitlistSection = document.getElementById('acesso')?.closest('section') || document.querySelector('section.cta');
+      if (waitlistSection) waitlistSection.before(pricingSection);
+      else document.querySelector('footer')?.before(pricingSection);
+    }
+  } else if (pricingSection) {
+    pricingSection.style.display = 'none';
+  }
+
+  // ── Texto da seção CTA (waitlist) ────────────────────────────────────
+  const ctaEy = document.querySelector('.ctaey');
+  if (ctaEy) ctaEy.textContent = isProd
+    ? '✦ Trial Gratuito · ' + trialDays + ' Dias'
+    : ctaEy.textContent;
+
+  const ctatit = document.querySelector('.ctatit');
+  if (ctatit) ctatit.innerHTML = isProd
+    ? `Comece grátis por<br>${trialDays} dias`
+    : ctatit.innerHTML;
+
+  const ctasub = document.querySelector('.ctasub');
+  if (ctasub && isProd) ctasub.innerHTML = `Crie sua conta e tenha <strong>${trialDays} dias de acesso gratuito</strong> a todas as funcionalidades. Após o trial, apenas <strong>R$ ${priceBrl}/mês</strong> para toda a família — sem cobrar por membro adicional.`;
+
+  // ── Botão do formulário ──────────────────────────────────────────────
+  const wlBT = document.getElementById('wlBT');
+  if (wlBT && isProd) wlBT.textContent = '🚀 Começar trial gratuito';
+
+  // ── Rodapé do formulário ─────────────────────────────────────────────
+  const wlPr = document.querySelector('.wpr');
+  if (wlPr && isProd) wlPr.textContent = `✓ ${trialDays} dias grátis · Cartão necessário apenas após o trial · Cancele a qualquer hora`;
+
+  // ── Footer badge hero ────────────────────────────────────────────────
+  const heroBadge = document.querySelector('[style*="Acesso liberado em ordem"]') ||
+    [...document.querySelectorAll('div')].find(d => d.textContent.includes('Acesso liberado em ordem'));
+  if (heroBadge && isProd) heroBadge.textContent = `Trial ${trialDays} dias · R$ ${priceBrl}/mês após · Toda a família incluída`;
+}
+
+// Executar na carga
+_landingLoadSubConfig();
+
 /* ── Carrega EmailJS + Gemini key do Supabase ──────────────────── */
 (async () => {
   try {

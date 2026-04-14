@@ -223,6 +223,18 @@ async function confirmTxClipImport() {
   }
 }
 
+// ── Ctrl/Cmd+F → focus search when on transactions page ─────────────────────
+(function() {
+  let _txKbHandler = null;
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
+        typeof state !== 'undefined' && state.currentPage === 'transactions') {
+      const inp = document.getElementById('txSearch');
+      if (inp) { e.preventDefault(); inp.focus(); inp.select(); }
+    }
+  });
+})();
+
 async function loadTransactions(){
   // Restore collapsed/expanded state of filter panel
   if (typeof _txRestoreFilterPanel === 'function') _txRestoreFilterPanel();
@@ -238,6 +250,17 @@ async function loadTransactions(){
     state.transactions = result.data;
     state.txTotal      = result.count;
     state.txRunningBalanceMap = {};
+    // Update result count badge if search active
+    const _srch = state.txFilter?.search;
+    const _countBadge = document.getElementById('txResultCount');
+    if (_countBadge) {
+      if (_srch && result.count !== null) {
+        _countBadge.textContent = result.count + ' resultado' + (result.count !== 1 ? 's' : '');
+        _countBadge.style.display = '';
+      } else {
+        _countBadge.style.display = 'none';
+      }
+    }
 
     const singleAccId = state.txFilter?.account || '';
     if (singleAccId && state.txView === 'flat') {
@@ -295,7 +318,11 @@ const _tagsState  = { tags: [], allTags: [], similarTags: [], activeIdx: -1 };
 
 let _filterTxDebounceTimer = null;
 function filterTransactions(immediate = false){
-  state.txFilter.search=document.getElementById('txSearch').value;
+  const searchEl = document.getElementById('txSearch');
+  state.txFilter.search = searchEl?.value || '';
+  // Show/hide clear button
+  const clearBtn = document.getElementById('txSearchClear');
+  if (clearBtn) clearBtn.style.display = state.txFilter.search ? '' : 'none';
   state.txFilter.month=document.getElementById('txMonth').value;
   state.txFilter.account=document.getElementById('txAccount').value;
   state.txFilter.type=document.getElementById('txType').value;
@@ -893,7 +920,8 @@ function renderTransactions(){
         const daySumHtml = daySum !== 0
           ? `<span class="tx-date-day-total ${daySum >= 0 ? 'pos' : 'neg'}">${daySum >= 0 ? '+' : ''}${fmt(daySum)}</span>`
           : '';
-        html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell"><span class="tx-date-label">${label}</span>${daySumHtml}</td></tr>`;
+        const isToday = txDateStr === TODAY_STR;
+        html += `<tr class="tx-date-header-row ${bandClass}${isToday ? ' tx-date-today' : ''}" ${isToday ? 'id="tx-today-row"' : ''}><td colspan="${colspan}" class="tx-date-header-cell"><span class="tx-date-label">${label}</span>${daySumHtml}</td></tr>`;
         lastDate = txDateStr;
       }
       const runningBal = (balMapArg && Object.prototype.hasOwnProperty.call(balMapArg, tx.id)) ? balMapArg[tx.id] : null;
@@ -1765,6 +1793,25 @@ function setTxType(type){
   // Show/hide card payment label
   const cpBadge = document.getElementById('txCardPaymentBadge');
   if(cpBadge) cpBadge.style.display = isCardPayment ? '' : 'none';
+
+  // Auto-pre-fill "Pagamento de Cartão de Crédito" category when switching to card_payment
+  if (isCardPayment) {
+    const CAT_NAME = 'Pagamento de Cartão de Crédito';
+    const cpCat = (state?.categories || []).find(c => c.name === CAT_NAME);
+    if (cpCat && typeof setCatPickerValue === 'function') {
+      setCatPickerValue(cpCat.id, cpCat.name, cpCat.icon || '💳');
+    }
+    // If not in state yet, async-fill after ensuring it exists
+    else if (!cpCat) {
+      _ensureCardPaymentCategory().then(catId => {
+        if (!catId) return;
+        const cat2 = (state?.categories || []).find(c => c.id === catId);
+        if (cat2 && typeof setCatPickerValue === 'function') {
+          setCatPickerValue(cat2.id, cat2.name, cat2.icon || '💳');
+        }
+      }).catch(() => {});
+    }
+  }
   const transferToLabel = document.querySelector('#txTransferToGroup label');
   if(transferToLabel) transferToLabel.textContent = isCardPayment ? 'Cartão de Crédito (Destino) *' : 'Conta Destino *';
   // Filter source account: card_payment origin cannot be a credit card account
@@ -2264,6 +2311,56 @@ async function saveTransactionAndAddNew() {
 }
 window.saveTransactionAndAddNew = saveTransactionAndAddNew;
 
+
+/** Ensures "Pagamento de Cartão de Crédito" category exists for this family.
+ *  Creates it if missing. Returns the category_id.
+ *  Idempotent — safe to call on every card payment save.
+ */
+async function _ensureCardPaymentCategory() {
+  const CAT_NAME = 'Pagamento de Cartão de Crédito';
+  const fid = famId();
+
+  // Check in-memory state first (fast path)
+  const existing = (state.categories || []).find(c =>
+    c.name === CAT_NAME && c.family_id === fid
+  );
+  if (existing) return existing.id;
+
+  // Not in state — check DB
+  const { data: dbCat } = await sb.from('categories')
+    .select('id').eq('family_id', fid).eq('name', CAT_NAME).maybeSingle();
+  if (dbCat?.id) {
+    // Add to state cache so next call is fast
+    if (state.categories && !state.categories.find(c => c.id === dbCat.id)) {
+      state.categories.push({ id: dbCat.id, name: CAT_NAME, family_id: fid,
+        icon: '💳', color: '#7c3aed', type: 'expense' });
+    }
+    return dbCat.id;
+  }
+
+  // Create it
+  const { data: newCat, error } = await sb.from('categories').insert({
+    family_id: fid,
+    name:      CAT_NAME,
+    icon:      '💳',
+    color:     '#7c3aed',
+    type:      'expense',
+  }).select('id').single();
+
+  if (error) {
+    console.warn('[cardPaymentCat] create error:', error.message);
+    return null;
+  }
+
+  // Add to state so it appears in pickers
+  if (state.categories) {
+    state.categories.push({ id: newCat.id, name: CAT_NAME, family_id: fid,
+      icon: '💳', color: '#7c3aed', type: 'expense' });
+  }
+  if (typeof populateSelects === 'function') populateSelects();
+  return newCat.id;
+}
+
 async function saveTransaction(){
   // ── Duplicate detection ──────────────────────────────────────────────────
   const _isEdit = !!document.getElementById('txId').value;
@@ -2450,7 +2547,9 @@ async function saveTransaction(){
     brl_amount: brlAmount,
     account_id:document.getElementById('txAccountId').value||null,
     payee_id:isTransfer?null:(document.getElementById('txPayeeId').value||null),
-    category_id:document.getElementById('txCategoryId').value||null,
+    category_id: isCardPayment
+      ? (await _ensureCardPaymentCategory() || document.getElementById('txCategoryId').value || null)
+      : (document.getElementById('txCategoryId').value||null),
     memo:document.getElementById('txMemo').value,
     tags:tags.length?tags:null,
     status: (document.getElementById('txStatus')?.value || 'confirmed'),
@@ -2687,7 +2786,7 @@ function _openTxAsCopy(orig) {
   if (typeof initTxFormMode === 'function') initTxFormMode();
 }
 async function deleteTransaction(id){
-  if(!confirm('Excluir transação?'))return;
+  if(!confirm('⚠️ Excluir esta transação definitivamente?\n\nEsta ação não pode ser desfeita.'))return;
   // 1. Null out any scheduled_occurrence that references this transaction
   //    (avoids FK / check-constraint violations when the row is deleted)
   await sb.from('scheduled_occurrences').update({transaction_id:null}).eq('transaction_id',id);
@@ -4107,3 +4206,28 @@ function _syncReceivablesBadge(count) {
 window.openReceivablesModal  = openReceivablesModal;
 window.closeReceivablesModal = closeReceivablesModal;
 window._syncReceivablesBadge = _syncReceivablesBadge;
+
+// ── Category picker for transactions filter ──────────────────────────────────
+function _txCatPickerOpen() {
+  openCatChooser('tx', function(catId, catName) {
+    const hidden = document.getElementById('txCategoryFilter');
+    const label  = document.getElementById('txCatPickLabel');
+    const btn    = document.getElementById('txCatPickBtn');
+    if (hidden) hidden.value = catId || '';
+    if (label)  { label.textContent = catName || 'Categoria'; label.style.color = catId ? 'var(--text)' : 'var(--muted)'; }
+    if (btn && catId) btn.style.borderColor = 'var(--accent)';
+    else if (btn)     btn.style.borderColor = '';
+    filterTransactions(true);
+  });
+}
+window._txCatPickerOpen = _txCatPickerOpen;
+
+function _txCatPickerReset() {
+  const hidden = document.getElementById('txCategoryFilter');
+  const label  = document.getElementById('txCatPickLabel');
+  const btn    = document.getElementById('txCatPickBtn');
+  if (hidden) hidden.value = '';
+  if (label)  { label.textContent = 'Categoria'; label.style.color = 'var(--muted)'; }
+  if (btn)    btn.style.borderColor = '';
+}
+window._txCatPickerReset = _txCatPickerReset;

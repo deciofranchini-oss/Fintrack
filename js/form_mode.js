@@ -665,10 +665,37 @@ async function saveAlertPrefsFromProfile() {
     await Promise.all([
       saveAppSetting(`pref_${uid}_alert_style`,    style).catch(()=>{}),
       saveAppSetting(`pref_${uid}_alert_duration`, duration).catch(()=>{}),
-      saveAppSetting(`pref_${uid}_alert_sound`,    sound).catch(()=>{}),
+      saveAppSetting(`pref_${uid}_alert_sound`,    String(sound)).catch(()=>{}),
     ]);
   }
 }
+
+/** Restore alert prefs from Supabase into localStorage + apply immediately.
+ *  Called on boot after app_settings are loaded (cross-device sync).
+ */
+async function restoreAlertPrefsFromDB() {
+  if (typeof getAppSetting !== 'function') return;
+  const uid = window.currentUser?.id || 'local';
+  try {
+    const [style, duration, sound] = await Promise.all([
+      getAppSetting(`pref_${uid}_alert_style`,    'toast'),
+      getAppSetting(`pref_${uid}_alert_duration`, '3200'),
+      getAppSetting(`pref_${uid}_alert_sound`,    'false'),
+    ]);
+    // Write to localStorage so getAlertStyle/Duration/Sound pick them up
+    try {
+      if (style)    localStorage.setItem(ALERT_STYLE_KEY(),    String(style));
+      if (duration) localStorage.setItem(ALERT_DURATION_KEY(), String(duration));
+      if (sound !== null && sound !== undefined)
+                    localStorage.setItem(ALERT_SOUND_KEY(),    String(sound));
+    } catch(_) {}
+    // Reload into open profile modal if it's open
+    if (document.getElementById('myProfileModal')?.style.display !== 'none') {
+      loadAlertPrefsIntoProfile();
+    }
+  } catch(_) {}
+}
+window.restoreAlertPrefsFromDB = restoreAlertPrefsFromDB;
 
 // ── Override toast() to respect user alert style pref ─────────────────────
 // Wraps the global toast() from utils.js after page load

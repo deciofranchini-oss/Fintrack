@@ -348,13 +348,7 @@ function populateReportFilters() {
     el.innerHTML = html;
     el.value = cur;
   });
-  const catEl = document.getElementById('rptCategory');
-  if(catEl) {
-    const cur = catEl.value;
-    catEl.innerHTML = '<option value="">Todas</option>' +
-      opts(state.categories.sort((a,b)=>a.name.localeCompare(b.name)), c=>c.id, c=>(c.icon||'')+'  '+c.name);
-    catEl.value = cur;
-  }
+  // rptCategory is now a hidden input + picker button — no need to populate options
   const payEl = document.getElementById('rptPayee');
   if(payEl) {
     const cur = payEl.value;
@@ -470,7 +464,12 @@ async function fetchRptTransactions() {
 
   const {data, error} = await q;
   if(error) { toast(error.message,'error'); return []; }
-  const result = (data||[]).filter(t=>!t.is_transfer && !t.is_card_payment);
+  const _re = window._cachedStatsExclude || { transfers:true, card_payments:true };
+  const result = (data||[]).filter(t => {
+    if (_re.transfers    && t.is_transfer && !t.is_card_payment) return false;
+    if (_re.card_payments && t.is_card_payment)                  return false;
+    return true;
+  });
 
   // Refresh tag dropdown with tags found in this period/filters
   // (do it after filter so we show tags relevant to current context)
@@ -890,7 +889,8 @@ function _getActiveFiltersLabel() {
   const acc = document.getElementById('rptAccount');
   if (acc?.value) parts.push('Conta: ' + (acc.options[acc.selectedIndex]?.text || acc.value));
   const cat = document.getElementById('rptCategory');
-  if (cat?.value) parts.push('Cat: ' + (cat.options[cat.selectedIndex]?.text || cat.value));
+  const catLabel = document.getElementById('rptCatPickLabel')?.textContent?.replace('Todas','').trim();
+  if (cat?.value) parts.push('Cat: ' + (catLabel || cat.value));
   const pay = document.getElementById('rptPayee');
   if (pay?.value) parts.push('Ben: ' + (pay.options[pay.selectedIndex]?.text || pay.value));
   const typ = document.getElementById('rptType');
@@ -1771,6 +1771,17 @@ function exportReportCSV() {
   if (!txs.length) { toast('Nenhum dado para exportar', 'error'); return; }
   const { from, to } = getRptDateRange();
   const BOM = '\uFEFF';
+  // Summary block
+  const totInc = txs.filter(t => parseFloat(t.amount) > 0).reduce((s,t) => s + parseFloat(t.brl_amount ?? t.amount), 0);
+  const totExp = txs.filter(t => parseFloat(t.amount) < 0).reduce((s,t) => s + Math.abs(parseFloat(t.brl_amount ?? t.amount)), 0);
+  const summaryRows = [
+    ['Relatório Family FinTrack', '', '', '', '', '', '', '', '', ''],
+    [`Período: ${from} a ${to}`, '', '', '', '', '', '', '', '', ''],
+    [`Total receitas:`, '', '', '', '', '', '', String(totInc.toFixed(2)).replace('.', ','), '', ''],
+    [`Total despesas:`, '', '', '', '', '', '', String(totExp.toFixed(2)).replace('.', ','), '', ''],
+    [`Saldo:`, '', '', '', '', '', '', String((totInc-totExp).toFixed(2)).replace('.', ','), '', ''],
+    ['', '', '', '', '', '', '', '', '', ''],
+  ];
   const headers = ['Data','Descrição','Conta','Moeda','Categoria','Beneficiário','Tags','Valor','Tipo','Memo'];
   const rows = txs.map(t => [
     t.date,
@@ -1784,13 +1795,49 @@ function exportReportCSV() {
     t.amount < 0 ? 'Despesa' : 'Receita',
     `"${(t.memo||'').replace(/"/g,'""')}"`,
   ]);
-  const csv = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+  const csv = BOM + [...summaryRows.map(r => r.join(';')), headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a'); a.href = url;
   a.download = `FinTrack_${from}_${to}.csv`; a.click();
   URL.revokeObjectURL(url);
   toast(`✓ CSV exportado — ${txs.length} transações`, 'success');
+}
+
+function exportReportXLSX() {
+  const txs = rptState.txData;
+  if (!txs || !txs.length) { toast('Nenhum dado para exportar', 'error'); return; }
+  if (typeof exportGrid !== 'function') { toast('Módulo de exportação não disponível', 'error'); return; }
+  const { from, to } = getRptDateRange();
+
+  // Build table rows compatible with exportGrid
+  const headers = ['Data', 'Descrição', 'Conta', 'Moeda', 'Categoria', 'Beneficiário', 'Valor (BRL)', 'Tipo', 'Memo'];
+  const rows = txs.map(t => [
+    t.date || '',
+    t.description || '',
+    t.accounts?.name || '',
+    t.accounts?.currency || 'BRL',
+    t.categories?.name || '',
+    t.payees?.name || '',
+    parseFloat(t.brl_amount ?? t.amount) || 0,
+    (parseFloat(t.amount) || 0) < 0 ? 'Despesa' : 'Receita',
+    t.memo || '',
+  ]);
+
+  // Use the export_grid XLSX builder
+  try {
+    // Build a simple table element and call exportGrid on it
+    const data = [headers, ...rows];
+    if (typeof _exDownloadXLSX === 'function') {
+      _exDownloadXLSX(data, `FinTrack_${from}_${to}`);
+      toast(`✓ Excel exportado — ${txs.length} transações`, 'success');
+    } else {
+      // Fallback to CSV
+      exportReportCSV();
+    }
+  } catch(e) {
+    toast('Erro ao exportar: ' + e.message, 'error');
+  }
 }
 
 /* ═══ EMAIL POPUP ═══ */
@@ -3029,6 +3076,7 @@ window.pdLoadTxs = pdLoadTxs;
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.closeEmailPopup                     = closeEmailPopup;
 window.exportReportCSV                     = exportReportCSV;
+window.exportReportXLSX                    = exportReportXLSX;
 window.exportReportPDF                     = exportReportPDF;
 window.loadCurrentReport                   = loadCurrentReport;
 window.populateReportFilters               = populateReportFilters;
@@ -3296,3 +3344,17 @@ window._rptBenefToggle = function(pid) {
 };
 
 window.loadPayeeReport = loadPayeeReport;
+
+// ── Category picker for reports filter ───────────────────────────────────────
+function _rptCatPickerOpen() {
+  openCatChooser('tx', function(catId, catName) {
+    const hidden = document.getElementById('rptCategory');
+    const label  = document.getElementById('rptCatPickLabel');
+    const btn    = document.getElementById('rptCatPickBtn');
+    if (hidden) hidden.value = catId || '';
+    if (label)  { label.textContent = catName || 'Todas'; label.style.color = catId ? 'var(--text)' : 'var(--muted)'; }
+    if (btn)    btn.style.borderColor = catId ? 'var(--accent)' : '';
+    if (typeof loadCurrentReport === 'function') loadCurrentReport();
+  });
+}
+window._rptCatPickerOpen = _rptCatPickerOpen;

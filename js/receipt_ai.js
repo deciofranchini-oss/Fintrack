@@ -65,14 +65,30 @@ Object.defineProperty(window, 'RECEIPT_AI_MODEL', {
 });
 
 // async helper — use this when you need to ensure the value is loaded from DB
+// Models deprecated by Google — map to their replacements
+const GEMINI_DEPRECATED_MODELS = {
+  'gemini-1.5-flash':         'gemini-2.5-flash',
+  'gemini-1.5-flash-latest':  'gemini-2.5-flash',
+  'gemini-1.5-pro':           'gemini-2.5-flash',
+  'gemini-1.5-pro-latest':    'gemini-2.5-flash',
+  'gemini-1.0-pro':           'gemini-2.5-flash',
+  'gemini-pro':               'gemini-2.5-flash',
+  'gemini-2.0-flash-lite':    'gemini-2.5-flash',
+  'gemini-2.0-flash-exp':     'gemini-2.5-flash',
+};
+function _sanitizeGeminiModel(m) {
+  if (!m || typeof m !== 'string') return GEMINI_MODEL_DEFAULT;
+  return GEMINI_DEPRECATED_MODELS[m] || m;
+}
+
 async function getGeminiModel() {
   const fromCache = window._appSettingsCache?.[GEMINI_MODEL_SETTING];
-  if (fromCache) return fromCache;
+  if (fromCache) return _sanitizeGeminiModel(fromCache);
   try {
     const val = (typeof getAppSetting === 'function')
       ? await getAppSetting(GEMINI_MODEL_SETTING, GEMINI_MODEL_DEFAULT)
       : GEMINI_MODEL_DEFAULT;
-    return val || GEMINI_MODEL_DEFAULT;
+    return _sanitizeGeminiModel(val || GEMINI_MODEL_DEFAULT);
   } catch(_) { return GEMINI_MODEL_DEFAULT; }
 }
 window.getGeminiModel = getGeminiModel;

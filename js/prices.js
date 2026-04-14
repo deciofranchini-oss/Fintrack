@@ -362,16 +362,23 @@ async function initPricesPage() {
 }
 
 function _populatePricesCatFilter() {
-  const sel = document.getElementById('pricesCatFilter');
-  if (!sel) return;
-  // Only show categories that have at least one price_item record
-  const usedCatIds = new Set(_px.items.map(i => i.category_id).filter(Boolean));
-  const cats = (state.categories || [])
-    .filter(c => c.type !== 'income' && usedCatIds.has(c.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  sel.innerHTML = '<option value="">Todas as categorias</option>' +
-    cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  // Now uses a button picker — no options to populate
 }
+
+function _pxCatPickerOpen() {
+  if (typeof openCatChooser !== 'function') return;
+  openCatChooser('tx', function(catId, catName) {
+    const hidden = document.getElementById('pricesCatFilter');
+    const label  = document.getElementById('pxCatPickLabel');
+    const btn    = document.getElementById('pxCatPickBtn');
+    if (hidden) hidden.value = catId || '';
+    if (label)  { label.textContent = catName || 'Categoria'; }
+    if (btn)    { btn.classList.toggle('is-active', !!catId); }
+    pricesCatFilter(catId || '');
+    _pxUpdateFilterBadge?.();
+  });
+}
+window._pxCatPickerOpen = _pxCatPickerOpen;
 
 // Retorna o label do estabelecimento:
 // - Com beneficiário vinculado → mostra APENAS o nome do beneficiário
@@ -779,8 +786,17 @@ function _pxShowDrillModal(title, icon, rows, mode, loading = false) {
 }
 window._pxDrillStore = _pxDrillStore;
 window._pxDrillItem  = _pxDrillItem;
-function pricesCatFilter(val)   {
+function pricesCatFilter(val) {
   _px.catFilter = val;
+  // Sync label if called externally (e.g. reset button)
+  if (!val) {
+    const label = document.getElementById('pxCatPickLabel');
+    const btn   = document.getElementById('pxCatPickBtn');
+    if (label) label.textContent = 'Categoria';
+    if (btn)   btn.classList.remove('is-active');
+    const hidden = document.getElementById('pricesCatFilter');
+    if (hidden) hidden.value = '';
+  }
   _populatePxSubcatFilter();
   _renderPricesPage();
 }

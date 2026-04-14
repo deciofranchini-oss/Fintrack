@@ -71,7 +71,8 @@ async function _reserveScheduledOccurrence(sc, scheduledDate, actualDate, amount
   }
 
   try {
-    const { error: reserveErr } = await sb.from('scheduled_occurrences').upsert({
+    // Use INSERT ... ignoreDuplicates (DO NOTHING on conflict) — never overwrite another session's lock
+    const { error: reserveErr } = await sb.from('scheduled_occurrences').insert({
       scheduled_id: sc.id,
       scheduled_date: scheduledDate,
       actual_date: actualDate,
@@ -81,8 +82,15 @@ async function _reserveScheduledOccurrence(sc, scheduledDate, actualDate, amount
       execution_token: executionToken,
       executed_at: null,
       transaction_id: null,
-    }, { onConflict: 'scheduled_id,scheduled_date' });
-    if (reserveErr && !_isScheduledOccurrenceAlreadyProcessed(reserveErr)) throw reserveErr;
+    }, { count: 'exact' });
+    // If insert fails due to duplicate key → another session already reserved this slot
+    if (reserveErr) {
+      if (_isScheduledOccurrenceAlreadyProcessed(reserveErr)) {
+        // Row already exists — re-read to determine who owns it
+      } else {
+        throw reserveErr;
+      }
+    }
   } catch (err) {
     return { status: 'error', error: err };
   }
@@ -121,6 +129,22 @@ async function _markScheduledOccurrenceFailure(scId, scheduledDate, executionTok
 }
 
 async function _finalizeScheduledOccurrence(scId, scheduledDate, executionToken, actualDate, amount, memo, transactionId) {
+  // Verify the row we reserved is still ours (execution_token must match)
+  // This prevents two racing sessions from both committing a transaction
+  const { data: current } = await sb.from('scheduled_occurrences')
+    .select('execution_status,execution_token,transaction_id')
+    .eq('scheduled_id', scId)
+    .eq('scheduled_date', scheduledDate)
+    .maybeSingle();
+
+  if (!current) return { error: new Error('Ocorrência não encontrada ao finalizar') };
+  if (current.transaction_id) return { error: null }; // already committed by another session — success
+  if (current.execution_status === 'executed') return { error: null }; // already done
+  if (executionToken && current.execution_token !== executionToken) {
+    // Another session took over the lock — abort our commit to prevent duplicate TX
+    return { error: new Error('lock_stolen: outro processo assumiu esta ocorrência') };
+  }
+
   const payload = {
     actual_date: actualDate,
     amount,
@@ -192,6 +216,11 @@ async function processScheduledOccurrence(sc, opts = {}) {
 
   const { error: occErr } = await _finalizeScheduledOccurrence(sc.id, scheduledDate, executionToken, actualDate, finalAmount, memo, txData.id);
   if (occErr) {
+    // If another session stole the lock, roll back our transaction to prevent duplicate
+    if (occErr.message?.includes('lock_stolen')) {
+      try { await sb.from('transactions').delete().eq('id', txData.id); } catch(_) {}
+      return { status: 'locked_by_other', error: occErr };
+    }
     await _markScheduledOccurrenceFailure(sc.id, scheduledDate, executionToken, actualDate, finalAmount, memo, occErr.message);
     return { status: 'error', error: occErr, transaction: txData };
   }
@@ -1739,8 +1768,31 @@ function openRegisterOcc(scId, date) {
 
   // Show/hide the "Não Recebido" button — only for income type
   _scArShowBtn(sc);
+
+  // Populate loyalty program select
+  const loySelEl = document.getElementById('occLoyaltyProgram');
+  if (loySelEl) {
+    const loyProgs = typeof _loy !== 'undefined' ? (_loy.programs || []) : [];
+    loySelEl.innerHTML = '<option value="">— Selecionar programa —</option>' +
+      loyProgs.map(p => `<option value="${p.id}">${(p.icon||'⭐')} ${p.name}</option>`).join('');
+  }
+  // Reset loyalty fields
+  const loyChk = document.getElementById('occLoyaltyEnabled');
+  const loyFields = document.getElementById('occLoyaltyFields');
+  const loyPts = document.getElementById('occLoyaltyPoints');
+  if (loyChk) loyChk.checked = false;
+  if (loyFields) loyFields.style.display = 'none';
+  if (loyPts) loyPts.value = '';
+
   openModal('registerOccModal');
 }
+
+// Toggle loyalty fields visibility
+window._occToggleLoyalty = function() {
+  const chk = document.getElementById('occLoyaltyEnabled');
+  const fields = document.getElementById('occLoyaltyFields');
+  if (fields) fields.style.display = chk?.checked ? '' : 'none';
+};
 
 async function confirmRegisterOccurrence() {
   const scId = _registerOccScId;
@@ -1831,6 +1883,37 @@ async function confirmRegisterOccurrence() {
   }
 
   toast('Transação registrada!', 'success');
+
+  // Credit loyalty points if enabled
+  try {
+    const loyEnabled = document.getElementById('occLoyaltyEnabled')?.checked;
+    const loyProgId  = document.getElementById('occLoyaltyProgram')?.value;
+    const loyPts     = parseInt(document.getElementById('occLoyaltyPoints')?.value || '0', 10);
+    if (loyEnabled && loyProgId && loyPts > 0) {
+      await sb.from('loyalty_transactions').insert({
+        family_id:   famId(),
+        program_id:  loyProgId,
+        type:        'earn',
+        points:      loyPts,
+        description: `Pontos via programado: ${sc.description || ''}`,
+        date:        actualDate,
+      });
+      // Update balance in loyalty_programs
+      const prog = typeof _loy !== 'undefined' ? (_loy.programs || []).find(p => p.id === loyProgId) : null;
+      if (prog) {
+        await sb.from('loyalty_programs')
+          .update({ points_balance: (prog.points_balance || 0) + loyPts })
+          .eq('id', loyProgId);
+      }
+      toast('✈️ ' + loyPts + ' pontos creditados!', 'success');
+      if (typeof renderLoyaltySection === 'function' && typeof loadLoyaltyPrograms === 'function') {
+        loadLoyaltyPrograms(true).catch(() => {});
+      }
+    }
+  } catch(loyErr) {
+    console.warn('[loyalty credit]', loyErr?.message);
+  }
+
   closeModal('registerOccModal');
   await loadScheduled();
   // Refresh dashboard upcoming list if visible so registered tx disappears immediately
@@ -1903,6 +1986,24 @@ async function runScheduledAutoRegister() {
   // Runs in browser session after boot. Registers missing occurrences up to today (and optionally days ahead).
   try {
     const cfg = getAutoCheckConfig ? getAutoCheckConfig() : { daysAhead: 0 };
+    // Guard: if already ran successfully in the current calendar day (local time),
+    // and state.scheduled is already loaded, skip to avoid redundant processing
+    // (still runs if forced by manual trigger or if lastRunCount was 0 — there may be new items)
+    const _todayCheckStr = new Date().toISOString().slice(0, 10);
+    const _lastRunDate   = (cfg.lastRun || '').slice(0, 10);
+    const _alreadyRanOk  = (_lastRunDate === _todayCheckStr) && ((cfg.lastRunCount || 0) >= 0);
+    if (_alreadyRanOk && (state.scheduled || []).length > 0 && !(cfg._forceRun)) {
+      // Re-check: look for any unprocessed occurrences due today or earlier
+      const _todayLocal = _todayCheckStr;
+      const _hasUnprocessed = (state.scheduled || []).some(sc => {
+        if (sc.status !== 'active' || !sc.auto_register) return false;
+        const next = typeof getNextOccurrence === 'function' ? getNextOccurrence(sc) : null;
+        return next && next <= _todayLocal;
+      });
+      if (!_hasUnprocessed) {
+        return 0; // Nothing to do — skip DB round-trips
+      }
+    }
     const daysAhead = parseInt(cfg?.daysAhead || 0, 10) || 0;
     // Always use local midnight as the baseline — prevents timestamp-based drift.
     // new Date() could be 14:00; adding N×86400000 would point to 14:00 in N days
@@ -1918,13 +2019,46 @@ async function runScheduledAutoRegister() {
     // Ensure scheduled loaded
     if(!state.scheduled || !state.scheduled.length) return 0;
 
+    // Clean up own stale 'processing' locks from previous crashed sessions (best-effort)
+    try {
+      const _staleThreshold = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      await sb.from('scheduled_occurrences')
+        .update({ execution_status: 'failed', error_message: 'Browser session ended during processing' })
+        .eq('execution_status', 'processing')
+        .lt('created_at', _staleThreshold);
+    } catch(_staleErr) { /* non-fatal */ }
+
     let created = 0;
     const createdItems = [];
     for(const sc of state.scheduled) {
       if(sc.status !== 'active' || !sc.auto_register) continue;
+
+      // Build set of already-executed dates from loaded occurrences
+      // This avoids a DB round-trip per date and dramatically reduces calls
+      const executedDates = new Set(
+        (sc.occurrences || [])
+          .filter(o => o.execution_status === 'executed' || o.transaction_id)
+          .map(o => o.scheduled_date)
+      );
+      // Also consider processing/failed as "in-flight" — skip to avoid races
+      const inFlightDates = new Set(
+        (sc.occurrences || [])
+          .filter(o => o.execution_status === 'processing')
+          .map(o => o.scheduled_date)
+      );
+
       const occDates = generateOccurrences(sc, 500);
       for(const d of occDates) {
         if(d > toStr) break;  // dates are ordered ASC — once past cutoff, stop
+
+        // Fast-skip already-executed dates without hitting DB
+        if(executedDates.has(d)) continue;
+
+        // Skip in-flight occurrences (another session may be processing them)
+        if(inFlightDates.has(d)) {
+          console.log(`[auto_register] skipping in-flight: ${sc.description} ${d}`);
+          continue;
+        }
 
         const result = await processScheduledOccurrence(sc, {
           scheduledDate: d,
@@ -1997,11 +2131,16 @@ async function runScheduledAutoRegister() {
       try{ await showAutoRegisterNotification(createdItems); }catch(e){}
 
       await loadScheduled(); // refresh occurrences
-      await loadAccounts(true);  // force refresh balances (pending excluded now)
+      await loadAccounts(true);  // force refresh balances
       try{await recalcAccountBalances();}catch(_e){}
       if(state.currentPage==='transactions') loadTransactions();
       if(state.currentPage==='dashboard') loadDashboard();
       toast(`✓ ${created} ocorrência(s) registrada(s) automaticamente`, 'success');
+      // Also fire upcoming-notifications pass so reminders go out on same run
+      try{
+        if(typeof runScheduledUpcomingNotifications === 'function')
+          await runScheduledUpcomingNotifications();
+      }catch(_ue){}
     }
     return created;
   } catch(e) {

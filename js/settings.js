@@ -13,16 +13,34 @@ function cfgShowPane(paneId) {
     // Auto-load demo selectors when advanced pane opens
     setTimeout(() => { try { _loadDemoSelectors(); } catch(_) {} }, 150);
   }
+  if (paneId === 'pane-assinaturas') {
+    if (typeof loadSubscriptionConfig === 'function') {
+      loadSubscriptionConfig().then(() => {
+        const cfg = window._sub?.config || {};
+        const isBeta = cfg.mode !== 'production';
+        const modeLabel = document.getElementById('subModeLabelShort');
+        const modeDesc  = document.getElementById('subModeDescShort');
+        if (modeLabel) modeLabel.textContent = isBeta ? '🧪 Modo Beta' : '🚀 Modo Produção';
+        if (modeDesc) modeDesc.textContent = isBeta
+          ? 'Todos os usuários têm acesso gratuito'
+          : `Trial ${cfg.trial_days||30}d · R$ ${Number(cfg.price_brl||29.90).toFixed(2).replace('.',',')}/mês`;
+      }).catch(() => {});
+    }
+  }
   if (paneId === 'pane-feedbacks' && typeof loadFeedbackReports === 'function') {
     loadFeedbackReports();
   }
   // Show danger zone only to family owner (not admin, not regular member)
+  // pane-familia: show admin family selector or owner link
   if (paneId === 'pane-familia') {
-    const dangerZone = document.getElementById('familyDangerZone');
-    if (dangerZone) {
-      const isOwner = currentUser?.role === 'owner';  // family owner only, not global admin
-      dangerZone.style.display = isOwner ? '' : 'none';
-    }
+    const isAdmin = currentUser?.role === 'admin';
+    const isFamilyOwner = (currentUser?.families || []).some(f => f.role === 'owner')
+                       || currentUser?.role === 'owner';
+    const adminSec = document.getElementById('adminFamilyMgmtSection');
+    const ownerSec = document.getElementById('ownerFamilyMgmtSection');
+    if (adminSec)  adminSec.style.display  = isAdmin ? '' : 'none';
+    if (ownerSec)  ownerSec.style.display  = (!isAdmin && isFamilyOwner) ? '' : 'none';
+    if (isAdmin) _adminLoadFamilyList().catch(() => {});
   }
   // Scroll active tab into view on mobile
   if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -35,8 +53,17 @@ function _cfgApplyAdminNav() {
   const role    = (typeof currentUser !== 'undefined') ? currentUser?.role : null;
   const isAdmin = role === 'admin';
 
-  // All optional tabs visible only to admin
-  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
+  // familia tab: visible to admin AND family owners
+  const isFamilyOwner = (currentUser?.families || []).some(f => f.role === 'owner')
+                     || currentUser?.role === 'owner';
+  const familiaTab = document.getElementById('cfgNavBtn-familia');
+  if (familiaTab) familiaTab.style.display = (isAdmin || isFamilyOwner) ? '' : 'none';
+
+  // other tabs: admin only
+  const subTab = document.getElementById('cfgNavBtn-assinaturas');
+  if (subTab) subTab.style.display = isAdmin ? '' : 'none';
+
+  ['cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
@@ -740,7 +767,7 @@ async function unlockApp() {
   } else {
     // Sem credenciais/supabase client — pedir configuração
     setTimeout(() => {
-      document.getElementById('setupScreen').style.display = 'flex';
+      _showSetupScreen?.();
     }, 400);
   }
   // Iniciar timer de auto-lock
@@ -4609,3 +4636,732 @@ window.saveServiceRoleKey                  = saveServiceRoleKey;
 window.showEmailConfig                     = showEmailConfig;
 window.testEmailJSConnection               = testEmailJSConnection;
 window.toggleEjKey                         = toggleEjKey;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATS EXCLUDE — configuração de exclusão de tipos de transação das estatísticas
+// ══════════════════════════════════════════════════════════════════════════════
+
+const STATS_EXCLUDE_OPTIONS = [
+  { key: 'transfers',    label: 'Transferências entre contas',          icon: '↔️',  hint: 'Ex: movimentações entre Nubank e Itaú' },
+  { key: 'card_payments',label: 'Pagamentos de fatura de cartão',       icon: '💳',  hint: 'Ex: pagamento da fatura do cartão de crédito' },
+  { key: 'adjustments',  label: 'Ajustes e consolidações de saldo',     icon: '⚖️',  hint: 'Ex: lançamentos de ajuste de saldo inicial' },
+  { key: 'chat_pending', label: 'Transações pendentes de validação (chat)', icon: '⏳', hint: 'Transações via Telegram/WhatsApp ainda não validadas' },
+];
+
+async function _initStatsExcludeUI() {
+  const container = document.getElementById('statsExcludeToggles');
+  if (!container) return;
+
+  // Load current prefs
+  let prefs = null;
+  try {
+    if (typeof getFamilyPreferences === 'function') {
+      prefs = await getFamilyPreferences();
+    }
+  } catch (_) {}
+
+  const currentExclude = prefs?.ui?.stats_exclude || {
+    transfers: true, card_payments: true, adjustments: true, chat_pending: false
+  };
+
+  // Add toggle CSS once
+  if (!document.getElementById('statsExclStyle')) {
+    const style = document.createElement('style');
+    style.id = 'statsExclStyle';
+    style.textContent = `
+      .sx-toggle { position:relative; display:inline-block; width:44px; height:24px; cursor:pointer; flex-shrink:0; }
+      .sx-toggle input { opacity:0; width:0; height:0; position:absolute; }
+      .sx-track { position:absolute; inset:0; background:var(--border); border-radius:12px; transition:background .2s; }
+      .sx-toggle input:checked + .sx-track { background:var(--accent); }
+      .sx-thumb { position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+      .sx-toggle input:checked + .sx-track .sx-thumb { transform:translateX(20px); }
+    `;
+    document.head.appendChild(style);
+  }
+
+  container.innerHTML = STATS_EXCLUDE_OPTIONS.map(opt => {
+    const checked = !!currentExclude[opt.key];
+    return `
+    <label style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;user-select:none" onclick="_statsExclToggle('${opt.key}')">
+      <div style="font-size:1.2rem;width:28px;text-align:center;flex-shrink:0">${opt.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.83rem;font-weight:700;color:var(--text)">${esc(opt.label)}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(opt.hint)}</div>
+      </div>
+      <input type="checkbox" id="statsExcl_${opt.key}" ${checked ? 'checked' : ''}
+        style="width:0;height:0;opacity:0;position:absolute">
+      <div id="statsExclTrack_${opt.key}" class="dark-mode-toggle-track${checked ? ' active' : ''}"
+        style="flex-shrink:0;${checked ? 'background:var(--accent)' : ''}">
+        <div class="dark-mode-toggle-thumb"></div>
+      </div>
+    </label>`;
+  }).join('');
+}
+
+async function _saveStatsExclude() {
+  const exclude = {};
+  STATS_EXCLUDE_OPTIONS.forEach(opt => {
+    exclude[opt.key] = document.getElementById('statsExcl_' + opt.key)?.checked || false;
+  });
+
+  try {
+    if (typeof updateFamilyPreferences === 'function') {
+      await updateFamilyPreferences({ ui: { stats_exclude: exclude } });
+    }
+    // Also persist to state so dashboard picks it up immediately
+    if (typeof state !== 'undefined' && state.familyPrefs) {
+      state.familyPrefs.ui = state.familyPrefs.ui || {};
+      state.familyPrefs.ui.stats_exclude = exclude;
+    }
+    toast('✅ Configurações de estatísticas salvas!', 'success');
+    // Refresh dashboard KPIs
+    if (typeof loadDashboard === 'function') loadDashboard().catch(() => {});
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+function _statsExclToggle(key) {
+  const cb    = document.getElementById('statsExcl_' + key);
+  const track = document.getElementById('statsExclTrack_' + key);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  if (track) {
+    track.classList.toggle('active', cb.checked);
+    track.style.background = cb.checked ? 'var(--accent)' : '';
+  }
+}
+window._statsExclToggle         = _statsExclToggle;
+window._initStatsExcludeUI  = _initStatsExcludeUI;
+window._saveStatsExclude    = _saveStatsExclude;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  GESTÃO DA FAMÍLIA — Controle de Acesso + Filtros de Análise
+//  Owner-only pane in Settings → Família
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── State ──────────────────────────────────────────────────────────────────
+const _fmg = {
+  members:       [],   // [{user_id, name, email, role, restrictions}]
+  accounts:      [],   // [{id, name, type, color, icon}]
+  categories:    [],   // [{id, name, icon, type, parent_id}]
+  excludedCatIds: new Set(),
+  excludedAccIds: new Set(),
+  statsExcl:     {},   // current stats_exclude object
+  initialized:   false,
+};
+
+async function _fmgInit() {
+  if (_fmg.initialized) { _fmgSwitchTab('access'); return; }
+
+  // Load family members, accounts, categories, and current prefs in parallel
+  try {
+    const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
+    if (!fid) return;
+
+    const [membersRes, accsRes, catsRes, prefsRes] = await Promise.all([
+      sb.from('family_members')
+        .select('user_id, role, app_users(id, name, email)')
+        .eq('family_id', fid)
+        .neq('role', 'owner'),
+      sb.from('accounts')
+        .select('id,name,type,color,icon,currency')
+        .eq('family_id', fid).eq('active', true).eq('is_archived', false)
+        .order('name'),
+      sb.from('categories')
+        .select('id,name,icon,type,parent_id')
+        .eq('family_id', fid).order('name'),
+      typeof getFamilyPreferences === 'function'
+        ? getFamilyPreferences().catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    _fmg.accounts   = accsRes.data || [];
+    _fmg.categories = catsRes.data || [];
+
+    // Load restrictions for each member
+    const rawMembers = (membersRes.data || []).map(m => ({
+      user_id: m.user_id,
+      name:    m.app_users?.name  || '—',
+      email:   m.app_users?.email || '',
+      role:    m.role,
+    }));
+    if (rawMembers.length) {
+      const { data: restrictions } = await sb.from('family_member_restrictions')
+        .select('user_id,blocked_modules,allowed_account_ids')
+        .eq('family_id', fid)
+        .in('user_id', rawMembers.map(m => m.user_id));
+      rawMembers.forEach(m => {
+        const r = (restrictions || []).find(x => x.user_id === m.user_id);
+        m.blocked_modules    = r?.blocked_modules    || {};
+        m.allowed_account_ids= r?.allowed_account_ids ?? null;
+      });
+    }
+    _fmg.members = rawMembers;
+
+    // Parse stats_exclude prefs
+    const exc = prefsRes?.ui?.stats_exclude || {};
+    _fmg.statsExcl      = exc;
+    _fmg.excludedCatIds = new Set(exc.excluded_category_ids || []);
+    _fmg.excludedAccIds = new Set(exc.excluded_account_ids  || []);
+    _fmg.initialized    = true;
+
+    _fmgRenderAccess();           // renders into fmgMemberCards (legacy, may not exist)
+    _fmgRenderAccess('mfmAcessoCards');  // also render into modal if open
+    _fmgRenderFilters();
+    _fmgSwitchTab('access');     // no-op (fmgPane-* elements removed from settings)
+  } catch(e) {
+    console.warn('[FMG] init error:', e.message);
+  }
+}
+window._fmgInit = _fmgInit;
+
+/** Render the access-control tab inside myFamilyMgmtModal (called from mfmSwitchTab) */
+async function _mfmRenderAcesso() {
+  const container = document.getElementById('mfmAcessoCards');
+  if (!container) return;
+
+  // If _fmg data already loaded — re-render into the modal container
+  if (_fmg.initialized) {
+    _fmgRenderAccess('mfmAcessoCards');
+    return;
+  }
+
+  // Not yet loaded — load same data as _fmgInit but target modal container
+  container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">⏳ Carregando membros…</div>`;
+  try {
+    const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
+    if (!fid) return;
+
+    const [membersRes, accsRes, catsRes, prefsRes] = await Promise.all([
+      sb.from('family_members')
+        .select('user_id, role, app_users(id, name, email)')
+        .eq('family_id', fid).neq('role', 'owner'),
+      sb.from('accounts')
+        .select('id,name,type,color,icon,currency')
+        .eq('family_id', fid).eq('active', true).eq('is_archived', false).order('name'),
+      sb.from('categories')
+        .select('id,name,icon,type,parent_id')
+        .eq('family_id', fid).order('name'),
+      typeof getFamilyPreferences === 'function'
+        ? getFamilyPreferences().catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    _fmg.accounts   = accsRes.data  || [];
+    _fmg.categories = catsRes.data  || [];
+
+    const rawMembers = (membersRes.data || []).map(m => ({
+      user_id: m.user_id,
+      name:    m.app_users?.name  || '—',
+      email:   m.app_users?.email || '',
+      role:    m.role,
+    }));
+    if (rawMembers.length) {
+      const { data: restrictions } = await sb.from('family_member_restrictions')
+        .select('user_id,blocked_modules,allowed_account_ids')
+        .eq('family_id', fid)
+        .in('user_id', rawMembers.map(m => m.user_id));
+      rawMembers.forEach(m => {
+        const r = (restrictions || []).find(x => x.user_id === m.user_id);
+        m.blocked_modules     = r?.blocked_modules     || {};
+        m.allowed_account_ids = r?.allowed_account_ids ?? null;
+      });
+    }
+    _fmg.members     = rawMembers;
+    _fmg.initialized = true;
+
+    _fmgRenderAccess('mfmAcessoCards');
+  } catch(e) {
+    if (container) container.innerHTML =
+      `<div style="color:var(--danger,#dc2626);padding:16px">Erro ao carregar: ${typeof esc==='function'?esc(e.message):e.message}</div>`;
+    console.warn('[_mfmRenderAcesso]', e.message);
+  }
+}
+window._mfmRenderAcesso = _mfmRenderAcesso;
+// ── Render Analysis Filters tab in myFamilyMgmtModal ──────────────────────
+async function _mfmRenderFiltros() {
+  // Use full _fmgInit so members are also loaded (needed if Acesso tab opened after)
+  if (_fmg.initialized) {
+    _fmgRenderFilters();
+    return;
+  }
+  // Full load via _fmgInit — it will also call _fmgRenderFilters() at the end
+  await _fmgInit();
+}
+window._mfmRenderFiltros = _mfmRenderFiltros;
+
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function _fmgSwitchTab(tab) {
+  const tabs = ['access', 'filters'];
+  tabs.forEach(t => {
+    const btn  = document.getElementById('fmgTab-' + t);
+    const pane = document.getElementById('fmgPane-' + t);
+    const isActive = t === tab;
+    if (btn) {
+      btn.style.background = isActive ? 'var(--accent)' : 'transparent';
+      btn.style.color      = isActive ? '#fff' : 'var(--muted)';
+    }
+    if (pane) pane.style.display = isActive ? '' : 'none';
+  });
+}
+window._fmgSwitchTab = _fmgSwitchTab;
+
+// ── ACCESS CONTROL ─────────────────────────────────────────────────────────
+
+// Presets: define which modules are blocked for each preset
+const _FMG_PRESETS = {
+  full:    { label:'Acesso Total',         icon:'🟢', desc:'Vê e edita tudo',                     blocked: [] },
+  viewer:  { label:'Somente Visualizar',   icon:'👁',  desc:'Vê tudo, não pode editar ou excluir', blocked: [] },  // enforced by DB role, not module block
+  limited: { label:'Básico',               icon:'🔵', desc:'Transações e dashboard apenas',        blocked: ['reports','budgets','investments','debts','ai_insights','categories','payees','prices','grocery','scheduled','receivables'] },
+  custom:  { label:'Personalizado',        icon:'⚙️',  desc:'Configuração manual por módulo',      blocked: null },
+};
+
+const _FMG_ALL_MODULES = [
+  { key:'transactions', label:'Transações',        icon:'💸' },
+  { key:'accounts',     label:'Contas',            icon:'🏦' },
+  { key:'reports',      label:'Relatórios',        icon:'📊' },
+  { key:'budgets',      label:'Orçamentos',        icon:'📋' },
+  { key:'investments',  label:'Investimentos',     icon:'📈' },
+  { key:'debts',        label:'Dívidas',           icon:'💳' },
+  { key:'dreams',       label:'Sonhos',            icon:'🌟' },
+  { key:'ai_insights',  label:'IA Insights',       icon:'🤖' },
+  { key:'scheduled',    label:'Programados',       icon:'🗓️' },
+  { key:'categories',   label:'Categorias',        icon:'🏷️' },
+  { key:'payees',       label:'Beneficiários',     icon:'👤' },
+  { key:'prices',       label:'Rastreamento Preços',icon:'💰' },
+  { key:'grocery',      label:'Lista de Mercado',  icon:'🛒' },
+  { key:'receivables',  label:'A Receber',         icon:'📬' },
+];
+
+function _fmgDetectPreset(member) {
+  const blocked = Object.entries(member.blocked_modules || {})
+    .filter(([,v]) => v === false).map(([k]) => k);
+  if (blocked.length === 0) return 'full';
+  const limitedBlocked = _FMG_PRESETS.limited.blocked.sort().join(',');
+  if (blocked.sort().join(',') === limitedBlocked) return 'limited';
+  return 'custom';
+}
+
+function _fmgRenderAccess(containerId = 'fmgMemberCards') {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!_fmg.members.length) {
+    container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">
+      <div style="font-size:2rem;margin-bottom:8px">👥</div>
+      Nenhum membro vinculado à família.<br>
+      <a href="#" onclick="event.preventDefault();openUserAdmin()" style="color:var(--accent)">Convidar membros →</a>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = _fmg.members.map((m, idx) => {
+    const preset = _fmgDetectPreset(m);
+    const blocked = Object.entries(m.blocked_modules || {}).filter(([,v]) => v === false).map(([k]) => k);
+    const roleLabel = { admin:'Admin', user:'Usuário', viewer:'Leitor' }[m.role] || m.role;
+
+    const presetBtns = Object.entries(_FMG_PRESETS).map(([pk, pv]) => {
+      const active = pk === preset;
+      return `<button onclick="_fmgApplyPreset(${idx},'${pk}')"
+        style="font-size:.7rem;font-weight:700;padding:5px 9px;border-radius:7px;cursor:pointer;border:1.5px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accent-lt)' : 'var(--surface)'};color:${active ? 'var(--accent)' : 'var(--muted)'};font-family:inherit;touch-action:manipulation"
+        title="${pv.desc}">${pv.icon} ${pv.label}</button>`;
+    }).join('');
+
+    const modToggles = _FMG_ALL_MODULES.map(mod => {
+      const isBlocked = blocked.includes(mod.key);
+      return `<label style="display:flex;align-items:center;gap:7px;padding:5px 0;cursor:pointer;user-select:none">
+        <input type="checkbox" class="fmg-mod-${idx}" data-key="${mod.key}"
+          ${!isBlocked ? 'checked' : ''}
+          onchange="_fmgOnModChange(${idx},this)"
+          style="width:14px;height:14px;accent-color:var(--accent);flex-shrink:0">
+        <span style="font-size:.88rem">${mod.icon}</span>
+        <span style="font-size:.78rem;color:var(--text)">${mod.label}</span>
+        <span class="fmg-mod-badge-${idx}-${mod.key}" style="margin-left:auto;font-size:.62rem;padding:1px 6px;border-radius:20px;font-weight:700;background:${!isBlocked?'rgba(22,163,74,.1)':'rgba(239,68,68,.1)'};color:${!isBlocked?'#16a34a':'#dc2626'}">
+          ${!isBlocked ? 'Liberado' : 'Bloqueado'}
+        </span>
+      </label>`;
+    }).join('');
+
+    return `<div class="cfg-card" id="fmg-member-${idx}" style="margin-bottom:12px">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;font-weight:800;color:var(--accent)">
+            ${(m.name || '?').charAt(0).toUpperCase()}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.86rem;font-weight:700;color:var(--text)">${esc(m.name)}</div>
+            <div style="font-size:.7rem;color:var(--muted)">${esc(m.email)} · ${roleLabel}</div>
+          </div>
+          <button onclick="_fmgSaveMember(${idx})"
+            style="font-size:.72rem;font-weight:700;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-family:inherit;touch-action:manipulation">
+            💾 Salvar
+          </button>
+        </div>
+        <!-- Preset buttons -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${presetBtns}</div>
+      </div>
+      <!-- Module toggles (collapsible) -->
+      <div style="padding:8px 14px" id="fmg-mods-${idx}">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Módulos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">${modToggles}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _fmgApplyPreset(idx, presetKey) {
+  const preset  = _FMG_PRESETS[presetKey];
+  if (!preset || presetKey === 'custom') return; // custom = do nothing, user edits manually
+
+  const blocked = preset.blocked || [];
+  _FMG_ALL_MODULES.forEach(mod => {
+    const cb = document.querySelector(`.fmg-mod-${idx}[data-key="${mod.key}"]`);
+    if (!cb) return;
+    const shouldAllow = !blocked.includes(mod.key);
+    cb.checked = shouldAllow;
+    _fmgUpdateModBadge(idx, mod.key, shouldAllow);
+  });
+  // Update preset button styles
+  ['full','viewer','limited','custom'].forEach(pk => {
+    const btns = document.querySelectorAll(`#fmg-member-${idx} button`);
+    btns.forEach(btn => {
+      if (btn.textContent.trim().startsWith(_FMG_PRESETS[pk]?.icon)) {
+        const active = pk === presetKey;
+        btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+        btn.style.background  = active ? 'var(--accent-lt)' : 'var(--surface)';
+        btn.style.color       = active ? 'var(--accent)' : 'var(--muted)';
+      }
+    });
+  });
+}
+window._fmgApplyPreset = _fmgApplyPreset;
+
+function _fmgOnModChange(idx, cb) {
+  _fmgUpdateModBadge(idx, cb.dataset.key, cb.checked);
+}
+window._fmgOnModChange = _fmgOnModChange;
+
+function _fmgUpdateModBadge(idx, modKey, allowed) {
+  const badge = document.querySelector(`.fmg-mod-badge-${idx}-${modKey}`);
+  if (!badge) return;
+  badge.style.background = allowed ? 'rgba(22,163,74,.1)' : 'rgba(239,68,68,.1)';
+  badge.style.color      = allowed ? '#16a34a' : '#dc2626';
+  badge.textContent      = allowed ? 'Liberado' : 'Bloqueado';
+}
+
+async function _fmgSaveMember(idx) {
+  const member = _fmg.members[idx];
+  if (!member) return;
+  const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
+
+  const blockedModules = {};
+  document.querySelectorAll(`.fmg-mod-${idx}`).forEach(cb => {
+    if (!cb.checked) blockedModules[cb.dataset.key] = false;
+  });
+
+  try {
+    const { error } = await sb.from('family_member_restrictions').upsert({
+      family_id:           fid,
+      user_id:             member.user_id,
+      blocked_modules:     blockedModules,
+      allowed_account_ids: member.allowed_account_ids ?? null,
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'family_id,user_id' });
+    if (error) throw error;
+
+    // Update local cache
+    member.blocked_modules = blockedModules;
+    const count = Object.keys(blockedModules).length;
+    toast(`✅ ${member.name} — ${count === 0 ? 'acesso total' : count + ' módulo(s) bloqueado(s)'}`, 'success');
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+window._fmgSaveMember = _fmgSaveMember;
+
+// ── ANALYSIS FILTERS ───────────────────────────────────────────────────────
+
+function _fmgRenderFilters() {
+  _fmgRenderCatChips();
+  _fmgRenderAccList();
+  _fmgRenderTypeToggles();
+}
+
+// Category exclusion chips
+function _fmgRenderCatChips() {
+  const container = document.getElementById('fmgExcludedCatChips');
+  if (!container) return;
+  if (_fmg.excludedCatIds.size === 0) {
+    container.innerHTML = '<span style="font-size:.74rem;color:var(--muted);font-style:italic">Nenhuma categoria excluída</span>';
+    return;
+  }
+  container.innerHTML = [..._fmg.excludedCatIds].map(id => {
+    const cat = _fmg.categories.find(c => c.id === id);
+    if (!cat) return '';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:20px;font-size:.75rem;font-weight:600;color:#dc2626">
+      ${cat.icon || '🏷️'} ${esc(cat.name)}
+      <button onclick="_fmgRemoveCat('${id}')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:.85rem;padding:0 0 0 2px;line-height:1">×</button>
+    </span>`;
+  }).join('');
+}
+
+function _fmgShowCatDrop(show) {
+  const drop = document.getElementById('fmgCatDrop');
+  if (!drop) return;
+  if (show) { _fmgFilterCats(''); drop.style.display = ''; }
+  else drop.style.display = 'none';
+}
+window._fmgShowCatDrop = _fmgShowCatDrop;
+
+function _fmgFilterCats(query) {
+  const list = document.getElementById('fmgCatDropList');
+  if (!list) return;
+  const q = query.toLowerCase().trim();
+  const visible = _fmg.categories.filter(c => {
+    if (_fmg.excludedCatIds.has(c.id)) return false;
+    if (q && !c.name.toLowerCase().includes(q)) return false;
+    return true;
+  }).slice(0, 30);
+  list.innerHTML = visible.length
+    ? visible.map(c => {
+        const isChild = !!c.parent_id;
+        return `<div onmousedown="event.preventDefault();_fmgAddCat('${c.id}')"
+          style="padding:7px 12px${isChild ? ' padding-left:24px' : ''};font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border)"
+          onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background=''">
+          ${isChild ? '<span style="color:var(--muted);font-size:.7rem">↳</span>' : ''}
+          <span>${c.icon || '🏷️'}</span>
+          <span style="flex:1">${esc(c.name)}</span>
+          <span style="font-size:.65rem;color:var(--muted)">${c.type === 'income' ? 'Receita' : 'Despesa'}</span>
+        </div>`;
+      }).join('')
+    : '<div style="padding:10px 12px;font-size:.78rem;color:var(--muted)">Nenhuma categoria encontrada</div>';
+  document.getElementById('fmgCatDrop').style.display = '';
+}
+window._fmgFilterCats = _fmgFilterCats;
+
+function _fmgAddCat(id) {
+  _fmg.excludedCatIds.add(id);
+  const inp = document.getElementById('fmgCatSearchInput');
+  if (inp) inp.value = '';
+  _fmgRenderCatChips();
+  _fmgFilterCats('');
+}
+window._fmgAddCat = _fmgAddCat;
+
+function _fmgRemoveCat(id) {
+  _fmg.excludedCatIds.delete(id);
+  _fmgRenderCatChips();
+}
+window._fmgRemoveCat = _fmgRemoveCat;
+
+// Account exclusion checkboxes
+function _fmgRenderAccList() {
+  const container = document.getElementById('fmgAccList');
+  if (!container) return;
+  if (!_fmg.accounts.length) {
+    container.innerHTML = '<span style="font-size:.74rem;color:var(--muted)">Nenhuma conta cadastrada</span>';
+    return;
+  }
+  container.innerHTML = _fmg.accounts.map(acc => {
+    const excluded = _fmg.excludedAccIds.has(acc.id);
+    const typeIcon = { corrente:'🏦', poupanca:'💰', cartao_credito:'💳', investimento:'📈', dinheiro:'💵', outros:'🏦' }[acc.type] || '🏦';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;user-select:none;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="fmg-acc-${acc.id}" ${excluded ? 'checked' : ''}
+        onchange="_fmgToggleAcc('${acc.id}',this.checked)"
+        style="width:15px;height:15px;accent-color:#dc2626;flex-shrink:0">
+      <span style="font-size:1rem">${acc.icon || typeIcon}</span>
+      <span style="flex:1;font-size:.82rem;font-weight:600;color:var(--text)">${esc(acc.name)}</span>
+      <span style="font-size:.68rem;color:var(--muted)">${acc.currency || 'BRL'}</span>
+      ${excluded ? '<span style="font-size:.62rem;padding:1px 6px;border-radius:20px;background:rgba(239,68,68,.1);color:#dc2626;font-weight:700">Excluída</span>' : ''}
+    </label>`;
+  }).join('');
+}
+
+function _fmgToggleAcc(id, checked) {
+  if (checked) _fmg.excludedAccIds.add(id);
+  else         _fmg.excludedAccIds.delete(id);
+  _fmgRenderAccList();
+}
+window._fmgToggleAcc = _fmgToggleAcc;
+
+// Transaction type toggles (rendered inline in the filters pane)
+const _FMG_TYPE_OPTIONS = [
+  { key:'transfers',    label:'Transferências entre contas',         icon:'↔️',  hint:'Movimentações internas — ex: Nubank → Itaú' },
+  { key:'card_payments',label:'Pagamentos de fatura de cartão',      icon:'💳',  hint:'Pagamento da fatura do cartão de crédito' },
+  { key:'adjustments',  label:'Ajustes e lançamentos de saldo',      icon:'⚖️',  hint:'Lançamentos de ajuste ou saldo inicial' },
+  { key:'chat_pending', label:'Transações pendentes (chat)',         icon:'⏳',  hint:'Transações via bot ainda não validadas' },
+  { key:'income',       label:'Todas as receitas',                   icon:'📥',  hint:'Exclui entradas como salário e rendimentos' },
+];
+
+function _fmgRenderTypeToggles() {
+  const container = document.getElementById('statsExcludeToggles');
+  if (!container) return;
+  const exc = _fmg.statsExcl;
+  container.innerHTML = _FMG_TYPE_OPTIONS.map(opt => {
+    const checked = !!exc[opt.key];
+    return `<label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none" onclick="_fmgToggleType('${opt.key}')">
+      <span style="font-size:1.1rem;width:26px;text-align:center;flex-shrink:0">${opt.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:700;color:var(--text)">${esc(opt.label)}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:1px">${esc(opt.hint)}</div>
+      </div>
+      <input type="checkbox" id="fmgType_${opt.key}" ${checked ? 'checked' : ''}
+        style="width:0;height:0;opacity:0;position:absolute">
+      <div id="fmgTypeTrack_${opt.key}" class="dark-mode-toggle-track${checked ? ' active' : ''}"
+        style="flex-shrink:0;${checked ? 'background:var(--accent)' : ''}">
+        <div class="dark-mode-toggle-thumb"></div>
+      </div>
+    </label>`;
+  }).join('');
+}
+
+function _fmgToggleType(key) {
+  const cb    = document.getElementById('fmgType_' + key);
+  const track = document.getElementById('fmgTypeTrack_' + key);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  _fmg.statsExcl[key] = cb.checked;
+  if (track) {
+    track.classList.toggle('active', cb.checked);
+    track.style.background = cb.checked ? 'var(--accent)' : '';
+  }
+}
+window._fmgToggleType = _fmgToggleType;
+
+async function _fmgSaveFilters() {
+  // Collect type toggles
+  const typeExcl = {};
+  _FMG_TYPE_OPTIONS.forEach(opt => {
+    typeExcl[opt.key] = document.getElementById('fmgType_' + opt.key)?.checked || false;
+  });
+
+  const exclude = {
+    ...typeExcl,
+    excluded_category_ids: [..._fmg.excludedCatIds],
+    excluded_account_ids:  [..._fmg.excludedAccIds],
+  };
+
+  try {
+    if (typeof updateFamilyPreferences === 'function') {
+      await updateFamilyPreferences({ ui: { stats_exclude: exclude } });
+    }
+    // Update in-memory cache
+    if (typeof window._cachedStatsExclude !== 'undefined') {
+      window._cachedStatsExclude = exclude;
+    }
+    if (typeof state !== 'undefined' && state.familyPrefs) {
+      state.familyPrefs.ui = state.familyPrefs.ui || {};
+      state.familyPrefs.ui.stats_exclude = exclude;
+    }
+    _fmg.statsExcl = exclude;
+    toast('✅ Filtros de análise salvos! Dashboard atualizado.', 'success');
+    if (typeof loadDashboard === 'function') loadDashboard().catch(() => {});
+    if (typeof loadKPIs      === 'function') loadKPIs().catch(() => {});
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+window._fmgSaveFilters = _fmgSaveFilters;
+
+// ── Re-init on settings reopen ──────────────────────────────────────────────
+// Allow re-init when pane is re-opened
+function _fmgReset() { _fmg.initialized = false; }
+window._fmgReset = _fmgReset;
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ADMIN — Seleção de família para gerenciar Acesso e Filtros
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _adminSelectedFamilyId  = '';
+let _adminSelectedFamilyName = '';
+
+async function _adminLoadFamilyList() {
+  const sel = document.getElementById('adminFamilySelect');
+  if (!sel) return;
+
+  // Already loaded?
+  if (sel.options.length > 1) return;
+
+  try {
+    const { data, error } = await sb.from('families')
+      .select('id, name')
+      .eq('active', true)
+      .order('name');
+    if (error) throw error;
+    (data || []).forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.name;
+      sel.appendChild(opt);
+    });
+    // Pre-select admin's own family if available
+    const ownFid = famId?.() || currentUser?.family_id;
+    if (ownFid) sel.value = ownFid;
+    if (sel.value) _adminFamilyChanged(sel.value);
+  } catch(e) {
+    console.warn('[adminLoadFamilyList]', e.message);
+  }
+}
+window._adminLoadFamilyList = _adminLoadFamilyList;
+
+function _adminFamilyChanged(fid) {
+  _adminSelectedFamilyId = fid;
+  const actionsDiv = document.getElementById('adminFamilyActions');
+  const subEl      = document.getElementById('adminFamilyAcessoSub');
+  const sel        = document.getElementById('adminFamilySelect');
+  if (actionsDiv)  actionsDiv.style.display = fid ? '' : 'none';
+  if (subEl && sel && fid) {
+    const name = sel.options[sel.selectedIndex]?.text || '';
+    _adminSelectedFamilyName = name;
+    subEl.textContent = name ? `Família: ${name}` : 'Permissões por membro';
+  }
+  // Reset fmg state so new family data is loaded
+  _fmg.initialized = false;
+  _fmg.members     = [];
+}
+window._adminFamilyChanged = _adminFamilyChanged;
+
+async function _adminOpenFamilyTab(tab) {
+  const fid = _adminSelectedFamilyId;
+  if (!fid) { toast('Selecione uma família primeiro', 'warning'); return; }
+
+  // Temporarily override famId for the modal
+  const _origFamId = window.famId;
+  window.famId = () => fid;
+
+  // Reset fmg state so it loads for this family
+  _fmg.initialized = false;
+  _fmg.members     = [];
+  _fmg.accounts    = [];
+  _fmg.categories  = [];
+  _fmg.excludedCatIds = new Set();
+  _fmg.excludedAccIds = new Set();
+
+  try {
+    await openMyFamilyMgmt();
+    // Update modal family name display
+    const nameEl = document.getElementById('mfmFamilyName');
+    if (nameEl) nameEl.textContent = _adminSelectedFamilyName || 'Família selecionada';
+    setTimeout(async () => {
+      mfmSwitchTab(tab);
+    }, 180);
+  } finally {
+    // Restore famId after modal interaction (modal manages its own state)
+    setTimeout(() => { window.famId = _origFamId; }, 500);
+  }
+}
+window._adminOpenFamilyTab = _adminOpenFamilyTab;
+
+// ── fmg category chooser — uses openCatChooser modal ─────────────────────────
+function _fmgOpenCatChooser() {
+  if (typeof openCatChooser !== 'function') return;
+  openCatChooser('tx', function(catId, catName) {
+    if (!catId) return;
+    _fmgAddCat(catId);
+  });
+}
+window._fmgOpenCatChooser = _fmgOpenCatChooser;

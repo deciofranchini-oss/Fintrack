@@ -240,93 +240,213 @@ window.closeCatChooser = closeCatChooser;
 function _ccRenderChooser(overlay, selectedId, query) {
   const allCats = state.categories || [];
   const cats    = _ccType ? allCats.filter(c => c.type === _ccType) : allCats;
-  const q       = (query || '').toLowerCase().trim();
+  const q       = (query || '').trim();
+  const qNorm   = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
-  const parents = cats
-    .filter(c => !c.parent_id)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const matchStr = (s) => {
+    const n = (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return n.includes(qNorm);
+  };
 
-  // Build rows HTML
-  let rows = '';
+  const parents  = cats.filter(c => !c.parent_id).sort((a,b) => a.name.localeCompare(b.name,'pt'));
 
-  // "Sem categoria" option
-  const noneSel = !selectedId ? ' cc-opt-selected' : '';
-  rows += `<div class="cc-none${noneSel}" onclick="event.stopPropagation();_ccPick(null)">— Sem categoria —</div>`;
+  // ── Recentes (por tipo, sessão) ────────────────────────────────────────────
+  let recentIds = [];
+  try { recentIds = JSON.parse(sessionStorage.getItem('_ccRecent_' + (_ccType||'all')) || '[]'); } catch(_) {}
+  const recentCats = recentIds.slice(0,6).map(id => allCats.find(c => c.id === id)).filter(Boolean);
 
-  // "Create new category" shortcut — shown when query has text
-  if (q) {
-    rows += `<div class="cc-create-new" onclick="event.stopPropagation();_ccCreateNew('${q.replace(/'/g,'&apos;').replace(/"/g,'&quot;')}')">
-      <span style="font-size:.8rem">➕</span>
-      <span>Criar categoria <strong>"${esc(q)}"</strong></span>
+  const selCat    = selectedId ? allCats.find(c => c.id === selectedId) : null;
+  const selParent = selCat?.parent_id ? allCats.find(c => c.id === selCat.parent_id) : null;
+
+  // ── Keyboard nav state ─────────────────────────────────────────────────────
+  window._ccKbIdx = -1;
+
+  // ── Badge ──────────────────────────────────────────────────────────────────
+  const typeBadge = _ccType === 'despesa'
+    ? `<span class="cc-type-badge cc-type-exp"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="7" x2="17" y2="17"/><polyline points="17 7 17 17 7 17"/></svg>Despesa</span>`
+    : _ccType === 'receita'
+    ? `<span class="cc-type-badge cc-type-inc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>Receita</span>`
+    : '';
+
+  // ── Quick row (atual + recentes) ───────────────────────────────────────────
+  const quickItems = [];
+  if (selCat && !q) quickItems.push({...selCat, _isSel:true});
+  if (!q) recentCats.forEach(r => { if (!quickItems.find(x=>x.id===r.id)) quickItems.push(r); });
+
+  const quickHtml = quickItems.length ? `
+    <div class="cc-quick">
+      <div class="cc-quick-ttl">${selCat ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Selecionada' : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Recentes'}</div>
+      <div class="cc-quick-chips">
+        ${quickItems.map(cat => {
+          const par = cat.parent_id ? allCats.find(c=>c.id===cat.parent_id) : null;
+          const col = cat.color || par?.color || 'var(--accent)';
+          const isSel = cat.id === selectedId;
+          return `<button type="button" class="cc-qchip${isSel?' cc-qchip-sel':''}" style="--qcol:${col}"
+            onclick="event.stopPropagation();_ccPick('${cat.id}')"
+            title="${par?esc(par.name)+' › ':''}${esc(cat.name)}">
+            <span class="cc-qchip-ico">${cat.icon||par?.icon||'📦'}</span>
+            <span class="cc-qchip-lbl">${esc(cat.name)}</span>
+            ${isSel?'<svg class="cc-qchip-chk" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // ── List content ───────────────────────────────────────────────────────────
+  let listHtml = '';
+
+  if (!q) {
+    // ── Grouped view ──────────────────────────────────────────────────────────
+    parents.forEach(p => {
+      const children = cats.filter(c=>c.parent_id===p.id).sort((a,b)=>a.name.localeCompare(b.name,'pt'));
+      const col = p.color || '#6366f1';
+      const isParSel = p.id === selectedId;
+      const expanded = !!_ccExpanded[p.id] || selCat?.parent_id === p.id;
+
+      listHtml += `
+      <div class="cc-group" data-pid="${p.id}">
+        <div class="cc-group-hdr${isParSel?' cc-group-sel':''}" style="--gcol:${col}"
+          onclick="event.stopPropagation();_ccToggle('${p.id}')">
+          <span class="cc-g-bar" style="background:${col}"></span>
+          <span class="cc-g-ico">${p.icon||'📦'}</span>
+          <span class="cc-g-name">${esc(p.name)}</span>
+          <span class="cc-g-right">
+            ${children.length ? `<span class="cc-g-cnt">${children.length}</span>` : ''}
+            <button class="cc-g-use" type="button" onclick="event.stopPropagation();_ccPick('${p.id}')" title="Usar ${esc(p.name)}">usar</button>
+            ${children.length ? `<span class="cc-g-chev${expanded?' cc-g-chev-open':''}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>` : ''}
+          </span>
+        </div>
+        ${children.length ? `
+        <div class="cc-children${expanded?' cc-children-open':''}">
+          ${children.map(c => {
+            const cc  = c.color || col;
+            const sel = c.id === selectedId;
+            return `<div class="cc-child${sel?' cc-child-sel':''}" style="--ccol:${cc}"
+              onclick="event.stopPropagation();_ccPick('${c.id}')">
+              <span class="cc-c-stripe" style="background:${cc}"></span>
+              <span class="cc-c-ico">${c.icon||'▸'}</span>
+              <span class="cc-c-name">${esc(c.name)}</span>
+              ${sel?'<svg class="cc-c-chk" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+      </div>`;
+    });
+
+  } else {
+    // ── Search results ─────────────────────────────────────────────────────────
+    const hl = (s) => {
+      const lower = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const idx   = lower.indexOf(qNorm);
+      if (idx < 0) return esc(s);
+      return esc(s.slice(0,idx))
+        + `<mark class="cc-hl">${esc(s.slice(idx, idx+q.length))}</mark>`
+        + esc(s.slice(idx+q.length));
+    };
+
+    const results = [];
+    cats.forEach(c => {
+      const par       = c.parent_id ? allCats.find(x=>x.id===c.parent_id) : null;
+      const nm        = matchStr(c.name);
+      const pm        = par && matchStr(par.name);
+      const score     = nm ? (c.name.toLowerCase().startsWith(q.toLowerCase()) ? 4 : 3) : (pm ? 2 : 0);
+      if (score) results.push({...c, _par:par, _score:score});
+    });
+    results.sort((a,b) => b._score - a._score || a.name.localeCompare(b.name,'pt'));
+
+    // "Criar" shortcut always at top
+    listHtml += `
+    <div class="cc-create-row" onclick="event.stopPropagation();_ccCreateNew('${q.replace(/'/g,'&#39;').replace(/"/g,'&quot;')}')">
+      <span class="cc-create-plus">+</span>
+      <span>Criar <strong>"${esc(q)}"</strong></span>
     </div>`;
+
+    if (results.length === 0) {
+      listHtml += `
+      <div class="cc-empty">
+        <div class="cc-empty-ico">🔍</div>
+        <div class="cc-empty-msg">Nenhuma categoria encontrada</div>
+        <div class="cc-empty-hint">Pressione <kbd>Enter</kbd> para criar</div>
+      </div>`;
+    } else {
+      listHtml += `<div class="cc-r-count">${results.length} resultado${results.length!==1?'s':''}</div>`;
+      results.forEach(c => {
+        const col = c.color || c._par?.color || '#6366f1';
+        const sel = c.id === selectedId;
+        listHtml += `
+        <div class="cc-result${sel?' cc-result-sel':''}" style="--rcol:${col}"
+          onclick="event.stopPropagation();_ccPick('${c.id}')">
+          <span class="cc-r-ico" style="background:color-mix(in srgb,${col} 15%,transparent);color:${col}">${c.icon||c._par?.icon||'📦'}</span>
+          <div class="cc-r-info">
+            <span class="cc-r-name">${hl(c.name)}</span>
+            ${c._par ? `<span class="cc-r-par">${hl(c._par.name)}</span>` : ''}
+          </div>
+          ${sel?'<svg class="cc-r-chk" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </div>`;
+      });
+    }
   }
 
-  parents.forEach(p => {
-    const children = cats
-      .filter(c => c.parent_id === p.id)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const color  = p.color || '#8c8278';
-    const icon   = p.icon  || '📦';
+  // ── "Sem categoria" ────────────────────────────────────────────────────────
+  const noneSel = !selectedId;
+  const noneHtml = `
+  <div class="cc-none${noneSel?' cc-none-sel':''}" onclick="event.stopPropagation();_ccPick(null)">
+    <span class="cc-none-dash">—</span>
+    <span class="cc-none-lbl">Sem categoria</span>
+    ${noneSel?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+  </div>`;
 
-    // Search filter
-    const pMatch = !q || p.name.toLowerCase().includes(q);
-    const cMatch = children.filter(c => c.name.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
-    if (q && !pMatch && cMatch.length === 0) return;
+  // ── Total count badge ──────────────────────────────────────────────────────
+  const totalBadge = cats.length
+    ? `<span class="cc-total-badge">${cats.length}</span>`
+    : '';
 
-    const showChildren = q ? cMatch : (_ccExpanded[p.id] ? children : []);
-    const hasKids      = children.length > 0;
-    const expanded     = !!_ccExpanded[p.id] || (q && cMatch.length > 0);
-
-    // Parent row — click to expand/collapse (no select on click; use "usar" link to select)
-    rows += `<div class="cc-group" data-pid="${p.id}">`;
-    rows += `<div class="cc-group-hdr" onclick="event.stopPropagation();_ccToggle('${p.id}')">`;
-    rows += `  <span class="cc-dot" style="background:${color}"></span>`;
-    rows += `  <span class="cc-icon">${icon}</span>`;
-    rows += `  <span class="cc-label">${esc(p.name)}</span>`;
-    if (hasKids) {
-      rows += `  <span class="cc-count">${children.length}</span>`;
-      rows += `  <span class="cc-arrow${expanded?' cc-arrow-open':''}">${expanded?'▼':'▶'}</span>`;
-    }
-    rows += `  <span class="cc-usar" onclick="event.stopPropagation();_ccPick('${p.id}')">usar</span>`;
-    rows += `</div>`;
-
-    // Children rows
-    if (hasKids) {
-      rows += `<div class="cc-children" style="${expanded?'':'display:none'}">`;
-      const visKids = q ? cMatch : children;
-      visKids.forEach(c => {
-        const cc  = c.color || color;
-        const sel = c.id === selectedId ? ' cc-opt-selected' : '';
-        rows += `<div class="cc-opt${sel}" onclick="event.stopPropagation();_ccPick('${c.id}')">`;
-        rows += `  <span class="cc-dot" style="background:${cc}"></span>`;
-        rows += `  <span class="cc-icon" style="font-size:.8rem">${c.icon||'▸'}</span>`;
-        rows += `  <span>${esc(c.name)}</span>`;
-        rows += `</div>`;
-      });
-      rows += `</div>`;
-    }
-
-    rows += `</div>`; // .cc-group
-  });
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   overlay.innerHTML = `
-    <div class="cc-modal" onclick="event.stopPropagation()">
-      <div class="cc-header">
-        <span class="cc-title">Selecionar Categoria</span>
-        <button class="cc-close" onclick="closeCatChooser()">✕</button>
+  <div class="cc-modal" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Selecionar categoria">
+
+    <div class="cc-header">
+      <div class="cc-header-left">
+        <svg class="cc-header-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>
+        <span class="cc-title">Categoria</span>
+        ${typeBadge}
+        ${totalBadge}
       </div>
-      <div class="cc-search-wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="cc-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="ccSearchInput" type="text" class="cc-search-input"
-          placeholder="Buscar ou criar categoria…" autocomplete="off" spellcheck="false"
-          onkeydown="if(event.key==='Enter'){event.stopPropagation();const q=this.value.trim();if(q)_ccCreateNew(q);}"
-          value="${query || ''}"
-          oninput="event.stopPropagation();_ccSearch(this.value)"
-          onclick="event.stopPropagation()">
-        ${query ? `<button class="cc-search-clear" onclick="event.stopPropagation();_ccSearch('')" title="Limpar">✕</button>` : ''}
-      </div>
-      <div class="cc-list">${rows}</div>
-    </div>`;
+      <button class="cc-close" onclick="closeCatChooser()" aria-label="Fechar" title="Fechar (Esc)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="cc-search-wrap">
+      <svg class="cc-s-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="ccSearchInput" type="search" class="cc-s-input"
+        placeholder="Buscar categoria…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        value="${esc(query||'')}"
+        oninput="event.stopPropagation();_ccSearch(this.value)"
+        onkeydown="event.stopPropagation();_ccSearchKey(event)"
+        onclick="event.stopPropagation()">
+      ${q ? `<button class="cc-s-clear" type="button" onclick="event.stopPropagation();_ccSearch('')" title="Limpar (Esc)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>` : ''}
+    </div>
+
+    ${quickHtml}
+
+    <div class="cc-list" id="ccList">
+      ${noneHtml}
+      ${listHtml}
+    </div>
+
+    <div class="cc-footer">
+      <button class="cc-add-btn" type="button"
+        onclick="event.stopPropagation();_ccCreateNew(document.getElementById('ccSearchInput')?.value?.trim()||'')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nova categoria
+      </button>
+      <span class="cc-footer-hint">↑↓ navegar · Enter selecionar · Esc fechar</span>
+    </div>
+
+  </div>`;
 }
 
 function _ccToggle(parentId) {
@@ -336,9 +456,54 @@ function _ccToggle(parentId) {
   const searchVal = overlay.querySelector('#ccSearchInput')?.value || '';
   const selId = _catCtx(_ccCtx) ? (document.getElementById(_catCtx(_ccCtx).inputId)?.value||'') : '';
   _ccRenderChooser(overlay, selId, searchVal);
-  overlay.querySelector('#ccSearchInput')?.focus();
+  // Restore focus to search and scroll to expanded group
+  const inp = overlay.querySelector('#ccSearchInput');
+  if (inp) { inp.focus(); }
+  requestAnimationFrame(() => {
+    const grp = overlay.querySelector(`.cc-group[data-pid="${parentId}"]`);
+    if (grp) grp.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  });
 }
 window._ccToggle = _ccToggle;
+
+function _ccSearchKey(e) {
+  const overlay = document.getElementById('catChooserOverlay');
+  if (!overlay) return;
+
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    const v = document.getElementById('ccSearchInput')?.value;
+    if (v) _ccSearch('');
+    else closeCatChooser();
+    return;
+  }
+
+  // ↑↓ keyboard navigation
+  const items = Array.from(overlay.querySelectorAll('.cc-result,.cc-child,.cc-none,.cc-create-row'));
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && items.length) {
+    e.preventDefault();
+    window._ccKbIdx = window._ccKbIdx ?? -1;
+    if (e.key === 'ArrowDown') window._ccKbIdx = Math.min(window._ccKbIdx + 1, items.length - 1);
+    else window._ccKbIdx = Math.max(window._ccKbIdx - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('cc-kb-focus', i === window._ccKbIdx));
+    items[window._ccKbIdx]?.scrollIntoView({ block:'nearest', behavior:'smooth' });
+    return;
+  }
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    // If keyboard-focused item exists, click it
+    const focused = overlay.querySelector('.cc-kb-focus');
+    if (focused) { focused.click(); return; }
+    // Otherwise first result
+    const first = overlay.querySelector('.cc-result,.cc-create-row');
+    if (first) { first.click(); return; }
+    // Or first child option
+    const child = overlay.querySelector('.cc-child');
+    if (child) { child.click(); return; }
+  }
+}
+window._ccSearchKey = _ccSearchKey;
 
 function _ccSearch(val) {
   const overlay = document.getElementById('catChooserOverlay');
@@ -353,6 +518,16 @@ window._ccSearch = _ccSearch;
 function _ccPick(catId) {
   const allCats = state.categories || [];
   const cat     = catId ? allCats.find(x => x.id === catId) : null;
+
+  // Track in recent (session) for quick chips
+  if (catId) {
+    try {
+      const key = '_ccRecent_' + (_ccType || 'all');
+      const prev = JSON.parse(sessionStorage.getItem(key) || '[]');
+      const next = [catId, ...prev.filter(id => id !== catId)].slice(0, 8);
+      sessionStorage.setItem(key, JSON.stringify(next));
+    } catch(_) {}
+  }
 
   // Route through existing setCatPickerValue which handles split routing
   if (typeof setCatPickerValue === 'function') {
